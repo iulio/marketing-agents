@@ -1,0 +1,12 @@
+# azure.yaml
+name: marketing-agents
+metadata:
+  template: marketing-agents@1.0.0
+
+services:
+  api:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./Dockerfile
