@@ -2,10 +2,9 @@ fastapi==0.115.6
 uvicorn[standard]==0.34.0
 gunicorn==23.0.0
 langchain==0.3.13
-langgraph==0.2.56
 langchain-ollama==0.1.0
+langgraph==0.2.56
 pydantic==2.10.4
-pydantic-settings==2.6.1
 python-dotenv==1.0.1
 httpx==0.28.1
 tenacity==9.0.0

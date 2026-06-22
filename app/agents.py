@@ -1,7 +1,8 @@
 import os
 from typing import TypedDict, Literal
 from langgraph.graph import StateGraph, END
-from langchain_ollama import ChatOllama  # <--- NEW IMPORT
+# --- NEW: Use Ollama instead of Azure ---
+from langchain_ollama import ChatOllama
 
 class AgencyState(TypedDict):
     client_profile: dict
@@ -11,15 +12,15 @@ class AgencyState(TypedDict):
     human_feedback: dict
     validation_errors: list
 
-# Initialize local LLM
+# Initialize local LLM (Ollama)
 llm = ChatOllama(
-    model="llama3.2:3b",      # Change if you pulled a different model
+    model="llama3.2:3b",           # Use whatever model you pulled
     base_url="http://localhost:11434",
     temperature=0.7,
 )
 
 def orchestrator_node(state: AgencyState) -> AgencyState:
-    # Your logic here
+    # TODO: implement logic
     return state
 
 def researcher_node(state: AgencyState) -> AgencyState:
