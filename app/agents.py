@@ -1,17 +1,8 @@
-import json
 import os
 from typing import TypedDict, Literal
 from langgraph.graph import StateGraph, END
-from langchain_azure_ai.chat_models import AzureAIChatModel
-from azure.identity import DefaultAzureCredential
-from langchain_openai import AzureOpenAI
+from langchain_ollama import ChatOllama  # <--- NEW IMPORT
 
-llm = AzureOpenAI(
-    azure_endpoint=os.getenv("AZURE_AI_PROJECT_ENDPOINT"),
-    api_version="2024-02-01",
-    deployment_name="gpt-4.1",  # or your deployment name
-    api_key=6b3CMHLCJq5XTxgCt04UGhVU6slgWGeRPkQ13CTlzqYXinol82mhJQQJ99CFACfhMk5XJ3w3AAAAACOG7Qbu,  # or use credential
-)
 class AgencyState(TypedDict):
     client_profile: dict
     market_intelligence: dict
@@ -20,38 +11,30 @@ class AgencyState(TypedDict):
     human_feedback: dict
     validation_errors: list
 
-# Initialize Foundry client
-credential = DefaultAzureCredential()
-llm = AzureAIChatModel(
-    model="gpt-4.1",
-    endpoint=os.getenv("AZURE_AI_PROJECT_ENDPOINT"),
-    credential=credential,
+# Initialize local LLM
+llm = ChatOllama(
+    model="llama3.2:3b",      # Change if you pulled a different model
+    base_url="http://localhost:11434",
+    temperature=0.7,
 )
 
 def orchestrator_node(state: AgencyState) -> AgencyState:
-    """Master Orchestrator — breaks down the client brief."""
-    # Implementation here
+    # Your logic here
     return state
 
 def researcher_node(state: AgencyState) -> AgencyState:
-    """Strategic Researcher — analyzes market and competitors."""
     return state
 
 def creative_node(state: AgencyState) -> AgencyState:
-    """Creative Agent — generates copy and visuals."""
     return state
 
 def human_review_node(state: AgencyState) -> AgencyState:
-    """Human-in-the-Loop gate — pauses for approval."""
-    # This node acts as a pass-through; the graph interrupts before it
     return state
 
 def launch_node(state: AgencyState) -> AgencyState:
-    """Launch Agent — deploys to Google/Meta APIs."""
     return state
 
 def should_continue(state: AgencyState) -> Literal["launch", "creative"]:
-    """Conditional routing based on human feedback."""
     if state.get("human_feedback", {}).get("status") == "APPROVED":
         return "launch"
     return "creative"
@@ -74,5 +57,4 @@ workflow.add_conditional_edges("human_review", should_continue, {
 })
 workflow.add_edge("launch", END)
 
-# Compile with interrupt before human_review
 graph = workflow.compile(interrupt_before=["human_review"])

@@ -2,11 +2,8 @@ fastapi==0.115.6
 uvicorn[standard]==0.34.0
 gunicorn==23.0.0
 langchain==0.3.13
-langchain-azure-ai==0.1.0
 langgraph==0.2.56
-azure-ai-projects==1.0.0b5
-azure-identity==1.19.0
-azure-keyvault-secrets==4.8.0
+langchain-ollama==0.1.0
 pydantic==2.10.4
 pydantic-settings==2.6.1
 python-dotenv==1.0.1
