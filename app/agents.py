@@ -4,7 +4,14 @@ from typing import TypedDict, Literal
 from langgraph.graph import StateGraph, END
 from langchain_azure_ai.chat_models import AzureAIChatModel
 from azure.identity import DefaultAzureCredential
+from langchain_openai import AzureOpenAI
 
+llm = AzureOpenAI(
+    azure_endpoint=os.getenv("AZURE_AI_PROJECT_ENDPOINT"),
+    api_version="2024-02-01",
+    deployment_name="gpt-4.1",  # or your deployment name
+    api_key=6b3CMHLCJq5XTxgCt04UGhVU6slgWGeRPkQ13CTlzqYXinol82mhJQQJ99CFACfhMk5XJ3w3AAAAACOG7Qbu,  # or use credential
+)
 class AgencyState(TypedDict):
     client_profile: dict
     market_intelligence: dict
