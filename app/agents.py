@@ -2,7 +2,7 @@ import os
 from typing import TypedDict, Literal
 from langgraph.graph import StateGraph, END
 # --- NEW: Use Ollama instead of Azure ---
-from langchain_ollama import ChatOllama
+from langchain_community.chat_models import ChatOllama
 
 class AgencyState(TypedDict):
     client_profile: dict
