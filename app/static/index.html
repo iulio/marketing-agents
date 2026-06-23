@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Marketing Control Room</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body { background: #0f1117; font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(22, 27, 34, 0.8); backdrop-filter: blur(12px); border: 1px solid #2d333b; }
+        .agent-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .status-idle { background: #3fb950; box-shadow: 0 0 8px #3fb950; }
+        .status-working { background: #d29922; box-shadow: 0 0 8px #d29922; animation: pulse 1.5s infinite; }
+        .status-error { background: #f85149; box-shadow: 0 0 8px #f85149; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        .creative-card:hover { transform: translateY(-4px); transition: all 0.2s ease; border-color: #58a6ff; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .modal-backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body>
+
+<div id="app" class="flex h-screen text-gray-200 overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-20 bg-[#161b22] border-r border-[#2d333b] flex flex-col items-center py-6 space-y-8">
+        <div class="text-2xl font-bold text-white"><i class="fa-regular fa-robot"></i></div>
+        <nav class="flex flex-col space-y-6 text-gray-500 text-xl">
+            <a href="#" class="text-white hover:text-white transition" title="Dashboard"><i class="fa-solid fa-gauge-high"></i></a>
+            <a href="#" class="hover:text-white transition" title="Campaigns"><i class="fa-solid fa-bullhorn"></i></a>
+            <a href="#" class="hover:text-white transition" title="Creative Studio"><i class="fa-regular fa-pen-to-square"></i></a>
+            <a href="#" class="hover:text-white transition" title="Analytics"><i class="fa-solid fa-chart-line"></i></a>
+            <a href="#" class="hover:text-white transition" title="Settings"><i class="fa-solid fa-gear"></i></a>
+        </nav>
+        <div class="mt-auto text-gray-600 text-xl">
+            <i class="fa-regular fa-circle-question"></i>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-y-auto p-6 space-y-6">
+
+        <!-- HEADER + AGENT STATUS -->
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold">Agency Control Room</h1>
+                <p class="text-gray-400 text-sm">Local LLM • Development Mode</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="openOnboardModal()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition">
+                    <i class="fa-solid fa-plus"></i> New Campaign
+                </button>
+                <div class="flex items-center gap-2 text-sm bg-[#21262d] px-3 py-1.5 rounded-full border border-[#30363d]">
+                    <i class="fa-regular fa-circle-check text-green-400"></i>
+                    <span class="text-gray-300">LLM: <span id="llmModeDisplay" class="font-mono text-yellow-400">Local (Ollama)</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- AGENT STATUS ROW -->
+        <div class="grid grid-cols-5 gap-4">
+            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                <div class="agent-status-dot status-idle" id="dot-orchestrator"></div>
+                <div><p class="text-xs text-gray-400">Master</p><p class="text-sm font-medium">Orchestrator</p></div>
+            </div>
+            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                <div class="agent-status-dot status-idle" id="dot-research"></div>
+                <div><p class="text-xs text-gray-400">Research</p><p class="text-sm font-medium">Analyst</p></div>
+            </div>
+            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                <div class="agent-status-dot status-idle" id="dot-creative"></div>
+                <div><p class="text-xs text-gray-400">Creative</p><p class="text-sm font-medium">Copy & Asset</p></div>
+            </div>
+            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                <div class="agent-status-dot status-idle" id="dot-launch"></div>
+                <div><p class="text-xs text-gray-400">Launch</p><p class="text-sm font-medium">Engineer</p></div>
+            </div>
+            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                <div class="agent-status-dot status-idle" id="dot-analyst"></div>
+                <div><p class="text-xs text-gray-400">Performance</p><p class="text-sm font-medium">Optimizer</p></div>
+            </div>
+        </div>
+
+        <!-- KPI CARDS -->
+        <div class="grid grid-cols-4 gap-4">
+            <div class="glass-card rounded-lg p-4">
+                <p class="text-gray-400 text-xs uppercase tracking-wider">Total Spend</p>
+                <p class="text-2xl font-bold">$1,245.00</p>
+                <p class="text-green-400 text-xs">+12% vs last week</p>
+            </div>
+            <div class="glass-card rounded-lg p-4">
+                <p class="text-gray-400 text-xs uppercase tracking-wider">Avg. CTR</p>
+                <p class="text-2xl font-bold">4.8%</p>
+                <p class="text-green-400 text-xs">+0.6% improvement</p>
+            </div>
+            <div class="glass-card rounded-lg p-4">
+                <p class="text-gray-400 text-xs uppercase tracking-wider">Active Campaigns</p>
+                <p class="text-2xl font-bold">14</p>
+                <p class="text-blue-400 text-xs">3 pending approval</p>
+            </div>
+            <div class="glass-card rounded-lg p-4">
+                <p class="text-gray-400 text-xs uppercase tracking-wider">Conversions</p>
+                <p class="text-2xl font-bold">287</p>
+                <p class="text-yellow-400 text-xs">Target: 350</p>
+            </div>
+        </div>
+
+        <!-- CREATIVE REVIEW PANEL (Pending Approval) -->
+        <div class="glass-card rounded-lg p-5 border border-[#30363d]">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-regular fa-pen-to-square text-blue-400"></i> Creative Review (Pending)</h2>
+                    <p class="text-xs text-gray-400">Campaign: <span class="text-white">Tech Startup</span> • Language: <span class="font-mono text-yellow-400">en-US</span></p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="text-xs bg-[#21262d] hover:bg-[#30363d] px-3 py-1 rounded border border-[#30363d] transition"><i class="fa-regular fa-pen-to-square"></i> Edit</button>
+                    <button onclick="approveAll()" class="text-xs bg-[#238636] hover:bg-[#2ea043] px-3 py-1 rounded text-white transition"><i class="fa-regular fa-check"></i> Approve All</button>
+                </div>
+            </div>
+            <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-2" id="creativeCarousel">
+                <!-- Placeholder cards – will be populated by actual data later -->
+                <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
+                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Headline</span>
+                    <p class="text-sm font-medium mt-1">Revolutionary SaaS for Teams</p>
+                    <span class="text-[10px] text-gray-500">✔ 28 chars</span>
+                    <hr class="border-[#30363d] my-2">
+                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Description</span>
+                    <p class="text-xs mt-1 text-gray-300">Boost productivity by 40% with AI-driven workflows.</p>
+                    <span class="text-[10px] text-gray-500">✔ 78 chars</span>
+                    <div class="flex mt-3 gap-2">
+                        <button class="text-xs text-green-400 hover:text-green-300"><i class="fa-regular fa-check-circle"></i> Approve</button>
+                        <button class="text-xs text-red-400 hover:text-red-300"><i class="fa-regular fa-circle-xmark"></i> Reject</button>
+                    </div>
+                </div>
+                <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
+                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Headline</span>
+                    <p class="text-sm font-medium mt-1">AI-Powered Automation</p>
+                    <span class="text-[10px] text-gray-500">✔ 23 chars</span>
+                    <hr class="border-[#30363d] my-2">
+                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Description</span>
+                    <p class="text-xs mt-1 text-gray-300">Reduce manual tasks and focus on growth.</p>
+                    <span class="text-[10px] text-gray-500">✔ 42 chars</span>
+                    <div class="flex mt-3 gap-2">
+                        <button class="text-xs text-green-400 hover:text-green-300"><i class="fa-regular fa-check-circle"></i> Approve</button>
+                        <button class="text-xs text-red-400 hover:text-red-300"><i class="fa-regular fa-circle-xmark"></i> Reject</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAMPAIGN TABLE -->
+        <div class="glass-card rounded-lg p-5 border border-[#30363d] overflow-x-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold"><i class="fa-regular fa-rectangle-list text-blue-400"></i> Active Campaigns</h2>
+                <div class="flex gap-2">
+                    <select id="languageFilter" onchange="filterTable()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                        <option value="all">All Languages</option>
+                        <option value="en">🇬🇧 English</option>
+                        <option value="ro">🇷🇴 Romanian</option>
+                        <option value="de">🇩🇪 German</option>
+                        <option value="fr">🇫🇷 French</option>
+                    </select>
+                </div>
+            </div>
+            <table class="w-full text-sm">
+                <thead class="text-gray-400 border-b border-[#30363d]">
+                    <tr class="text-left">
+                        <th class="pb-2 font-medium">Campaign</th>
+                        <th class="pb-2 font-medium">Platform</th>
+                        <th class="pb-2 font-medium">Language</th>
+                        <th class="pb-2 font-medium">Budget</th>
+                        <th class="pb-2 font-medium">CTR</th>
+                        <th class="pb-2 font-medium">Status</th>
+                        <th class="pb-2 font-medium">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#21262d]">
+                    <tr class="hover:bg-[#161b22] transition">
+                        <td class="py-3 font-medium">Tech Startup</td>
+                        <td><span class="bg-[#21262d] px-2 py-0.5 rounded text-xs">Google</span></td>
+                        <td><span class="font-mono text-yellow-400">en-US</span></td>
+                        <td>$150 / day</td>
+                        <td class="text-green-400">5.2%</td>
+                        <td><span class="bg-green-900/30 text-green-300 px-2 py-0.5 rounded-full text-xs">Active</span></td>
+                        <td><button class="text-gray-400 hover:text-white"><i class="fa-regular fa-pause"></i></button> <button class="text-gray-400 hover:text-white ml-2"><i class="fa-regular fa-clone"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+</div>
+
+<!-- ONBOARDING MODAL (Wizard) -->
+<div id="onboardModal" class="fixed inset-0 flex items-center justify-center modal-backdrop hidden z-50">
+    <div class="glass-card rounded-xl w-full max-w-2xl p-6 border border-[#30363d] shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold"><i class="fa-regular fa-wand-magic-sparkles text-blue-400"></i> Launch New Campaign</h2>
+            <button onclick="closeOnboardModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+        </div>
+        <form id="onboardForm" onsubmit="submitOnboard(event)" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Client Name</label>
+                    <input type="text" id="clientName" value="Tech Startup" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Website URL</label>
+                    <input type="text" id="websiteUrl" value="https://example.com" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1"><i class="fa-regular fa-language"></i> Campaign Language</label>
+                    <select id="campaignLanguage" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm">
+                        <option value="en-US" selected>🇬🇧 English (US)</option>
+                        <option value="ro-RO">🇷🇴 Română (ro-RO)</option>
+                        <option value="en-GB">🇬🇧 English (UK)</option>
+                        <option value="de-DE">🇩🇪 Deutsch</option>
+                        <option value="fr-FR">🇫🇷 Français</option>
+                        <option value="es-ES">🇪🇸 Español</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Industry</label>
+                    <select id="industry" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm">
+                        <option>Retail & E-commerce</option>
+                        <option selected>Tech & SaaS</option>
+                        <option>Health & Wellness</option>
+                        <option>Luxury & Fashion</option>
+                        <option>Automotive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Daily Budget (USD)</label>
+                    <input type="number" id="dailyBudget" value="150" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Target Location</label>
+                    <input type="text" id="targetGeo" value="USA, Canada" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Tone of Voice</label>
+                    <select id="toneOfVoice" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm">
+                        <option selected>Professional</option>
+                        <option>Friendly & Direct</option>
+                        <option>Urgent & FOMO</option>
+                        <option>Luxury & Exclusive</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Cultural Triggers</label>
+                    <input type="text" id="culturalTriggers" value="Product Launch, Early Adopter" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm" placeholder="e.g., Black Friday, Christmas">
+                </div>
+            </div>
+            <div class="bg-[#21262d] p-3 rounded-md flex items-center justify-between">
+                <span class="text-sm font-medium">AI Backend</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-gray-400">Foundry (Primary)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="llmToggle" class="sr-only peer" checked disabled>
+                        <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                    </label>
+                    <span class="text-xs text-gray-400">Local (Ollama)</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeOnboardModal()" class="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+                <button type="submit" class="px-6 py-2 bg-[#238636] hover:bg-[#2ea043] rounded-md text-sm font-medium text-white flex items-center gap-2 transition">
+                    <i class="fa-regular fa-rocket"></i> Start Orchestration
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const API_BASE = window.location.origin;
+
+    function openOnboardModal() { document.getElementById('onboardModal').classList.remove('hidden'); }
+    function closeOnboardModal() { document.getElementById('onboardModal').classList.add('hidden'); }
+
+    async function submitOnboard(e) {
+        e.preventDefault();
+        const payload = {
+            client_name: document.getElementById('clientName').value,
+            website_url: document.getElementById('websiteUrl').value,
+            language: document.getElementById('campaignLanguage').value,
+            industry: document.getElementById('industry').value,
+            daily_budget: parseFloat(document.getElementById('dailyBudget').value),
+            target_geo: document.getElementById('targetGeo').value.split(',').map(s => s.trim()),
+            tone_of_voice: document.getElementById('toneOfVoice').value,
+            cultural_triggers: document.getElementById('culturalTriggers').value.split(',').map(s => s.trim()),
+            llm_backend: 'local'
+        };
+
+        const btn = document.querySelector('#onboardModal button[type="submit"]');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Orchestrating...';
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/onboard`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            alert(`✅ Campaign ${data.campaign_id} created! Status: ${data.status}`);
+            location.reload();
+        } catch (error) {
+            alert(`❌ Error: ${error.message}`);
+        } finally {
+            btn.innerHTML = '<i class="fa-regular fa-rocket"></i> Start Orchestration';
+            closeOnboardModal();
+        }
+    }
+
+    function approveAll() {
+        alert('✅ All creatives approved! (Simulated)');
+    }
+
+    function filterTable() {
+        const filter = document.getElementById('languageFilter').value;
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const langCell = row.querySelector('td:nth-child(3) span');
+            if (!langCell) return;
+            const lang = langCell.textContent.split('-')[0];
+            row.style.display = (filter === 'all' || lang === filter) ? '' : 'none';
+        });
+    }
+</script>
+
+</body>
+</html>

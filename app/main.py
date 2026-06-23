@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.routing import Mount
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -16,8 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static UI (if you have the HTML file)
-# app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 @app.get("/")
 def root():
