@@ -18,7 +18,12 @@ app.add_middleware(
 )
 
 
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+# ... after app creation ...
+
+# Build absolute path to static folder
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 @app.get("/")
 def root():
