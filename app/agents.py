@@ -1,11 +1,12 @@
+# app/agents.py
 import os
 import json
+import warnings
 from typing import TypedDict, Literal, Dict, Any
 from langgraph.graph import StateGraph, END
-from langchain_community.chat_models import ChatOllama
-import warnings
 from langgraph.checkpoint.memory import MemorySaver
-from .image_gen import generate_campaign_images
+from langchain_community.chat_models import ChatOllama
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # ================================================================
@@ -18,12 +19,15 @@ class AgencyState(TypedDict):
     deployment_status: Dict[str, Any]
     human_feedback: Dict[str, Any]
     validation_errors: list
+    analysis: Dict[str, Any]
+    last_optimization: str
+    optimization_actions: list
 
 # ================================================================
 # LLM INITIALIZATION
 # ================================================================
 llm = ChatOllama(
-    model="llama3.2:3b",           # Change to your model
+    model="llama3.2:3b",
     base_url="http://localhost:11434",
     temperature=0.7,
 )
@@ -56,33 +60,28 @@ def orchestrator_node(state: AgencyState) -> AgencyState:
     response = llm.invoke(prompt)
     print(f"[Orchestrator] LLM Response: {response.content[:100]}...")
     
-    # Parse the response (fallback to default if parsing fails)
     try:
-        # Extract JSON from response
         content = response.content
-        # Find JSON in the response
         start = content.find('{')
         end = content.rfind('}') + 1
         if start != -1 and end != 0:
             json_str = content[start:end]
             plan = json.loads(json_str)
         else:
-            plan = {
-                "strategy_summary": "Build awareness through targeted campaigns.",
-                "target_audience": "Professionals interested in technology",
-                "key_benefits": ["Efficiency", "Innovation", "Scalability"],
-                "recommended_channels": ["Google", "Meta"]
-            }
+            plan = self._fallback_plan()
     except:
-        plan = {
-            "strategy_summary": "Build awareness through targeted campaigns.",
-            "target_audience": "Professionals interested in technology",
-            "key_benefits": ["Efficiency", "Innovation", "Scalability"],
-            "recommended_channels": ["Google", "Meta"]
-        }
+        plan = self._fallback_plan()
     
     state["market_intelligence"] = plan
     return state
+
+def _fallback_plan():
+    return {
+        "strategy_summary": "Build awareness through targeted campaigns.",
+        "target_audience": "Professionals interested in technology",
+        "key_benefits": ["Efficiency", "Innovation", "Scalability"],
+        "recommended_channels": ["Google", "Meta"]
+    }
 
 # ================================================================
 # AGENT 2: STRATEGIC MARKET RESEARCHER
@@ -110,7 +109,6 @@ def researcher_node(state: AgencyState) -> AgencyState:
     response = llm.invoke(prompt)
     print(f"[Researcher] LLM Response: {response.content[:100]}...")
     
-    # Parse response (simplified - use fallback if parsing fails)
     try:
         content = response.content
         start = content.find('{')
@@ -119,60 +117,99 @@ def researcher_node(state: AgencyState) -> AgencyState:
             json_str = content[start:end]
             research = json.loads(json_str)
         else:
-            research = {
-                "buyer_personas": [
-                    {"name": "Tech Professional", "age": 25-40, "job": "IT Manager", "pain_points": "Complexity", "goals": "Efficiency"},
-                    {"name": "Business Owner", "age": 35-55, "job": "CEO", "pain_points": "Cost", "goals": "Growth"}
-                ],
-                "competitor_insights": [
-                    {"name": "Competitor A", "strengths": "Established", "weaknesses": "Expensive"},
-                    {"name": "Competitor B", "strengths": "Innovative", "weaknesses": "Small reach"}
-                ],
-                "keyword_clusters": ["AI automation", "SaaS", "productivity"],
-                "market_opportunities": ["Untapped segment", "New feature", "Partnership"]
-            }
+            research = _fallback_research()
     except:
-        research = {
-            "buyer_personas": [{"name": "Professional", "age": 30, "job": "Manager", "pain_points": "Time", "goals": "Results"}],
-            "competitor_insights": [{"name": "Competitor", "strengths": "Brand", "weaknesses": "Price"}],
-            "keyword_clusters": ["automation", "SaaS"],
-            "market_opportunities": ["Organic growth"]
-        }
+        research = _fallback_research()
     
-    # Merge with existing state
     existing = state.get("market_intelligence", {})
     existing["research"] = research
     state["market_intelligence"] = existing
     return state
 
+def _fallback_research():
+    return {
+        "buyer_personas": [
+            {"name": "Professional", "age": 30, "job": "Manager", "pain_points": "Time", "goals": "Results"}
+        ],
+        "competitor_insights": [
+            {"name": "Competitor", "strengths": "Brand", "weaknesses": "Price"}
+        ],
+        "keyword_clusters": ["automation", "SaaS"],
+        "market_opportunities": ["Organic growth"]
+    }
+
 # ================================================================
 # AGENT 3: CREATIVE COPYWRITER & ASSET GENERATOR
 # ================================================================
-
-
 def creative_node(state: AgencyState) -> AgencyState:
-    """Generates ad copy AND images with platform-specific constraints."""
+    """Generates ad copy with platform-specific constraints."""
     client = state.get("client_profile", {})
     market = state.get("market_intelligence", {})
     plan = market.get("strategy_summary", "")
     personas = market.get("research", {}).get("buyer_personas", [])
     
-    # ... (existing prompt code for text generation) ...
+    prompt = f"""
+    You are a Direct-Response Creative Director specializing in ad copy.
+    Generate 3 Google RSA ad variations (Headlines: max 30 chars, Descriptions: max 90 chars).
+    Also generate 3 Meta ad variations (Primary Text: max 125 chars).
     
-    # After generating text creatives, generate images
-    image_prompt = f"Create a professional marketing image for a {client.get('industry', 'business')} company. Target audience: {plan}. Style: {client.get('tone_of_voice', 'professional')}."
+    Client: {client.get('client_name', 'Unknown')}
+    Industry: {client.get('industry', 'Unknown')}
+    Tone: {client.get('tone_of_voice', 'Professional')}
+    Strategy: {plan}
+    Buyer Personas: {personas}
     
-    print("[Creative] Generating images...")
+    Output JSON:
+    {{
+        "google_ads": [
+            {{"headline": "headline1 (max 30 chars)", "description": "desc1 (max 90 chars)"}},
+            ...
+        ],
+        "meta_ads": [
+            {{"primary_text": "text1 (max 125 chars)"}},
+            ...
+        ]
+    }}
+    """
+    
+    response = llm.invoke(prompt)
+    print(f"[Creative] LLM Response: {response.content[:100]}...")
+    
     try:
-        images = generate_campaign_images(image_prompt, num_images=3)
+        content = response.content
+        start = content.find('{')
+        end = content.rfind('}') + 1
+        if start != -1 and end != 0:
+            json_str = content[start:end]
+            creatives = json.loads(json_str)
+        else:
+            creatives = _fallback_creatives()
+    except:
+        creatives = _fallback_creatives()
+    
+    # Try to generate images
+    try:
+        from .image_gen import generate_campaign_images
+        image_prompt = f"Create a professional marketing image for a {client.get('industry', 'business')} company. Target audience: {plan}."
+        images = generate_campaign_images(image_prompt, num_images=2)
         creatives["images"] = images
-        print(f"[Creative] Generated {len(images)} images")
     except Exception as e:
-        print(f"[Creative] Image generation failed: {e}")
+        print(f"[Creative] Image generation skipped: {e}")
         creatives["images"] = []
     
     state["creative_assets"] = creatives
     return state
+
+def _fallback_creatives():
+    return {
+        "google_ads": [
+            {"headline": "Innovative SaaS Solution", "description": "Scale your business with AI."}
+        ],
+        "meta_ads": [
+            {"primary_text": "Join thousands of happy customers."}
+        ],
+        "images": []
+    }
 
 # ================================================================
 # AGENT 4: HUMAN REVIEW GATE
@@ -188,8 +225,6 @@ def human_review_node(state: AgencyState) -> AgencyState:
         print("[HumanReview] ❌ Rejected. Routing back to creative.")
     else:
         print("[HumanReview] ⏳ Waiting for human approval...")
-        # In production, this would raise an interrupt.
-        # For testing, we simulate approved.
         state["human_feedback"] = {"status": "APPROVED"}
     
     return state
@@ -206,7 +241,6 @@ def launch_node(state: AgencyState) -> AgencyState:
     print(f"[Launch] Google Ads: {len(creatives.get('google_ads', []))} variations")
     print(f"[Launch] Meta Ads: {len(creatives.get('meta_ads', []))} variations")
     
-    # Simulate deployment
     state["deployment_status"] = {
         "status": "draft",
         "google_campaign_id": f"GC-{hash(str(creatives)) % 100000:05d}",
@@ -227,7 +261,7 @@ def should_continue(state: AgencyState) -> Literal["launch", "creative"]:
     return "creative"
 
 # ================================================================
-# BUILD THE GRAPH
+# BUILD THE GRAPH WITH CHECKPOINTER
 # ================================================================
 workflow = StateGraph(AgencyState)
 workflow.add_node("orchestrator", orchestrator_node)
@@ -246,5 +280,6 @@ workflow.add_conditional_edges("human_review", should_continue, {
 })
 workflow.add_edge("launch", END)
 
+# Add checkpointing for human-in-the-loop
 memory = MemorySaver()
 graph = workflow.compile(interrupt_before=["human_review"], checkpointer=memory)

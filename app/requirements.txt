@@ -1,4 +1,4 @@
-fastapi==0.115.6
+﻿fastapi==0.115.6
 uvicorn[standard]==0.34.0
 gunicorn==23.0.0
 langchain==0.3.13
@@ -9,10 +9,18 @@ python-dotenv==1.0.1
 httpx==0.28.1
 tenacity==9.0.0
 redis==5.2.1
-# Image Generation
 Pillow>=10.0.0
 requests>=2.31.0
+python-multipart==0.0.9
+pyjwt==2.8.0
+sqlite3
+
+# Optional: For image generation
 diffusers>=0.26.0
 transformers>=4.35.0
 accelerate>=0.25.0
 replicate>=0.18.0
+
+#Optional: For Google Ads and Meta Ads API integration
+google-ads==24.1.0
+facebook-business==22.0.0

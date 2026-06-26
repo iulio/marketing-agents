@@ -1,44 +1,40 @@
-# app/main.py - COMPLETE FIX
-
+# app/main.py - MAIN APPLICATION
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
+from typing import Dict, Any
+
 from .models import OnboardRequest, CampaignResponse
 from .agents import graph, AgencyState
-from .storage import save_campaign_state, get_all_campaigns, get_client
-from .analyst import PerformanceMonitor
-from .auth import create_default_admin
+from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns
+from .analyst import PerformanceMonitor, run_immediate_optimization, fetch_real_kpis, refresh_kpis
+from .auth import create_default_admin, generate_token, verify_user, get_user_by_email
+from .middleware import require_role
+from .kpi_fetcher import KPIFetcher
 
 # ================================================================
 # IN-MEMORY STORAGE
 # ================================================================
-campaigns = {}
-kpi_store = {}
-
-# ================================================================
-# PERFORMANCE MONITOR
-# ================================================================
+campaigns: Dict[str, Any] = {}
+kpi_store: Dict[str, Any] = {}
 monitor = PerformanceMonitor(campaigns, kpi_store)
 
 # ================================================================
-# LIFESPAN MANAGER (Replaces on_event)
+# LIFESPAN MANAGER
 # ================================================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- STARTUP LOGIC ---
     print("[Startup] Initializing application...")
     
-    # Create default admin if none exists
     try:
         create_default_admin()
         print("[Startup] Admin user check completed")
     except Exception as e:
         print(f"[Startup] Admin creation warning: {e}")
     
-    # Load campaigns from database
     try:
         db_campaigns = get_all_campaigns()
         for item in db_campaigns:
@@ -55,30 +51,24 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[Startup] Campaign load warning: {e}")
     
-    # Start the background performance monitor
     monitor.start()
     print("[Startup] Performance monitoring started")
     
-    # --- APPLICATION RUNS HERE ---
     yield
     
-    # --- SHUTDOWN LOGIC ---
-    print("[Shutdown] Shutting down application...")
+    print("[Shutdown] Shutting down...")
     monitor.stop()
     print("[Shutdown] Performance monitoring stopped")
 
 # ================================================================
-# CREATE FASTAPI APP WITH LIFESPAN
+# FASTAPI APP
 # ================================================================
 app = FastAPI(
     title="Agentic Marketing Agency API",
     version="1.0.0",
-    lifespan=lifespan,  # <-- This replaces @app.on_event
+    lifespan=lifespan,
 )
 
-# ================================================================
-# MIDDLEWARE
-# ================================================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -92,25 +82,260 @@ if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 # ================================================================
-# REMOVE THESE OLD DECORATORS (they're now replaced by lifespan)
+# ROOT ENDPOINT
 # ================================================================
-# @app.on_event("startup")  # <-- DELETE THIS
-# async def startup_event():
-#     ...
-
-# @app.on_event("shutdown")  # <-- DELETE THIS
-# async def shutdown_event():
-#     ...
-
-# ================================================================
-# REST OF YOUR ENDPOINTS...
-# ================================================================
-
 @app.get("/")
 def root():
     return {"status": "online", "service": "Agentic Marketing Agency"}
 
-# ... (keep all your other endpoints unchanged)
+# ================================================================
+# AUTHENTICATION ENDPOINTS
+# ================================================================
+@app.post("/api/auth/login")
+async def login(email: str, password: str):
+    user = verify_user(email, password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = generate_token(user['id'], user['email'], user['role'], user.get('client_id'))
+    return {
+        "token": token,
+        "user": {
+            "id": user['id'],
+            "email": user['email'],
+            "full_name": user['full_name'],
+            "role": user['role'],
+            "client_id": user.get('client_id')
+        }
+    }
+
+# ================================================================
+# CLIENT MANAGEMENT ENDPOINTS
+# ================================================================
+from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user
+
+@app.post("/api/clients")
+@require_role(["admin"])
+async def create_new_client(request: Request, client_data: dict):
+    client_id = create_client(client_data)
+    return {"client_id": client_id, "message": "Client created"}
+
+@app.get("/api/clients")
+@require_role(["admin"])
+async def list_clients(request: Request):
+    return {"clients": get_all_clients()}
+
+@app.get("/api/clients/{client_id}")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def get_client_details(request: Request, client_id: str):
+    user = request.state.user
+    if user['role'] != 'admin' and user.get('client_id') != client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    client = get_client(client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return {"client": client}
+
+@app.get("/api/clients/{client_id}/campaigns")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def list_client_campaigns(request: Request, client_id: str):
+    user = request.state.user
+    if user['role'] != 'admin' and user.get('client_id') != client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    campaigns_data = get_client_campaigns(client_id)
+    result = []
+    for c in campaigns_data:
+        state = c['state']
+        client_profile = state.get('client_profile', {})
+        result.append({
+            "campaign_id": c['campaign_id'],
+            "campaign_name": client_profile.get('client_name', 'Unnamed'),
+            "status": c['status'],
+            "budget": client_profile.get('daily_budget', 0),
+            "language": client_profile.get('language', 'en-US'),
+            "created_at": c['created_at']
+        })
+    return {"campaigns": result}
+
+# ================================================================
+# CAMPAIGN ENDPOINTS
+# ================================================================
+@app.post("/api/campaigns/onboard")
+async def onboard_campaign(request: Request, campaign_data: OnboardRequest):
+    client_id = request.query_params.get('client_id')
+    if not client_id:
+        user = getattr(request.state, 'user', None)
+        if user and user.get('client_id'):
+            client_id = user['client_id']
+        else:
+            raise HTTPException(status_code=400, detail="client_id required")
+    
+    if not get_client(client_id):
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    campaign_id = str(uuid.uuid4())[:8]
+    thread_id = campaign_id
+    
+    initial_state: AgencyState = {
+        "client_profile": campaign_data.dict(),
+        "market_intelligence": {},
+        "creative_assets": {},
+        "deployment_status": {},
+        "human_feedback": {"status": "pending"},
+        "validation_errors": [],
+        "analysis": {},
+        "last_optimization": "",
+        "optimization_actions": []
+    }
+    
+    config = {"configurable": {"thread_id": thread_id}}
+    final_state = graph.invoke(initial_state, config=config)
+    
+    campaigns[campaign_id] = {
+        "state": final_state,
+        "thread_id": thread_id,
+        "status": "pending_review",
+        "client_id": client_id,
+    }
+    
+    save_campaign_state(campaign_id, final_state, "pending_review", client_id)
+    
+    creatives = final_state.get("creative_assets", {})
+    return CampaignResponse(
+        campaign_id=campaign_id,
+        status="pending_review",
+        message=f"Campaign created with {len(creatives.get('google_ads', []))} Google ads and {len(creatives.get('meta_ads', []))} Meta ads."
+    )
+
+@app.get("/api/campaigns")
+def list_campaigns():
+    result = []
+    for cid, data in campaigns.items():
+        state = data.get("state", {})
+        client = state.get("client_profile", {})
+        result.append({
+            "campaign_id": cid,
+            "campaign_name": client.get("client_name", "Unnamed"),
+            "platform": "Google & Meta",
+            "language": client.get("language", "en-US"),
+            "budget": f"${client.get('daily_budget', 0)} / day",
+            "ctr": "4.2%",
+            "status": data.get("status", "unknown")
+        })
+    return result
+
+@app.get("/api/campaigns/{campaign_id}/creatives")
+def get_creatives(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    state = campaigns[campaign_id]["state"]
+    return state.get("creative_assets", {})
+
+@app.post("/api/campaigns/{campaign_id}/approve")
+async def approve_campaign(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    data = campaigns[campaign_id]
+    thread_id = data["thread_id"]
+    data["state"]["human_feedback"] = {"status": "APPROVED"}
+    
+    config = {"configurable": {"thread_id": thread_id}}
+    final_state = graph.invoke(None, config=config)
+    
+    data["state"] = final_state
+    data["status"] = "active"
+    campaigns[campaign_id] = data
+    
+    save_campaign_state(campaign_id, final_state, "active", data.get("client_id"))
+    
+    return {"status": "approved", "campaign_id": campaign_id}
+
+@app.post("/api/campaigns/{campaign_id}/reject")
+async def reject_campaign(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    data = campaigns[campaign_id]
+    thread_id = data["thread_id"]
+    data["state"]["human_feedback"] = {"status": "REJECTED"}
+    
+    config = {"configurable": {"thread_id": thread_id}}
+    final_state = graph.invoke(None, config=config)
+    
+    data["state"] = final_state
+    data["status"] = "pending_review"
+    campaigns[campaign_id] = data
+    
+    save_campaign_state(campaign_id, final_state, "pending_review", data.get("client_id"))
+    
+    return {"status": "rejected", "campaign_id": campaign_id}
+
+# ================================================================
+# OPTIMIZATION ENDPOINTS
+# ================================================================
+@app.post("/api/campaigns/{campaign_id}/optimize")
+async def optimize_campaign(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    data = campaigns[campaign_id]
+    state = data["state"]
+    platform = state.get("client_profile", {}).get("platform", "auto")
+    
+    try:
+        new_state = run_immediate_optimization(campaign_id, state, platform)
+        data["state"] = new_state
+        campaigns[campaign_id] = data
+        return {
+            "campaign_id": campaign_id,
+            "analysis": new_state.get("analysis", {}),
+            "actions": new_state.get("optimization_actions", []),
+            "message": "Optimization completed"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/campaigns/{campaign_id}/optimization-history")
+async def get_optimization_history_endpoint(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    from .storage import get_optimization_history
+    history = get_optimization_history(campaign_id)
+    return {"campaign_id": campaign_id, "history": history}
+
+@app.get("/api/campaigns/{campaign_id}/kpis")
+async def get_kpis(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign_id in kpi_store:
+        return kpi_store[campaign_id]
+    
+    platform = campaigns[campaign_id]["state"].get("client_profile", {}).get("platform", "auto")
+    kpis = fetch_real_kpis(campaign_id, platform)
+    if kpis:
+        kpi_store[campaign_id] = kpis
+    return kpis
+
+@app.get("/api/platforms/status")
+async def get_platform_status():
+    from .kpi_fetcher import KPIFetcher
+    fetcher = KPIFetcher()
+    return {
+        "google_ads": {
+            "available": fetcher.google.is_available(),
+            "configured": bool(os.getenv("GOOGLE_ADS_CUSTOMER_ID"))
+        },
+        "meta_ads": {
+            "available": fetcher.meta.is_available(),
+            "configured": bool(os.getenv("META_AD_ACCOUNT_ID"))
+        }
+    }
+
+# ================================================================
+# AGENT STATUS
+# ================================================================
 @app.get("/api/status/agents")
 def get_agent_status():
     return {
@@ -120,175 +345,3 @@ def get_agent_status():
         "launch": "idle",
         "analyst": "idle"
     }
-
-@app.post("/api/campaigns/onboard", response_model=CampaignResponse)
-async def onboard_campaign(request: OnboardRequest):
-    try:
-        campaign_id = str(uuid.uuid4())[:8]
-        thread_id = campaign_id  # use campaign_id as thread_id
-        
-        # Initialize state
-        initial_state: AgencyState = {
-            "client_profile": request.dict(),
-            "market_intelligence": {},
-            "creative_assets": {},
-            "deployment_status": {},
-            "human_feedback": {"status": "pending"},  # Start with pending
-            "validation_errors": []
-        }
-        
-        # Run the graph with checkpointer
-        config = {"configurable": {"thread_id": thread_id}}
-        final_state = graph.invoke(initial_state, config=config)
-        
-        # The graph will stop before human_review due to interrupt.
-        # We store the campaign with current state.
-        campaigns[campaign_id] = {
-            "state": final_state,
-            "thread_id": thread_id,
-            "status": "pending_review",
-            "client_name": request.client_name,
-            "language": request.language,
-            "created_at": str(uuid.uuid4())
-        }
-        
-        # Get creative assets for response
-        creatives = final_state.get("creative_assets", {})
-        google_count = len(creatives.get("google_ads", []))
-        meta_count = len(creatives.get("meta_ads", []))
-        
-        return CampaignResponse(
-            campaign_id=campaign_id,
-            status="pending_review",
-            message=f"Campaign created. Generated {google_count} Google ads and {meta_count} Meta ads. Please review in the dashboard."
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/campaigns")
-def list_campaigns():
-    # Return a list of campaigns for the table
-    result = []
-    for cid, data in campaigns.items():
-        state = data["state"]
-        client = state.get("client_profile", {})
-        deployment = state.get("deployment_status", {})
-        # Simulate CTR and other metrics for demo
-        result.append({
-            "campaign_id": cid,
-            "campaign_name": client.get("client_name", "Unnamed"),
-            "platform": "Google & Meta",
-            "language": client.get("language", "en-US"),
-            "budget": f"${client.get('daily_budget', 0)} / day",
-            "ctr": "4.2%",  # placeholder
-            "status": data.get("status", "unknown"),
-            "actions": ["pause", "clone"]
-        })
-    return result
-
-@app.get("/api/campaigns/{campaign_id}/creatives")
-def get_creatives(campaign_id: str):
-    if campaign_id not in campaigns:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    
-    state = campaigns[campaign_id]["state"]
-    creatives = state.get("creative_assets", {})
-    return creatives
-
-@app.post("/api/campaigns/{campaign_id}/approve")
-async def approve_campaign(campaign_id: str):
-    if campaign_id not in campaigns:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    
-    # Get the stored data
-    data = campaigns[campaign_id]
-    thread_id = data["thread_id"]
-    
-    # Update human_feedback to APPROVED
-    data["state"]["human_feedback"] = {"status": "APPROVED"}
-    
-    # Resume the graph
-    config = {"configurable": {"thread_id": thread_id}}
-    final_state = graph.invoke(None, config=config)  # Continue from interrupt
-    
-    # Update storage with final state
-    data["state"] = final_state
-    data["status"] = "active"
-    campaigns[campaign_id] = data
-    
-    return {"status": "approved", "campaign_id": campaign_id, "deployment": final_state.get("deployment_status", {})}
-
-@app.post("/api/campaigns/{campaign_id}/reject")
-async def reject_campaign(campaign_id: str):
-    if campaign_id not in campaigns:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    
-    # Get the stored data
-    data = campaigns[campaign_id]
-    thread_id = data["thread_id"]
-    
-    # Update human_feedback to REJECTED
-    data["state"]["human_feedback"] = {"status": "REJECTED"}
-    
-    # Resume the graph (should go back to creative)
-    config = {"configurable": {"thread_id": thread_id}}
-    final_state = graph.invoke(None, config=config)
-    
-    # Update storage with new state (creatives regenerated)
-    data["state"] = final_state
-    data["status"] = "pending_review"
-    campaigns[campaign_id] = data
-    
-    return {"status": "rejected", "campaign_id": campaign_id, "message": "Regenerating creatives..."}
-
-from .analyst import analyze_performance, simulate_kpi_update
-
-# In-memory storage for KPIs (in production, use a database)
-kpi_store = {}
-
-@app.post("/api/campaigns/{campaign_id}/analyze")
-async def analyze_campaign(campaign_id: str):
-    """Triggers performance analysis for a campaign"""
-    if campaign_id not in campaigns:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    
-    # Get campaign data
-    data = campaigns[campaign_id]
-    state = data["state"]
-    client = state.get("client_profile", {})
-    creatives = state.get("creative_assets", {})
-    
-    # Get or simulate KPIs
-    if campaign_id not in kpi_store:
-        kpi_store[campaign_id] = simulate_kpi_update(campaign_id)
-    
-    kpis = kpi_store[campaign_id]
-    
-    # Prepare data for analysis
-    analysis_data = {
-        "campaign_name": client.get("client_name", "Unknown"),
-        "industry": client.get("industry", "Unknown"),
-        "budget": client.get("daily_budget", 0),
-        "metrics": kpis,
-        "creative_assets": {
-            "headlines": [ad.get("headline", "") for ad in creatives.get("google_ads", [])],
-            "descriptions": [ad.get("description", "") for ad in creatives.get("google_ads", [])],
-            "primary_texts": [ad.get("primary_text", "") for ad in creatives.get("meta_ads", [])]
-        }
-    }
-    
-    # Run analysis
-    analysis = analyze_performance(analysis_data)
-    
-    return {
-        "campaign_id": campaign_id,
-        "kpis": kpis,
-        "analysis": analysis
-    }
-
-@app.get("/api/campaigns/{campaign_id}/kpis")
-async def get_kpis(campaign_id: str):
-    """Get current KPIs for a campaign"""
-    if campaign_id not in kpi_store:
-        kpi_store[campaign_id] = simulate_kpi_update(campaign_id)
-    return kpi_store[campaign_id]
