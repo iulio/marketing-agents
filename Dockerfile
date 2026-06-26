@@ -16,4 +16,4 @@ RUN mkdir -p /app/data
 
 EXPOSE 8000
 
-ENTRYPOINT ["gunicorn", "--config", "app/gunicorn.conf.py", "app.main:app"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

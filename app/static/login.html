@@ -40,44 +40,44 @@
             <p>Default: admin@agency.com / admin123</p>
         </div>
     </div>
+<script>
+    const API_BASE = window.location.origin;
 
-    <script>
-        const API_BASE = window.location.origin;
+    async function login(e) {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const errorEl = document.getElementById('loginError');
 
-        async function login(e) {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorEl = document.getElementById('loginError');
+        errorEl.classList.add('hidden');
 
-            errorEl.classList.add('hidden');
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
-            try {
-                const res = await fetch(`${API_BASE}/api/auth/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`, {
-                    method: 'POST'
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = '/';
-                } else {
-                    const err = await res.json();
-                    errorEl.textContent = err.detail || 'Invalid credentials';
-                    errorEl.classList.remove('hidden');
-                }
-            } catch (e) {
-                errorEl.textContent = 'Login failed. Please try again.';
+            if (res.ok) {
+                const data = await res.json();
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = '/';
+            } else {
+                const err = await res.json();
+                errorEl.textContent = err.detail || 'Invalid credentials';
                 errorEl.classList.remove('hidden');
-                console.error('Login error:', e);
             }
+        } catch (e) {
+            errorEl.textContent = 'Login failed. Please try again.';
+            errorEl.classList.remove('hidden');
+            console.error('Login error:', e);
         }
+    }
 
-        // If already logged in, redirect to dashboard
-        if (localStorage.getItem('token')) {
-            window.location.href = '/';
-        }
-    </script>
+    if (localStorage.getItem('token')) {
+        window.location.href = '/';
+    }
+</script>
 </body>
 </html>

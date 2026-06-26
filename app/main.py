@@ -14,6 +14,7 @@ from .analyst import PerformanceMonitor, run_immediate_optimization, fetch_real_
 from .auth import create_default_admin, generate_token, verify_user, get_user_by_email
 from .middleware import require_role
 from .kpi_fetcher import KPIFetcher
+from pydantic import BaseModel
 
 # ================================================================
 # IN-MEMORY STORAGE
@@ -91,9 +92,14 @@ def root():
 # ================================================================
 # AUTHENTICATION ENDPOINTS
 # ================================================================
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 @app.post("/api/auth/login")
-async def login(email: str, password: str):
-    user = verify_user(email, password)
+async def login(login_data: LoginRequest):
+    user = verify_user(login_data.email, login_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = generate_token(user['id'], user['email'], user['role'], user.get('client_id'))
@@ -107,6 +113,9 @@ async def login(email: str, password: str):
             "client_id": user.get('client_id')
         }
     }
+
+
+
 
 # ================================================================
 # CLIENT MANAGEMENT ENDPOINTS
