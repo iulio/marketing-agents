@@ -17,6 +17,10 @@
         .creative-card:hover { transform: translateY(-4px); transition: all 0.2s ease; border-color: #58a6ff; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .modal-backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+        .status-badge-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .status-badge-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        .status-badge-draft { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+        .status-badge-rejected { background: rgba(248, 81, 73, 0.2); color: #f87171; }
     </style>
 </head>
 <body>
@@ -53,7 +57,7 @@
                 </button>
                 <div class="flex items-center gap-2 text-sm bg-[#21262d] px-3 py-1.5 rounded-full border border-[#30363d]">
                     <i class="fa-regular fa-circle-check text-green-400"></i>
-                    <span class="text-gray-300">LLM: <span id="llmModeDisplay" class="font-mono text-yellow-400">Local (Ollama)</span></span>
+                    <span class="text-gray-300">LLM: <span class="font-mono text-yellow-400">Local (Ollama)</span></span>
                 </div>
             </div>
         </div>
@@ -86,69 +90,63 @@
         <div class="grid grid-cols-4 gap-4">
             <div class="glass-card rounded-lg p-4">
                 <p class="text-gray-400 text-xs uppercase tracking-wider">Total Spend</p>
-                <p class="text-2xl font-bold">$1,245.00</p>
+                <p class="text-2xl font-bold" id="totalSpend">$1,245.00</p>
                 <p class="text-green-400 text-xs">+12% vs last week</p>
             </div>
             <div class="glass-card rounded-lg p-4">
                 <p class="text-gray-400 text-xs uppercase tracking-wider">Avg. CTR</p>
-                <p class="text-2xl font-bold">4.8%</p>
+                <p class="text-2xl font-bold" id="avgCtr">4.8%</p>
                 <p class="text-green-400 text-xs">+0.6% improvement</p>
             </div>
             <div class="glass-card rounded-lg p-4">
                 <p class="text-gray-400 text-xs uppercase tracking-wider">Active Campaigns</p>
-                <p class="text-2xl font-bold">14</p>
-                <p class="text-blue-400 text-xs">3 pending approval</p>
+                <p class="text-2xl font-bold" id="activeCampaigns">0</p>
+                <p class="text-blue-400 text-xs" id="pendingCount">0 pending approval</p>
             </div>
             <div class="glass-card rounded-lg p-4">
                 <p class="text-gray-400 text-xs uppercase tracking-wider">Conversions</p>
-                <p class="text-2xl font-bold">287</p>
+                <p class="text-2xl font-bold" id="conversions">287</p>
                 <p class="text-yellow-400 text-xs">Target: 350</p>
             </div>
         </div>
 
-        <!-- CREATIVE REVIEW PANEL (Pending Approval) -->
+        <!-- CREATIVE REVIEW PANEL -->
         <div class="glass-card rounded-lg p-5 border border-[#30363d]">
             <div class="flex justify-between items-center mb-4">
                 <div>
-                    <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-regular fa-pen-to-square text-blue-400"></i> Creative Review (Pending)</h2>
-                    <p class="text-xs text-gray-400">Campaign: <span class="text-white">Tech Startup</span> • Language: <span class="font-mono text-yellow-400">en-US</span></p>
+                    <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-regular fa-pen-to-square text-blue-400"></i> Creative Review</h2>
+                    <p class="text-xs text-gray-400" id="creativePanelInfo">Select a campaign to review creatives</p>
                 </div>
                 <div class="flex gap-2">
-                    <button class="text-xs bg-[#21262d] hover:bg-[#30363d] px-3 py-1 rounded border border-[#30363d] transition"><i class="fa-regular fa-pen-to-square"></i> Edit</button>
-                    <button onclick="approveAll()" class="text-xs bg-[#238636] hover:bg-[#2ea043] px-3 py-1 rounded text-white transition"><i class="fa-regular fa-check"></i> Approve All</button>
+                    <select id="creativeCampaignSelect" onchange="loadCreatives()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                        <option value="">Select Campaign</option>
+                    </select>
                 </div>
             </div>
             <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-2" id="creativeCarousel">
-                <!-- Placeholder cards – will be populated by actual data later -->
-                <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
-                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Headline</span>
-                    <p class="text-sm font-medium mt-1">Revolutionary SaaS for Teams</p>
-                    <span class="text-[10px] text-gray-500">✔ 28 chars</span>
-                    <hr class="border-[#30363d] my-2">
-                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Description</span>
-                    <p class="text-xs mt-1 text-gray-300">Boost productivity by 40% with AI-driven workflows.</p>
-                    <span class="text-[10px] text-gray-500">✔ 78 chars</span>
-                    <div class="flex mt-3 gap-2">
-                        <button class="text-xs text-green-400 hover:text-green-300"><i class="fa-regular fa-check-circle"></i> Approve</button>
-                        <button class="text-xs text-red-400 hover:text-red-300"><i class="fa-regular fa-circle-xmark"></i> Reject</button>
-                    </div>
-                </div>
-                <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
-                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Headline</span>
-                    <p class="text-sm font-medium mt-1">AI-Powered Automation</p>
-                    <span class="text-[10px] text-gray-500">✔ 23 chars</span>
-                    <hr class="border-[#30363d] my-2">
-                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Description</span>
-                    <p class="text-xs mt-1 text-gray-300">Reduce manual tasks and focus on growth.</p>
-                    <span class="text-[10px] text-gray-500">✔ 42 chars</span>
-                    <div class="flex mt-3 gap-2">
-                        <button class="text-xs text-green-400 hover:text-green-300"><i class="fa-regular fa-check-circle"></i> Approve</button>
-                        <button class="text-xs text-red-400 hover:text-red-300"><i class="fa-regular fa-circle-xmark"></i> Reject</button>
-                    </div>
-                </div>
+                <div class="text-gray-400 text-sm p-4">No creatives loaded. Select a campaign above.</div>
             </div>
         </div>
-
+        <!-- PERFORMANCE ANALYST PANEL -->
+        <div class="glass-card rounded-lg p-5 border border-[#30363d]">
+        <div class="flex justify-between items-center mb-4">
+        <div>
+            <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-solid fa-chart-line text-purple-400"></i> Performance Analyst</h2>
+            <p class="text-xs text-gray-400" id="analystPanelInfo">Select a campaign to analyze performance</p>
+        </div>
+        <div class="flex gap-2">
+            <select id="analystCampaignSelect" onchange="loadAnalytics()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                <option value="">Select Campaign</option>
+            </select>
+            <button onclick="runAnalysis()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
+                <i class="fa-solid fa-microchip"></i> Analyze
+            </button>
+        </div>
+        </div>
+        <div id="analyticsResults">
+        <div class="text-gray-400 text-sm p-4">Select a campaign and click "Analyze" to get performance insights.</div>
+        </div>
+        </div>
         <!-- CAMPAIGN TABLE -->
         <div class="glass-card rounded-lg p-5 border border-[#30363d] overflow-x-auto">
             <div class="flex justify-between items-center mb-4">
@@ -161,6 +159,9 @@
                         <option value="de">🇩🇪 German</option>
                         <option value="fr">🇫🇷 French</option>
                     </select>
+                    <button onclick="loadCampaigns()" class="bg-[#21262d] hover:bg-[#30363d] px-3 py-1 rounded text-sm transition">
+                        <i class="fa-solid fa-rotate"></i> Refresh
+                    </button>
                 </div>
             </div>
             <table class="w-full text-sm">
@@ -175,16 +176,8 @@
                         <th class="pb-2 font-medium">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-[#21262d]">
-                    <tr class="hover:bg-[#161b22] transition">
-                        <td class="py-3 font-medium">Tech Startup</td>
-                        <td><span class="bg-[#21262d] px-2 py-0.5 rounded text-xs">Google</span></td>
-                        <td><span class="font-mono text-yellow-400">en-US</span></td>
-                        <td>$150 / day</td>
-                        <td class="text-green-400">5.2%</td>
-                        <td><span class="bg-green-900/30 text-green-300 px-2 py-0.5 rounded-full text-xs">Active</span></td>
-                        <td><button class="text-gray-400 hover:text-white"><i class="fa-regular fa-pause"></i></button> <button class="text-gray-400 hover:text-white ml-2"><i class="fa-regular fa-clone"></i></button></td>
-                    </tr>
+                <tbody class="divide-y divide-[#21262d]" id="campaignTableBody">
+                    <tr><td colspan="7" class="text-center text-gray-400 py-4">No campaigns yet. Click "New Campaign" to start!</td></tr>
                 </tbody>
             </table>
         </div>
@@ -192,7 +185,7 @@
     </main>
 </div>
 
-<!-- ONBOARDING MODAL (Wizard) -->
+<!-- ONBOARDING MODAL -->
 <div id="onboardModal" class="fixed inset-0 flex items-center justify-center modal-backdrop hidden z-50">
     <div class="glass-card rounded-xl w-full max-w-2xl p-6 border border-[#30363d] shadow-2xl">
         <div class="flex justify-between items-center mb-4">
@@ -261,7 +254,7 @@
             <div class="bg-[#21262d] p-3 rounded-md flex items-center justify-between">
                 <span class="text-sm font-medium">AI Backend</span>
                 <div class="flex items-center gap-3">
-                    <span class="text-xs text-gray-400">Foundry (Primary)</span>
+                    <span class="text-xs text-gray-400">Foundry</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="llmToggle" class="sr-only peer" checked disabled>
                         <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
@@ -282,9 +275,345 @@
 
 <script>
     const API_BASE = window.location.origin;
+    let currentCampaignId = null;
+
+    // ================================================================
+    // CAMPAIGN MANAGEMENT
+    // ================================================================
+
+    async function loadCampaigns() {
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns`);
+            const campaigns = await res.json();
+            const tbody = document.getElementById('campaignTableBody');
+            tbody.innerHTML = '';
+
+            let activeCount = 0;
+            let pendingCount = 0;
+
+            campaigns.forEach(c => {
+                if (c.status === 'active') activeCount++;
+                if (c.status === 'pending_review') pendingCount++;
+
+                const statusClass = {
+                    'active': 'status-badge-active',
+                    'pending_review': 'status-badge-pending',
+                    'draft': 'status-badge-draft',
+                    'rejected': 'status-badge-rejected'
+                }[c.status] || 'status-badge-pending';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-[#161b22] transition';
+                tr.innerHTML = `
+                    <td class="py-3 font-medium">${c.campaign_name}</td>
+                    <td><span class="bg-[#21262d] px-2 py-0.5 rounded text-xs">${c.platform}</span></td>
+                    <td><span class="font-mono text-yellow-400">${c.language}</span></td>
+                    <td>${c.budget}</td>
+                    <td class="text-green-400">${c.ctr}</td>
+                    <td><span class="${statusClass} px-2 py-0.5 rounded-full text-xs capitalize">${c.status.replace('_', ' ')}</span></td>
+                    <td>
+                        <button onclick="viewCampaign('${c.campaign_id}')" class="text-blue-400 hover:text-blue-300"><i class="fa-regular fa-eye"></i></button>
+                        ${c.status === 'pending_review' ? `
+                            <button onclick="approveCampaign('${c.campaign_id}')" class="text-green-400 hover:text-green-300 ml-2"><i class="fa-regular fa-check-circle"></i></button>
+                            <button onclick="rejectCampaign('${c.campaign_id}')" class="text-red-400 hover:text-red-300 ml-2"><i class="fa-regular fa-circle-xmark"></i></button>
+                        ` : `
+                            <button class="text-gray-400 hover:text-white ml-2"><i class="fa-regular fa-pause"></i></button>
+                        `}
+                        <button class="text-gray-400 hover:text-white ml-2"><i class="fa-regular fa-clone"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Update KPIs
+            document.getElementById('activeCampaigns').textContent = activeCount;
+            document.getElementById('pendingCount').textContent = `${pendingCount} pending approval`;
+
+            // Update the creative dropdown
+            const select = document.getElementById('creativeCampaignSelect');
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">Select Campaign</option>';
+            campaigns.forEach(c => {
+                if (c.status === 'pending_review' || c.status === 'active') {
+                    const opt = document.createElement('option');
+                    opt.value = c.campaign_id;
+                    opt.textContent = `${c.campaign_name} (${c.status})`;
+                    select.appendChild(opt);
+                }
+            });
+            if (currentVal) select.value = currentVal;
+
+        } catch (e) {
+            console.error('Failed to load campaigns:', e);
+        }
+    }
+
+    // ================================================================
+    // CREATIVE REVIEW
+    // ================================================================
+
+    async function loadCreatives() {
+        const select = document.getElementById('creativeCampaignSelect');
+        const campaignId = select.value;
+        if (!campaignId) {
+            document.getElementById('creativeCarousel').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to review creatives.</div>';
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/creatives`);
+            const creatives = await res.json();
+            const carousel = document.getElementById('creativeCarousel');
+            carousel.innerHTML = '';
+
+            // Update info
+            document.getElementById('creativePanelInfo').textContent = `Campaign: ${campaignId}`;
+
+            // Google Ads
+            const googleAds = creatives.google_ads || [];
+            googleAds.forEach((ad, idx) => {
+                carousel.innerHTML += `
+                    <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
+                        <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Google Ad #${idx + 1}</span>
+                        <p class="text-sm font-medium mt-1">${ad.headline || 'No headline'}</p>
+                        <span class="text-[10px] text-gray-500">✔ ${(ad.headline || '').length} chars</span>
+                        <hr class="border-[#30363d] my-2">
+                        <p class="text-xs mt-1 text-gray-300">${ad.description || 'No description'}</p>
+                        <span class="text-[10px] text-gray-500">✔ ${(ad.description || '').length} chars</span>
+                        <div class="flex mt-3 gap-2">
+                            <button onclick="approveCampaign('${campaignId}')" class="text-xs text-green-400 hover:text-green-300"><i class="fa-regular fa-check-circle"></i> Approve All</button>
+                            <button onclick="rejectCampaign('${campaignId}')" class="text-xs text-red-400 hover:text-red-300"><i class="fa-regular fa-circle-xmark"></i> Reject</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Meta Ads
+            const metaAds = creatives.meta_ads || [];
+            metaAds.forEach((ad, idx) => {
+                carousel.innerHTML += `
+                    <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
+                        <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Meta Ad #${idx + 1}</span>
+                        <p class="text-sm font-medium mt-1">${ad.primary_text || 'No text'}</p>
+                        <span class="text-[10px] text-gray-500">✔ ${(ad.primary_text || '').length} chars</span>
+                        <div class="flex mt-3 gap-2">
+                            <button onclick="approveCampaign('${campaignId}')" class="text-xs text-green-400 hover:text-green-300"><i class="fa-regular fa-check-circle"></i> Approve</button>
+                            <button onclick="rejectCampaign('${campaignId}')" class="text-xs text-red-400 hover:text-red-300"><i class="fa-regular fa-circle-xmark"></i> Reject</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (googleAds.length === 0 && metaAds.length === 0) {
+                carousel.innerHTML = '<div class="text-gray-400 text-sm p-4">No creatives generated for this campaign yet.</div>';
+            }
+
+        } catch (e) {
+            console.error('Failed to load creatives:', e);
+            document.getElementById('creativeCarousel').innerHTML = '<div class="text-red-400 text-sm p-4">Failed to load creatives.</div>';
+        }
+    }
+    // ================================================================
+// PERFORMANCE ANALYST
+// ================================================================
+
+async function loadAnalytics() {
+    const select = document.getElementById('analystCampaignSelect');
+    const campaignId = select.value;
+    if (!campaignId) {
+        document.getElementById('analyticsResults').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to analyze.</div>';
+        return;
+    }
+    
+    try {
+        // Load KPIs
+        const kpiRes = await fetch(`${API_BASE}/api/campaigns/${campaignId}/kpis`);
+        const kpis = await kpiRes.json();
+        
+        document.getElementById('analyticsResults').innerHTML = `
+            <div class="grid grid-cols-5 gap-3 mt-2">
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">Impressions</p><p class="text-lg font-bold">${kpis.impressions.toLocaleString()}</p></div>
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">Clicks</p><p class="text-lg font-bold">${kpis.clicks.toLocaleString()}</p></div>
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">CTR</p><p class="text-lg font-bold text-green-400">${kpis.ctr}%</p></div>
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">CPC</p><p class="text-lg font-bold text-yellow-400">$${kpis.cpc}</p></div>
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">ROAS</p><p class="text-lg font-bold text-blue-400">${kpis.roas}x</p></div>
+            </div>
+            <div class="mt-3 text-xs text-gray-400">Click "Analyze" to get optimization recommendations</div>
+        `;
+        
+        // Also populate the creative dropdown with campaigns
+        populateAnalystDropdown();
+        
+    } catch (e) {
+        console.error('Failed to load KPIs:', e);
+    }
+}
+
+async function runAnalysis() {
+    const select = document.getElementById('analystCampaignSelect');
+    const campaignId = select.value;
+    if (!campaignId) {
+        alert('Please select a campaign first.');
+        return;
+    }
+    
+    const btn = document.querySelector('#analyticsResults button');
+    document.getElementById('analyticsResults').innerHTML = '<div class="text-yellow-400 text-sm p-4"><i class="fa-solid fa-spinner fa-spin"></i> Analyzing campaign performance...</div>';
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/analyze`, { method: 'POST' });
+        const data = await res.json();
+        
+        const analysis = data.analysis;
+        const kpis = data.kpis;
+        
+        let html = `
+            <div class="grid grid-cols-5 gap-3 mt-2">
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">Impressions</p><p class="text-lg font-bold">${kpis.impressions.toLocaleString()}</p></div>
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">Clicks</p><p class="text-lg font-bold">${kpis.clicks.toLocaleString()}</p></div>
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">CTR</p><p class="text-lg font-bold ${kpis.ctr > 3 ? 'text-green-400' : 'text-red-400'}">${kpis.ctr}%</p></div>
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">CPC</p><p class="text-lg font-bold text-yellow-400">$${kpis.cpc}</p></div>
+                <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">ROAS</p><p class="text-lg font-bold text-blue-400">${kpis.roas}x</p></div>
+            </div>
+            <div class="mt-3 bg-[#161b22] p-3 rounded-lg">
+                <p class="text-xs text-gray-400">Performance Score</p>
+                <div class="flex items-center gap-3">
+                    <div class="flex-1 h-2 bg-gray-700 rounded-full">
+                        <div class="h-2 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500" style="width: ${analysis.score || 75}%"></div>
+                    </div>
+                    <span class="text-sm font-bold">${analysis.score || 75}/100</span>
+                </div>
+            </div>
+            <div class="mt-3 bg-[#161b22] p-3 rounded-lg">
+                <p class="text-xs text-gray-400">Summary</p>
+                <p class="text-sm">${analysis.summary || 'No summary available.'}</p>
+            </div>
+        `;
+        
+        if (analysis.issues && analysis.issues.length > 0) {
+            html += `
+                <div class="mt-3 bg-[#161b22] p-3 rounded-lg">
+                    <p class="text-xs text-gray-400">Issues</p>
+                    <ul class="text-sm list-disc list-inside">
+                        ${analysis.issues.map(i => `<li class="text-red-400">${i}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+        
+        if (analysis.recommendations && analysis.recommendations.length > 0) {
+            html += `
+                <div class="mt-3 bg-[#161b22] p-3 rounded-lg">
+                    <p class="text-xs text-gray-400">Recommendations</p>
+                    ${analysis.recommendations.map(r => `
+                        <div class="flex items-start gap-2 mt-2 p-2 bg-[#0d1117] rounded">
+                            <span class="text-xs ${r.priority === 'high' ? 'text-red-400' : r.priority === 'medium' ? 'text-yellow-400' : 'text-blue-400'}">[${r.priority}]</span>
+                            <span class="text-sm">${r.action}</span>
+                            <span class="text-xs text-gray-400 ml-auto">${r.expected_impact || ''}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        if (analysis.creative_feedback) {
+            html += `
+                <div class="mt-3 bg-[#161b22] p-3 rounded-lg border border-blue-500/20">
+                    <p class="text-xs text-gray-400">Creative Feedback</p>
+                    <p class="text-sm">${analysis.creative_feedback}</p>
+                </div>
+            `;
+        }
+        
+        document.getElementById('analyticsResults').innerHTML = html;
+        
+    } catch (e) {
+        document.getElementById('analyticsResults').innerHTML = `<div class="text-red-400 text-sm p-4">Error: ${e.message}</div>`;
+        console.error('Analysis failed:', e);
+    }
+}
+
+function populateAnalystDropdown() {
+    const select = document.getElementById('analystCampaignSelect');
+    const currentVal = select.value;
+    // Campaigns are already loaded in the creative dropdown, so we can reuse
+    const creativeSelect = document.getElementById('creativeCampaignSelect');
+    if (creativeSelect) {
+        select.innerHTML = creativeSelect.innerHTML;
+        if (currentVal) select.value = currentVal;
+    }
+}
+
+// Update the loadCampaigns function to populate both dropdowns
+// Add this at the end of the loadCampaigns function:
+function updateDropdowns(campaigns) {
+    const selects = ['creativeCampaignSelect', 'analystCampaignSelect'];
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Select Campaign</option>';
+        campaigns.forEach(c => {
+            if (c.status === 'pending_review' || c.status === 'active' || c.status === 'draft') {
+                const opt = document.createElement('option');
+                opt.value = c.campaign_id;
+                opt.textContent = `${c.campaign_name} (${c.status})`;
+                select.appendChild(opt);
+            }
+        });
+        if (currentVal) select.value = currentVal;
+    });
+}
+
+// Update the loadCampaigns function to call this
+// Replace the existing dropdown population code with:
+// updateDropdowns(campaigns);
+    // ================================================================
+    // CAMPAIGN ACTIONS
+    // ================================================================
+
+    async function approveCampaign(campaignId) {
+        if (!confirm(`Approve campaign ${campaignId}? This will launch the campaign.`)) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/approve`, { method: 'POST' });
+            const data = await res.json();
+            alert(`✅ Campaign ${campaignId} approved!\n${JSON.stringify(data.deployment, null, 2)}`);
+            loadCampaigns();
+            loadCreatives();
+        } catch (e) {
+            alert(`❌ Error approving campaign: ${e.message}`);
+        }
+    }
+
+    async function rejectCampaign(campaignId) {
+        if (!confirm(`Reject campaign ${campaignId}? Creatives will be regenerated.`)) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/reject`, { method: 'POST' });
+            const data = await res.json();
+            alert(`🔄 Campaign ${campaignId} rejected. Regenerating creatives...\n${data.message}`);
+            loadCampaigns();
+            setTimeout(loadCreatives, 2000);
+        } catch (e) {
+            alert(`❌ Error rejecting campaign: ${e.message}`);
+        }
+    }
+
+    function viewCampaign(campaignId) {
+        // Select in dropdown and load creatives
+        document.getElementById('creativeCampaignSelect').value = campaignId;
+        loadCreatives();
+    }
+
+    // ================================================================
+    // MODAL CONTROLS
+    // ================================================================
 
     function openOnboardModal() { document.getElementById('onboardModal').classList.remove('hidden'); }
     function closeOnboardModal() { document.getElementById('onboardModal').classList.add('hidden'); }
+
+    // ================================================================
+    // SUBMIT ONBOARD
+    // ================================================================
 
     async function submitOnboard(e) {
         e.preventDefault();
@@ -302,6 +631,8 @@
 
         const btn = document.querySelector('#onboardModal button[type="submit"]');
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Orchestrating...';
+        btn.disabled = true;
+
         try {
             const res = await fetch(`${API_BASE}/api/campaigns/onboard`, {
                 method: 'POST',
@@ -309,23 +640,26 @@
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            alert(`✅ Campaign ${data.campaign_id} created! Status: ${data.status}`);
-            location.reload();
+            alert(`✅ Campaign ${data.campaign_id} created!\n${data.message}`);
+            closeOnboardModal();
+            loadCampaigns();
+            document.getElementById('creativeCampaignSelect').value = data.campaign_id;
+            setTimeout(loadCreatives, 1000);
         } catch (error) {
             alert(`❌ Error: ${error.message}`);
         } finally {
             btn.innerHTML = '<i class="fa-regular fa-rocket"></i> Start Orchestration';
-            closeOnboardModal();
+            btn.disabled = false;
         }
     }
 
-    function approveAll() {
-        alert('✅ All creatives approved! (Simulated)');
-    }
+    // ================================================================
+    // FILTER TABLE
+    // ================================================================
 
     function filterTable() {
         const filter = document.getElementById('languageFilter').value;
-        const rows = document.querySelectorAll('tbody tr');
+        const rows = document.querySelectorAll('#campaignTableBody tr');
         rows.forEach(row => {
             const langCell = row.querySelector('td:nth-child(3) span');
             if (!langCell) return;
@@ -333,6 +667,32 @@
             row.style.display = (filter === 'all' || lang === filter) ? '' : 'none';
         });
     }
+
+    // ================================================================
+    // AGENT STATUS SIMULATION
+    // ================================================================
+
+    function simulateAgentActivity() {
+        const dots = document.querySelectorAll('.agent-status-dot');
+        // Randomly activate one agent at a time
+        const idx = Math.floor(Math.random() * dots.length);
+        dots.forEach((dot, i) => {
+            if (i === idx) {
+                dot.className = 'agent-status-dot status-working';
+                setTimeout(() => { dot.className = 'agent-status-dot status-idle'; }, 3000);
+            }
+        });
+    }
+
+    // ================================================================
+    // INIT
+    // ================================================================
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCampaigns();
+        setInterval(simulateAgentActivity, 5000);
+        setInterval(loadCampaigns, 10000); // Refresh every 10s
+    });
 </script>
 
 </body>

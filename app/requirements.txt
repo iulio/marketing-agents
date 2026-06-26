@@ -9,3 +9,10 @@ python-dotenv==1.0.1
 httpx==0.28.1
 tenacity==9.0.0
 redis==5.2.1
+# Image Generation
+Pillow>=10.0.0
+requests>=2.31.0
+diffusers>=0.26.0
+transformers>=4.35.0
+accelerate>=0.25.0
+replicate>=0.18.0
