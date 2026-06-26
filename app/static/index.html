@@ -22,6 +22,10 @@
         .status-badge-draft { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
         .status-badge-rejected { background: rgba(248, 81, 73, 0.2); color: #f87171; }
         .status-badge-unknown { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+        .nav-link { color: #6b7280; transition: color 0.2s; }
+        .nav-link:hover { color: #ffffff; }
+        .nav-link.active { color: #ffffff; }
+        .nav-link i { font-size: 1.25rem; }
     </style>
 </head>
 <body>
@@ -31,12 +35,12 @@
     <!-- SIDEBAR -->
     <aside class="w-20 bg-[#161b22] border-r border-[#2d333b] flex flex-col items-center py-6 space-y-8">
         <div class="text-2xl font-bold text-white"><i class="fa-regular fa-robot"></i></div>
-        <nav class="flex flex-col space-y-6 text-gray-500 text-xl">
-            <a href="#" class="text-white hover:text-white transition" title="Dashboard"><i class="fa-solid fa-gauge-high"></i></a>
-            <a href="#" class="hover:text-white transition" title="Campaigns"><i class="fa-solid fa-bullhorn"></i></a>
-            <a href="#" class="hover:text-white transition" title="Creative Studio"><i class="fa-regular fa-pen-to-square"></i></a>
-            <a href="#" class="hover:text-white transition" title="Analytics"><i class="fa-solid fa-chart-line"></i></a>
-            <a href="#" class="hover:text-white transition" title="Settings"><i class="fa-solid fa-gear"></i></a>
+        <nav class="flex flex-col space-y-6 text-xl" id="sidebarNav">
+            <a href="#" class="nav-link active" data-section="dashboard" title="Dashboard"><i class="fa-solid fa-gauge-high"></i></a>
+            <a href="#" class="nav-link" data-section="campaigns" title="Campaigns"><i class="fa-solid fa-bullhorn"></i></a>
+            <a href="#" class="nav-link" data-section="creatives" title="Creative Studio"><i class="fa-regular fa-pen-to-square"></i></a>
+            <a href="#" class="nav-link" data-section="analytics" title="Analytics"><i class="fa-solid fa-chart-line"></i></a>
+            <a href="#" class="nav-link" data-section="settings" title="Settings"><i class="fa-solid fa-gear"></i></a>
         </nav>
         <div class="mt-auto text-gray-600 text-xl">
             <i class="fa-regular fa-circle-question"></i>
@@ -44,176 +48,395 @@
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 overflow-y-auto p-6 space-y-6">
+    <main class="flex-1 overflow-y-auto p-6">
 
-        <!-- HEADER + AGENT STATUS -->
-        <div class="flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold">Agency Control Room</h1>
-                <p class="text-gray-400 text-sm">Local LLM • Development Mode</p>
+        <!-- ============================================================ -->
+        <!-- SECTION: DASHBOARD (default) -->
+        <!-- ============================================================ -->
+        <div id="section-dashboard" class="space-y-6">
+
+            <!-- HEADER + AGENT STATUS -->
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">Agency Control Room</h1>
+                    <p class="text-gray-400 text-sm">Local LLM • Development Mode</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center gap-2">
+                        <label class="text-gray-400 text-sm">Client:</label>
+                        <select id="clientSelect" onchange="switchClient()" class="bg-[#0d1117] border border-[#30363d] rounded-md px-2 py-1 text-sm text-gray-300">
+                            <option value="">All Clients</option>
+                        </select>
+                    </div>
+                    <button onclick="openOnboardModal()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition">
+                        <i class="fa-solid fa-plus"></i> New Campaign
+                    </button>
+                    <div class="flex items-center gap-2 text-sm bg-[#21262d] px-3 py-1.5 rounded-full border border-[#30363d]">
+                        <i class="fa-regular fa-circle-check text-green-400"></i>
+                        <span class="text-gray-300">LLM: <span class="font-mono text-yellow-400">Local (Ollama)</span></span>
+                    </div>
+                    <div class="flex items-center gap-3 text-sm">
+                        <div class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full" id="googleStatus"></span>
+                            <span class="text-gray-400 text-xs">Google</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full" id="metaStatus"></span>
+                            <span class="text-gray-400 text-xs">Meta</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <!-- Client Switcher -->
-                <div class="flex items-center gap-2">
-                    <label class="text-gray-400 text-sm">Client:</label>
-                    <select id="clientSelect" onchange="switchClient()" class="bg-[#0d1117] border border-[#30363d] rounded-md px-2 py-1 text-sm text-gray-300">
-                        <option value="">All Clients</option>
-                    </select>
+
+            <!-- AGENT STATUS ROW -->
+            <div class="grid grid-cols-5 gap-4">
+                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                    <div class="agent-status-dot status-idle" id="dot-orchestrator"></div>
+                    <div><p class="text-xs text-gray-400">Master</p><p class="text-sm font-medium">Orchestrator</p></div>
+                </div>
+                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                    <div class="agent-status-dot status-idle" id="dot-research"></div>
+                    <div><p class="text-xs text-gray-400">Research</p><p class="text-sm font-medium">Analyst</p></div>
+                </div>
+                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                    <div class="agent-status-dot status-idle" id="dot-creative"></div>
+                    <div><p class="text-xs text-gray-400">Creative</p><p class="text-sm font-medium">Copy & Asset</p></div>
+                </div>
+                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                    <div class="agent-status-dot status-idle" id="dot-launch"></div>
+                    <div><p class="text-xs text-gray-400">Launch</p><p class="text-sm font-medium">Engineer</p></div>
+                </div>
+                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
+                    <div class="agent-status-dot status-idle" id="dot-analyst"></div>
+                    <div><p class="text-xs text-gray-400">Performance</p><p class="text-sm font-medium">Optimizer</p></div>
+                </div>
+            </div>
+
+            <!-- KPI CARDS -->
+            <div class="grid grid-cols-4 gap-4">
+                <div class="glass-card rounded-lg p-4">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider">Total Spend</p>
+                    <p class="text-2xl font-bold" id="totalSpend">$1,245.00</p>
+                    <p class="text-green-400 text-xs">+12% vs last week</p>
+                </div>
+                <div class="glass-card rounded-lg p-4">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider">Avg. CTR</p>
+                    <p class="text-2xl font-bold" id="avgCtr">4.8%</p>
+                    <p class="text-green-400 text-xs">+0.6% improvement</p>
+                </div>
+                <div class="glass-card rounded-lg p-4">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider">Active Campaigns</p>
+                    <p class="text-2xl font-bold" id="activeCampaigns">0</p>
+                    <p class="text-blue-400 text-xs" id="pendingCount">0 pending approval</p>
+                </div>
+                <div class="glass-card rounded-lg p-4">
+                    <p class="text-gray-400 text-xs uppercase tracking-wider">Conversions</p>
+                    <p class="text-2xl font-bold" id="conversions">287</p>
+                    <p class="text-yellow-400 text-xs">Target: 350</p>
+                </div>
+            </div>
+
+            <!-- CREATIVE REVIEW PANEL -->
+            <div class="glass-card rounded-lg p-5 border border-[#30363d]">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-regular fa-pen-to-square text-blue-400"></i> Creative Review</h2>
+                        <p class="text-xs text-gray-400" id="creativePanelInfo">Select a campaign to review creatives</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="creativeCampaignSelect" onchange="loadCreatives()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                            <option value="">Select Campaign</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-2" id="creativeCarousel">
+                    <div class="text-gray-400 text-sm p-4">No creatives loaded. Select a campaign above.</div>
+                </div>
+            </div>
+
+            <!-- PERFORMANCE ANALYST PANEL -->
+            <div class="glass-card rounded-lg p-5 border border-[#30363d]">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-solid fa-chart-line text-purple-400"></i> Performance Analyst</h2>
+                        <p class="text-xs text-gray-400" id="analystPanelInfo">Select a campaign to analyze performance</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="analystCampaignSelect" onchange="loadAnalytics()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                            <option value="">Select Campaign</option>
+                        </select>
+                        <button onclick="runAnalysis()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
+                            <i class="fa-solid fa-microchip"></i> Analyze
+                        </button>
+                        <button onclick="runOptimization()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Optimize
+                        </button>
+                        <button onclick="viewOptimizationHistory()" class="bg-[#21262d] hover:bg-[#30363d] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
+                            <i class="fa-regular fa-clock"></i> History
+                        </button>
+                    </div>
+                </div>
+                <div id="analyticsResults">
+                    <div class="text-gray-400 text-sm p-4">Select a campaign and click "Analyze" to get performance insights.</div>
+                </div>
+                <div id="optimizationResults" class="mt-3"></div>
+            </div>
+
+            <!-- CAMPAIGN TABLE -->
+            <div class="glass-card rounded-lg p-5 border border-[#30363d] overflow-x-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold"><i class="fa-regular fa-rectangle-list text-blue-400"></i> Active Campaigns</h2>
+                    <div class="flex gap-2">
+                        <select id="languageFilter" onchange="filterTable()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                            <option value="all">All Languages</option>
+                            <option value="en">🇬🇧 English</option>
+                            <option value="ro">🇷🇴 Romanian</option>
+                            <option value="de">🇩🇪 German</option>
+                            <option value="fr">🇫🇷 French</option>
+                        </select>
+                        <button onclick="loadCampaigns()" class="bg-[#21262d] hover:bg-[#30363d] px-3 py-1 rounded text-sm transition">
+                            <i class="fa-solid fa-rotate"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="text-gray-400 border-b border-[#30363d]">
+                        <tr class="text-left">
+                            <th class="pb-2 font-medium">Campaign</th>
+                            <th class="pb-2 font-medium">Platform</th>
+                            <th class="pb-2 font-medium">Language</th>
+                            <th class="pb-2 font-medium">Budget</th>
+                            <th class="pb-2 font-medium">CTR</th>
+                            <th class="pb-2 font-medium">Status</th>
+                            <th class="pb-2 font-medium">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#21262d]" id="campaignTableBody">
+                        <tr><td colspan="7" class="text-center text-gray-400 py-4">No campaigns yet. Click "New Campaign" to start!</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div> <!-- END section-dashboard -->
+
+
+        <!-- ============================================================ -->
+        <!-- SECTION: CAMPAIGNS (full page campaign list) -->
+        <!-- ============================================================ -->
+        <div id="section-campaigns" style="display:none;" class="space-y-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">All Campaigns</h1>
+                    <p class="text-gray-400 text-sm">Manage all your campaigns in one place</p>
                 </div>
                 <button onclick="openOnboardModal()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition">
                     <i class="fa-solid fa-plus"></i> New Campaign
                 </button>
-                <div class="flex items-center gap-2 text-sm bg-[#21262d] px-3 py-1.5 rounded-full border border-[#30363d]">
-                    <i class="fa-regular fa-circle-check text-green-400"></i>
-                    <span class="text-gray-300">LLM: <span class="font-mono text-yellow-400">Local (Ollama)</span></span>
-                </div>
-                <!-- Platform Status -->
-                <div class="flex items-center gap-3 text-sm">
-                    <div class="flex items-center gap-1">
-                        <span class="w-2 h-2 rounded-full" id="googleStatus"></span>
-                        <span class="text-gray-400 text-xs">Google</span>
+            </div>
+            <div class="glass-card rounded-lg p-5 border border-[#30363d] overflow-x-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold"><i class="fa-regular fa-rectangle-list text-blue-400"></i> All Campaigns</h2>
+                    <div class="flex gap-2">
+                        <select id="languageFilter2" onchange="filterTable2()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                            <option value="all">All Languages</option>
+                            <option value="en">🇬🇧 English</option>
+                            <option value="ro">🇷🇴 Romanian</option>
+                            <option value="de">🇩🇪 German</option>
+                            <option value="fr">🇫🇷 French</option>
+                        </select>
+                        <button onclick="loadCampaigns()" class="bg-[#21262d] hover:bg-[#30363d] px-3 py-1 rounded text-sm transition">
+                            <i class="fa-solid fa-rotate"></i> Refresh
+                        </button>
                     </div>
-                    <div class="flex items-center gap-1">
-                        <span class="w-2 h-2 rounded-full" id="metaStatus"></span>
-                        <span class="text-gray-400 text-xs">Meta</span>
-                    </div>
                 </div>
+                <table class="w-full text-sm">
+                    <thead class="text-gray-400 border-b border-[#30363d]">
+                        <tr class="text-left">
+                            <th class="pb-2 font-medium">Campaign</th>
+                            <th class="pb-2 font-medium">Platform</th>
+                            <th class="pb-2 font-medium">Language</th>
+                            <th class="pb-2 font-medium">Budget</th>
+                            <th class="pb-2 font-medium">CTR</th>
+                            <th class="pb-2 font-medium">Status</th>
+                            <th class="pb-2 font-medium">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#21262d]" id="campaignTableBody2">
+                        <tr><td colspan="7" class="text-center text-gray-400 py-4">No campaigns yet. Click "New Campaign" to start!</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- AGENT STATUS ROW -->
-        <div class="grid grid-cols-5 gap-4">
-            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                <div class="agent-status-dot status-idle" id="dot-orchestrator"></div>
-                <div><p class="text-xs text-gray-400">Master</p><p class="text-sm font-medium">Orchestrator</p></div>
-            </div>
-            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                <div class="agent-status-dot status-idle" id="dot-research"></div>
-                <div><p class="text-xs text-gray-400">Research</p><p class="text-sm font-medium">Analyst</p></div>
-            </div>
-            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                <div class="agent-status-dot status-idle" id="dot-creative"></div>
-                <div><p class="text-xs text-gray-400">Creative</p><p class="text-sm font-medium">Copy & Asset</p></div>
-            </div>
-            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                <div class="agent-status-dot status-idle" id="dot-launch"></div>
-                <div><p class="text-xs text-gray-400">Launch</p><p class="text-sm font-medium">Engineer</p></div>
-            </div>
-            <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                <div class="agent-status-dot status-idle" id="dot-analyst"></div>
-                <div><p class="text-xs text-gray-400">Performance</p><p class="text-sm font-medium">Optimizer</p></div>
-            </div>
-        </div>
 
-        <!-- KPI CARDS -->
-        <div class="grid grid-cols-4 gap-4">
-            <div class="glass-card rounded-lg p-4">
-                <p class="text-gray-400 text-xs uppercase tracking-wider">Total Spend</p>
-                <p class="text-2xl font-bold" id="totalSpend">$1,245.00</p>
-                <p class="text-green-400 text-xs">+12% vs last week</p>
-            </div>
-            <div class="glass-card rounded-lg p-4">
-                <p class="text-gray-400 text-xs uppercase tracking-wider">Avg. CTR</p>
-                <p class="text-2xl font-bold" id="avgCtr">4.8%</p>
-                <p class="text-green-400 text-xs">+0.6% improvement</p>
-            </div>
-            <div class="glass-card rounded-lg p-4">
-                <p class="text-gray-400 text-xs uppercase tracking-wider">Active Campaigns</p>
-                <p class="text-2xl font-bold" id="activeCampaigns">0</p>
-                <p class="text-blue-400 text-xs" id="pendingCount">0 pending approval</p>
-            </div>
-            <div class="glass-card rounded-lg p-4">
-                <p class="text-gray-400 text-xs uppercase tracking-wider">Conversions</p>
-                <p class="text-2xl font-bold" id="conversions">287</p>
-                <p class="text-yellow-400 text-xs">Target: 350</p>
-            </div>
-        </div>
-
-        <!-- CREATIVE REVIEW PANEL -->
-        <div class="glass-card rounded-lg p-5 border border-[#30363d]">
-            <div class="flex justify-between items-center mb-4">
+        <!-- ============================================================ -->
+        <!-- SECTION: CREATIVE STUDIO (full focus on creatives) -->
+        <!-- ============================================================ -->
+        <div id="section-creatives" style="display:none;" class="space-y-6">
+            <div class="flex justify-between items-center">
                 <div>
-                    <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-regular fa-pen-to-square text-blue-400"></i> Creative Review</h2>
-                    <p class="text-xs text-gray-400" id="creativePanelInfo">Select a campaign to review creatives</p>
+                    <h1 class="text-2xl font-bold">Creative Studio</h1>
+                    <p class="text-gray-400 text-sm">Review and manage all creative assets</p>
                 </div>
                 <div class="flex gap-2">
-                    <select id="creativeCampaignSelect" onchange="loadCreatives()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                    <select id="creativeCampaignSelect2" onchange="loadCreativesStudio()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
                         <option value="">Select Campaign</option>
                     </select>
                 </div>
             </div>
-            <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-2" id="creativeCarousel">
-                <div class="text-gray-400 text-sm p-4">No creatives loaded. Select a campaign above.</div>
+            <div class="glass-card rounded-lg p-5 border border-[#30363d]">
+                <div class="flex flex-wrap gap-4 pb-2" id="creativeCarouselStudio">
+                    <div class="text-gray-400 text-sm p-4">No creatives loaded. Select a campaign above.</div>
+                </div>
             </div>
         </div>
 
-        <!-- PERFORMANCE ANALYST PANEL -->
-        <div class="glass-card rounded-lg p-5 border border-[#30363d]">
-            <div class="flex justify-between items-center mb-4">
+
+        <!-- ============================================================ -->
+        <!-- SECTION: ANALYTICS (full focus on performance) -->
+        <!-- ============================================================ -->
+        <div id="section-analytics" style="display:none;" class="space-y-6">
+            <div class="flex justify-between items-center">
                 <div>
-                    <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-solid fa-chart-line text-purple-400"></i> Performance Analyst</h2>
-                    <p class="text-xs text-gray-400" id="analystPanelInfo">Select a campaign to analyze performance</p>
+                    <h1 class="text-2xl font-bold">Performance Analytics</h1>
+                    <p class="text-gray-400 text-sm">Deep dive into campaign performance and optimize</p>
                 </div>
                 <div class="flex gap-2">
-                    <select id="analystCampaignSelect" onchange="loadAnalytics()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                    <select id="analystCampaignSelect2" onchange="loadAnalyticsView()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
                         <option value="">Select Campaign</option>
                     </select>
-                    <button onclick="runAnalysis()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
+                    <button onclick="runAnalysisView()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
                         <i class="fa-solid fa-microchip"></i> Analyze
                     </button>
-                    <button onclick="runOptimization()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
+                    <button onclick="runOptimizationView()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> Optimize
                     </button>
-                    <button onclick="viewOptimizationHistory()" class="bg-[#21262d] hover:bg-[#30363d] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
+                    <button onclick="viewOptimizationHistoryView()" class="bg-[#21262d] hover:bg-[#30363d] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
                         <i class="fa-regular fa-clock"></i> History
                     </button>
                 </div>
             </div>
-            <div id="analyticsResults">
+            <div id="analyticsResultsView">
                 <div class="text-gray-400 text-sm p-4">Select a campaign and click "Analyze" to get performance insights.</div>
             </div>
-            <div id="optimizationResults" class="mt-3"></div>
+            <div id="optimizationResultsView" class="mt-3"></div>
         </div>
 
-        <!-- CAMPAIGN TABLE -->
-        <div class="glass-card rounded-lg p-5 border border-[#30363d] overflow-x-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold"><i class="fa-regular fa-rectangle-list text-blue-400"></i> Active Campaigns</h2>
-                <div class="flex gap-2">
-                    <select id="languageFilter" onchange="filterTable()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
-                        <option value="all">All Languages</option>
-                        <option value="en">🇬🇧 English</option>
-                        <option value="ro">🇷🇴 Romanian</option>
-                        <option value="de">🇩🇪 German</option>
-                        <option value="fr">🇫🇷 French</option>
-                    </select>
-                    <button onclick="loadCampaigns()" class="bg-[#21262d] hover:bg-[#30363d] px-3 py-1 rounded text-sm transition">
-                        <i class="fa-solid fa-rotate"></i> Refresh
-                    </button>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: SETTINGS -->
+        <!-- ============================================================ -->
+        <div id="section-settings" style="display:none;" class="space-y-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">Settings</h1>
+                    <p class="text-gray-400 text-sm">Configure your marketing agent system</p>
                 </div>
             </div>
-            <table class="w-full text-sm">
-                <thead class="text-gray-400 border-b border-[#30363d]">
-                    <tr class="text-left">
-                        <th class="pb-2 font-medium">Campaign</th>
-                        <th class="pb-2 font-medium">Platform</th>
-                        <th class="pb-2 font-medium">Language</th>
-                        <th class="pb-2 font-medium">Budget</th>
-                        <th class="pb-2 font-medium">CTR</th>
-                        <th class="pb-2 font-medium">Status</th>
-                        <th class="pb-2 font-medium">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-[#21262d]" id="campaignTableBody">
-                    <tr><td colspan="7" class="text-center text-gray-400 py-4">No campaigns yet. Click "New Campaign" to start!</td></tr>
-                </tbody>
-            </table>
+
+            <div class="glass-card rounded-lg p-5 border border-[#30363d] space-y-6">
+
+                <!-- AI Backend -->
+                <div>
+                    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-brain text-purple-400"></i> AI Backend</h3>
+                    <div class="flex items-center gap-3 mt-2">
+                        <span class="text-sm text-gray-400">Foundry (Cloud)</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="llmToggleSettings" class="sr-only peer" checked disabled>
+                            <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                        </label>
+                        <span class="text-sm text-gray-400">Local (Ollama)</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Currently using <span class="text-yellow-400">Local (Ollama)</span> with llama3.2:3b model</p>
+                </div>
+
+                <hr class="border-[#30363d]">
+
+                <!-- Platform Status -->
+                <div>
+                    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-plug text-green-400"></i> Platform Status</h3>
+                    <div class="flex items-center gap-6 mt-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full" id="googleStatusSettings"></span>
+                            <span class="text-sm text-gray-300">Google Ads</span>
+                            <span class="text-xs text-gray-500" id="googleStatusText">Checking...</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full" id="metaStatusSettings"></span>
+                            <span class="text-sm text-gray-300">Meta Ads</span>
+                            <span class="text-xs text-gray-500" id="metaStatusText">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-[#30363d]">
+
+                <!-- Database -->
+                <div>
+                    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-database text-blue-400"></i> Database</h3>
+                    <div class="mt-2 space-y-1">
+                        <p class="text-sm text-gray-300">Type: <span class="text-gray-400">PostgreSQL 15</span></p>
+                        <p class="text-sm text-gray-300">Container: <span class="text-gray-400">marketing-postgres</span></p>
+                        <p class="text-sm text-gray-300">Status: <span class="text-green-400">✅ Connected</span></p>
+                    </div>
+                </div>
+
+                <hr class="border-[#30363d]">
+
+                <!-- User Management -->
+                <div>
+                    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-users text-yellow-400"></i> User Management</h3>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <button onclick="alert('User management panel coming soon!')" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-2 rounded text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-user-plus"></i> Invite User
+                        </button>
+                        <button onclick="alert('User list coming soon!')" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-2 rounded text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-user"></i> Manage Users
+                        </button>
+                        <button onclick="alert('Roles management coming soon!')" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-2 rounded text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-user-shield"></i> Roles
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-[#30363d]">
+
+                <!-- API Keys -->
+                <div>
+                    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-key text-red-400"></i> API Keys</h3>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <button onclick="alert('Generate API key coming soon!')" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-2 rounded text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-key"></i> Generate New Key
+                        </button>
+                        <button onclick="alert('API keys list coming soon!')" class="bg-[#21262d] hover:bg-[#30363d] text-white px-4 py-2 rounded text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-list"></i> View Keys
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-[#30363d]">
+
+                <!-- System Info -->
+                <div>
+                    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-info-circle text-blue-400"></i> System Info</h3>
+                    <div class="mt-2 space-y-1 text-sm">
+                        <p><span class="text-gray-400">Version:</span> 1.0.0</p>
+                        <p><span class="text-gray-400">LLM Model:</span> llama3.2:3b (Ollama)</p>
+                        <p><span class="text-gray-400">Auto-Optimization:</span> <span class="text-green-400">Enabled</span></p>
+                        <p><span class="text-gray-400">Optimization Interval:</span> 60 seconds</p>
+                    </div>
+                </div>
+
+            </div>
         </div>
 
     </main>
 </div>
 
+
+<!-- ============================================================ -->
 <!-- ONBOARDING MODAL -->
+<!-- ============================================================ -->
 <div id="onboardModal" class="fixed inset-0 flex items-center justify-center modal-backdrop hidden z-50">
     <div class="glass-card rounded-xl w-full max-w-2xl p-6 border border-[#30363d] shadow-2xl">
         <div class="flex justify-between items-center mb-4">
@@ -290,7 +513,6 @@
                     <span class="text-xs text-gray-400">Local (Ollama)</span>
                 </div>
             </div>
-
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeOnboardModal()" class="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
                 <button type="submit" class="px-6 py-2 bg-[#238636] hover:bg-[#2ea043] rounded-md text-sm font-medium text-white flex items-center gap-2 transition">
@@ -301,11 +523,10 @@
     </div>
 </div>
 
+
 <script>
     const API_BASE = window.location.origin;
     let currentClientId = null;
-    let currentUser = null;
-    let allCampaigns = [];
 
     // ================================================================
     // AUTHENTICATION
@@ -322,13 +543,26 @@
     }
 
     // ================================================================
+    // SIDEBAR NAVIGATION
+    // ================================================================
+    document.querySelectorAll('#sidebarNav .nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('#sidebarNav .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('[id^="section-"]').forEach(section => section.style.display = 'none');
+            const sectionId = this.dataset.section;
+            const target = document.getElementById(`section-${sectionId}`);
+            if (target) target.style.display = 'block';
+        });
+    });
+
+    // ================================================================
     // CLIENT MANAGEMENT
     // ================================================================
     async function loadClients() {
         try {
-            const res = await fetch(`${API_BASE}/api/clients`, {
-                headers: getHeaders()
-            });
+            const res = await fetch(`${API_BASE}/api/clients`, { headers: getHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 const select = document.getElementById('clientSelect');
@@ -364,8 +598,8 @@
             if (!res.ok) throw new Error('Failed to load campaigns');
             const data = await res.json();
             const campaigns = data.campaigns || data;
-            allCampaigns = campaigns;
-            renderCampaignTable(campaigns);
+            renderCampaignTable('campaignTableBody', campaigns);
+            renderCampaignTable('campaignTableBody2', campaigns);
             updateDropdowns(campaigns);
             updateKPIs(campaigns);
         } catch (e) {
@@ -373,8 +607,8 @@
         }
     }
 
-    function renderCampaignTable(campaigns) {
-        const tbody = document.getElementById('campaignTableBody');
+    function renderCampaignTable(tableId, campaigns) {
+        const tbody = document.getElementById(tableId);
         tbody.innerHTML = '';
         if (!campaigns || campaigns.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-4">No campaigns found.</td></tr>';
@@ -423,7 +657,7 @@
     }
 
     function updateDropdowns(campaigns) {
-        const selects = ['creativeCampaignSelect', 'analystCampaignSelect'];
+        const selects = ['creativeCampaignSelect', 'creativeCampaignSelect2', 'analystCampaignSelect', 'analystCampaignSelect2'];
         selects.forEach(id => {
             const select = document.getElementById(id);
             if (!select) return;
@@ -449,6 +683,7 @@
         const campaignId = select.value;
         if (!campaignId) {
             document.getElementById('creativeCarousel').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to review creatives.</div>';
+            document.getElementById('creativeCarouselStudio').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to review creatives.</div>';
             return;
         }
         try {
@@ -457,51 +692,278 @@
             });
             if (!res.ok) throw new Error('Failed to load creatives');
             const creatives = await res.json();
-            const carousel = document.getElementById('creativeCarousel');
-            carousel.innerHTML = '';
+            renderCreatives('creativeCarousel', creatives);
+            renderCreatives('creativeCarouselStudio', creatives);
             document.getElementById('creativePanelInfo').textContent = `Campaign: ${campaignId}`;
-
-            const googleAds = creatives.google_ads || [];
-            googleAds.forEach((ad, idx) => {
-                carousel.innerHTML += `
-                    <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
-                        <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Google Ad #${idx + 1}</span>
-                        <p class="text-sm font-medium mt-1">${ad.headline || 'No headline'}</p>
-                        <span class="text-[10px] text-gray-500">✔ ${(ad.headline || '').length} chars</span>
-                        <hr class="border-[#30363d] my-2">
-                        <p class="text-xs mt-1 text-gray-300">${ad.description || 'No description'}</p>
-                        <span class="text-[10px] text-gray-500">✔ ${(ad.description || '').length} chars</span>
-                    </div>
-                `;
-            });
-
-            const metaAds = creatives.meta_ads || [];
-            metaAds.forEach((ad, idx) => {
-                carousel.innerHTML += `
-                    <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
-                        <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Meta Ad #${idx + 1}</span>
-                        <p class="text-sm font-medium mt-1">${ad.primary_text || 'No text'}</p>
-                        <span class="text-[10px] text-gray-500">✔ ${(ad.primary_text || '').length} chars</span>
-                    </div>
-                `;
-            });
-
-            const images = creatives.images || [];
-            images.forEach((img, idx) => {
-                carousel.innerHTML += `
-                    <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
-                        <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Image #${idx + 1}</span>
-                        <img src="${img}" alt="Generated image" class="mt-2 rounded-md max-h-32 w-auto object-contain bg-gray-800">
-                    </div>
-                `;
-            });
-
-            if (googleAds.length === 0 && metaAds.length === 0 && images.length === 0) {
-                carousel.innerHTML = '<div class="text-gray-400 text-sm p-4">No creatives generated for this campaign yet.</div>';
-            }
         } catch (e) {
             console.error('Failed to load creatives:', e);
-            document.getElementById('creativeCarousel').innerHTML = '<div class="text-red-400 text-sm p-4">Failed to load creatives.</div>';
+            const msg = '<div class="text-red-400 text-sm p-4">Failed to load creatives.</div>';
+            document.getElementById('creativeCarousel').innerHTML = msg;
+            document.getElementById('creativeCarouselStudio').innerHTML = msg;
+        }
+    }
+
+    function loadCreativesStudio() {
+        const select = document.getElementById('creativeCampaignSelect2');
+        const campaignId = select.value;
+        if (campaignId) {
+            document.getElementById('creativeCampaignSelect').value = campaignId;
+            loadCreatives();
+        } else {
+            document.getElementById('creativeCarouselStudio').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to review creatives.</div>';
+        }
+    }
+
+    function renderCreatives(containerId, creatives) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        const googleAds = creatives.google_ads || [];
+        const metaAds = creatives.meta_ads || [];
+        const images = creatives.images || [];
+
+        if (googleAds.length === 0 && metaAds.length === 0 && images.length === 0) {
+            container.innerHTML = '<div class="text-gray-400 text-sm p-4">No creatives generated for this campaign yet.</div>';
+            return;
+        }
+
+        googleAds.forEach((ad, idx) => {
+            container.innerHTML += `
+                <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
+                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Google Ad #${idx + 1}</span>
+                    <p class="text-sm font-medium mt-1">${ad.headline || 'No headline'}</p>
+                    <span class="text-[10px] text-gray-500">✔ ${(ad.headline || '').length} chars</span>
+                    <hr class="border-[#30363d] my-2">
+                    <p class="text-xs mt-1 text-gray-300">${ad.description || 'No description'}</p>
+                    <span class="text-[10px] text-gray-500">✔ ${(ad.description || '').length} chars</span>
+                </div>
+            `;
+        });
+
+        metaAds.forEach((ad, idx) => {
+            container.innerHTML += `
+                <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
+                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Meta Ad #${idx + 1}</span>
+                    <p class="text-sm font-medium mt-1">${ad.primary_text || 'No text'}</p>
+                    <span class="text-[10px] text-gray-500">✔ ${(ad.primary_text || '').length} chars</span>
+                </div>
+            `;
+        });
+
+        images.forEach((img, idx) => {
+            container.innerHTML += `
+                <div class="creative-card glass-card min-w-[220px] p-4 rounded-lg border border-[#30363d] bg-[#161b22]">
+                    <span class="text-xs text-gray-400 bg-[#21262d] px-2 py-0.5 rounded-full">Image #${idx + 1}</span>
+                    <img src="${img}" alt="Generated image" class="mt-2 rounded-md max-h-32 w-auto object-contain bg-gray-800">
+                </div>
+            `;
+        });
+    }
+
+    // ================================================================
+    // PERFORMANCE ANALYST
+    // ================================================================
+    async function loadAnalytics() {
+        const select = document.getElementById('analystCampaignSelect');
+        const campaignId = select.value;
+        if (!campaignId) {
+            document.getElementById('analyticsResults').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to analyze.</div>';
+            document.getElementById('analyticsResultsView').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to analyze.</div>';
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/kpis`, {
+                headers: getHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to load KPIs');
+            const kpis = await res.json();
+            const html = `
+                <div class="grid grid-cols-5 gap-3 mt-2">
+                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">Impressions</p><p class="text-lg font-bold">${(kpis.impressions || 0).toLocaleString()}</p></div>
+                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">Clicks</p><p class="text-lg font-bold">${(kpis.clicks || 0).toLocaleString()}</p></div>
+                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">CTR</p><p class="text-lg font-bold text-green-400">${kpis.ctr || 0}%</p></div>
+                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">CPC</p><p class="text-lg font-bold text-yellow-400">$${kpis.cpc || 0}</p></div>
+                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">ROAS</p><p class="text-lg font-bold text-blue-400">${kpis.roas || 0}x</p></div>
+                </div>
+                <div class="mt-3 text-xs text-gray-400">Click "Analyze" to get optimization recommendations</div>
+            `;
+            document.getElementById('analyticsResults').innerHTML = html;
+            document.getElementById('analyticsResultsView').innerHTML = html;
+        } catch (e) {
+            console.error('Failed to load KPIs:', e);
+        }
+    }
+
+    function loadAnalyticsView() {
+        const select = document.getElementById('analystCampaignSelect2');
+        const campaignId = select.value;
+        if (campaignId) {
+            document.getElementById('analystCampaignSelect').value = campaignId;
+            loadAnalytics();
+        } else {
+            document.getElementById('analyticsResultsView').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to analyze.</div>';
+        }
+    }
+
+    async function runAnalysis() {
+        const select = document.getElementById('analystCampaignSelect');
+        const campaignId = select.value;
+        if (!campaignId) {
+            alert('Please select a campaign first.');
+            return;
+        }
+        document.getElementById('analyticsResults').innerHTML = '<div class="text-yellow-400 text-sm p-4"><i class="fa-solid fa-spinner fa-spin"></i> Analyzing...</div>';
+        document.getElementById('analyticsResultsView').innerHTML = '<div class="text-yellow-400 text-sm p-4"><i class="fa-solid fa-spinner fa-spin"></i> Analyzing...</div>';
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/optimize`, { method: 'POST', headers: getHeaders() });
+            if (!res.ok) throw new Error('Analysis failed');
+            const data = await res.json();
+            const analysis = data.analysis || {};
+            const actions = data.actions || [];
+            const html = `
+                <div class="bg-[#161b22] p-3 rounded-lg mt-2">
+                    <p class="text-xs text-gray-400">Analysis Results</p>
+                    <div class="mt-2 bg-[#0d1117] p-2 rounded">
+                        <p class="text-sm">${analysis.summary || 'No summary available.'}</p>
+                    </div>
+                    <div class="mt-2 grid grid-cols-2 gap-2">
+                        <div><span class="text-xs text-gray-400">Score</span><p class="text-lg font-bold">${analysis.score || 0}/100</p></div>
+                        <div><span class="text-xs text-gray-400">Issues</span><p class="text-sm text-red-400">${(analysis.issues || []).join(', ') || 'None'}</p></div>
+                    </div>
+                    <div class="mt-2">
+                        <p class="text-xs text-gray-400">Recommendations</p>
+                        ${(analysis.recommendations || []).map(r => `
+                            <div class="flex items-start gap-2 mt-1 p-2 bg-[#0d1117] rounded">
+                                <span class="text-xs ${r.priority === 'high' ? 'text-red-400' : r.priority === 'medium' ? 'text-yellow-400' : 'text-blue-400'}">[${r.priority}]</span>
+                                <span class="text-sm">${r.action}</span>
+                                <span class="text-xs text-gray-400 ml-auto">${r.expected_impact || ''}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="mt-2">
+                        <p class="text-xs text-gray-400">Actions Taken</p>
+                        ${actions.map(a => `<p class="text-sm text-gray-300">• ${a.message}</p>`).join('')}
+                    </div>
+                    ${analysis.creative_feedback ? `
+                        <div class="mt-2 bg-[#0d1117] p-2 rounded border border-blue-500/20">
+                            <p class="text-xs text-gray-400">Creative Feedback</p>
+                            <p class="text-sm">${analysis.creative_feedback}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            document.getElementById('analyticsResults').innerHTML = html;
+            document.getElementById('analyticsResultsView').innerHTML = html;
+        } catch (e) {
+            const msg = `<div class="text-red-400 text-sm p-4">Error: ${e.message}</div>`;
+            document.getElementById('analyticsResults').innerHTML = msg;
+            document.getElementById('analyticsResultsView').innerHTML = msg;
+        }
+    }
+
+    function runAnalysisView() {
+        const select = document.getElementById('analystCampaignSelect2');
+        const campaignId = select.value;
+        if (campaignId) {
+            document.getElementById('analystCampaignSelect').value = campaignId;
+            runAnalysis();
+        } else {
+            alert('Please select a campaign first.');
+        }
+    }
+
+    async function runOptimization() {
+        const select = document.getElementById('analystCampaignSelect');
+        const campaignId = select.value;
+        if (!campaignId) {
+            alert('Please select a campaign first.');
+            return;
+        }
+        document.getElementById('optimizationResults').innerHTML = '<div class="text-yellow-400 text-sm"><i class="fa-solid fa-spinner fa-spin"></i> Running optimization...</div>';
+        document.getElementById('optimizationResultsView').innerHTML = '<div class="text-yellow-400 text-sm"><i class="fa-solid fa-spinner fa-spin"></i> Running optimization...</div>';
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/optimize`, { method: 'POST', headers: getHeaders() });
+            if (!res.ok) throw new Error('Optimization failed');
+            const data = await res.json();
+            const actions = data.actions || [];
+            const html = `
+                <div class="bg-[#161b22] p-3 rounded-lg mt-2">
+                    <p class="text-xs text-gray-400">Optimization Results</p>
+                    <p class="text-sm text-green-400">${data.message || 'Optimization completed'}</p>
+                    <div class="mt-2 text-xs text-gray-400">Actions taken:</div>
+                    <ul class="text-sm">
+                        ${actions.map(a => `<li class="text-gray-300">• ${a.message}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            document.getElementById('optimizationResults').innerHTML = html;
+            document.getElementById('optimizationResultsView').innerHTML = html;
+            loadCampaigns();
+        } catch (e) {
+            const msg = `<div class="text-red-400 text-sm">Error: ${e.message}</div>`;
+            document.getElementById('optimizationResults').innerHTML = msg;
+            document.getElementById('optimizationResultsView').innerHTML = msg;
+        }
+    }
+
+    function runOptimizationView() {
+        const select = document.getElementById('analystCampaignSelect2');
+        const campaignId = select.value;
+        if (campaignId) {
+            document.getElementById('analystCampaignSelect').value = campaignId;
+            runOptimization();
+        } else {
+            alert('Please select a campaign first.');
+        }
+    }
+
+    async function viewOptimizationHistory() {
+        const select = document.getElementById('analystCampaignSelect');
+        const campaignId = select.value;
+        if (!campaignId) {
+            alert('Please select a campaign first.');
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/optimization-history`, {
+                headers: getHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to load history');
+            const data = await res.json();
+            const history = data.history || [];
+            const html = `
+                <div class="bg-[#161b22] p-3 rounded-lg mt-2">
+                    <p class="text-xs text-gray-400">Optimization History (${history.length} records)</p>
+                    ${history.length > 0 ? `
+                        <div class="mt-2 max-h-48 overflow-y-auto">
+                            ${history.map(h => `
+                                <div class="flex items-start gap-2 p-2 border-b border-[#21262d] text-sm">
+                                    <span class="text-xs text-gray-500 min-w-[120px]">${new Date(h.timestamp).toLocaleString()}</span>
+                                    <span class="text-xs text-blue-400 min-w-[100px]">${h.action_type}</span>
+                                    <span class="text-gray-300">${h.action_description || ''}</span>
+                                    <span class="text-xs ${h.status === 'completed' ? 'text-green-400' : 'text-red-400'} ml-auto">${h.status}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<p class="text-gray-500 text-sm">No optimization history yet.</p>'}
+                </div>
+            `;
+            document.getElementById('optimizationResults').innerHTML = html;
+            document.getElementById('optimizationResultsView').innerHTML = html;
+        } catch (e) {
+            const msg = `<div class="text-red-400 text-sm">Error: ${e.message}</div>`;
+            document.getElementById('optimizationResults').innerHTML = msg;
+            document.getElementById('optimizationResultsView').innerHTML = msg;
+        }
+    }
+
+    function viewOptimizationHistoryView() {
+        const select = document.getElementById('analystCampaignSelect2');
+        const campaignId = select.value;
+        if (campaignId) {
+            document.getElementById('analystCampaignSelect').value = campaignId;
+            viewOptimizationHistory();
+        } else {
+            alert('Please select a campaign first.');
         }
     }
 
@@ -535,161 +997,12 @@
     }
 
     function viewCampaign(campaignId) {
+        document.querySelectorAll('#sidebarNav .nav-link').forEach(l => l.classList.remove('active'));
+        document.querySelector('#sidebarNav .nav-link[data-section="dashboard"]').classList.add('active');
+        document.querySelectorAll('[id^="section-"]').forEach(s => s.style.display = 'none');
+        document.getElementById('section-dashboard').style.display = 'block';
         document.getElementById('creativeCampaignSelect').value = campaignId;
         loadCreatives();
-    }
-
-    // ================================================================
-    // PERFORMANCE ANALYST
-    // ================================================================
-    async function loadAnalytics() {
-        const select = document.getElementById('analystCampaignSelect');
-        const campaignId = select.value;
-        if (!campaignId) {
-            document.getElementById('analyticsResults').innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to analyze.</div>';
-            return;
-        }
-        try {
-            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/kpis`, {
-                headers: getHeaders()
-            });
-            if (!res.ok) throw new Error('Failed to load KPIs');
-            const kpis = await res.json();
-            document.getElementById('analyticsResults').innerHTML = `
-                <div class="grid grid-cols-5 gap-3 mt-2">
-                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">Impressions</p><p class="text-lg font-bold">${(kpis.impressions || 0).toLocaleString()}</p></div>
-                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">Clicks</p><p class="text-lg font-bold">${(kpis.clicks || 0).toLocaleString()}</p></div>
-                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">CTR</p><p class="text-lg font-bold text-green-400">${kpis.ctr || 0}%</p></div>
-                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">CPC</p><p class="text-lg font-bold text-yellow-400">$${kpis.cpc || 0}</p></div>
-                    <div class="bg-[#161b22] p-3 rounded-lg"><p class="text-xs text-gray-400">ROAS</p><p class="text-lg font-bold text-blue-400">${kpis.roas || 0}x</p></div>
-                </div>
-                <div class="mt-3 text-xs text-gray-400">Click "Analyze" to get optimization recommendations</div>
-            `;
-        } catch (e) {
-            console.error('Failed to load KPIs:', e);
-            document.getElementById('analyticsResults').innerHTML = `<div class="text-red-400 text-sm p-4">Error loading KPIs: ${e.message}</div>`;
-        }
-    }
-
-    async function runAnalysis() {
-        const select = document.getElementById('analystCampaignSelect');
-        const campaignId = select.value;
-        if (!campaignId) {
-            alert('Please select a campaign first.');
-            return;
-        }
-        document.getElementById('analyticsResults').innerHTML = '<div class="text-yellow-400 text-sm p-4"><i class="fa-solid fa-spinner fa-spin"></i> Analyzing campaign performance...</div>';
-        try {
-            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/optimize`, { method: 'POST', headers: getHeaders() });
-            if (!res.ok) throw new Error('Analysis failed');
-            const data = await res.json();
-            const analysis = data.analysis || {};
-            const actions = data.actions || [];
-            let html = `
-                <div class="bg-[#161b22] p-3 rounded-lg mt-2">
-                    <p class="text-xs text-gray-400">Analysis Results</p>
-                    <div class="mt-2 bg-[#0d1117] p-2 rounded">
-                        <p class="text-sm">${analysis.summary || 'No summary available.'}</p>
-                    </div>
-                    <div class="mt-2 grid grid-cols-2 gap-2">
-                        <div><span class="text-xs text-gray-400">Score</span><p class="text-lg font-bold">${analysis.score || 0}/100</p></div>
-                        <div><span class="text-xs text-gray-400">Issues</span><p class="text-sm text-red-400">${(analysis.issues || []).length > 0 ? analysis.issues.join(', ') : 'None'}</p></div>
-                    </div>
-                    <div class="mt-2">
-                        <p class="text-xs text-gray-400">Recommendations</p>
-                        ${(analysis.recommendations || []).map(r => `
-                            <div class="flex items-start gap-2 mt-1 p-2 bg-[#0d1117] rounded">
-                                <span class="text-xs ${r.priority === 'high' ? 'text-red-400' : r.priority === 'medium' ? 'text-yellow-400' : 'text-blue-400'}">[${r.priority}]</span>
-                                <span class="text-sm">${r.action}</span>
-                                <span class="text-xs text-gray-400 ml-auto">${r.expected_impact || ''}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="mt-2">
-                        <p class="text-xs text-gray-400">Actions Taken</p>
-                        ${actions.map(a => `<p class="text-sm text-gray-300">• ${a.message}</p>`).join('')}
-                    </div>
-                    ${analysis.creative_feedback ? `
-                        <div class="mt-2 bg-[#0d1117] p-2 rounded border border-blue-500/20">
-                            <p class="text-xs text-gray-400">Creative Feedback</p>
-                            <p class="text-sm">${analysis.creative_feedback}</p>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-            document.getElementById('analyticsResults').innerHTML = html;
-        } catch (e) {
-            document.getElementById('analyticsResults').innerHTML = `<div class="text-red-400 text-sm p-4">Error: ${e.message}</div>`;
-        }
-    }
-
-    async function runOptimization() {
-        const select = document.getElementById('analystCampaignSelect');
-        const campaignId = select.value;
-        if (!campaignId) {
-            alert('Please select a campaign first.');
-            return;
-        }
-        document.getElementById('optimizationResults').innerHTML = '<div class="text-yellow-400 text-sm"><i class="fa-solid fa-spinner fa-spin"></i> Running optimization...</div>';
-        try {
-            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/optimize`, { method: 'POST', headers: getHeaders() });
-            if (!res.ok) throw new Error('Optimization failed');
-            const data = await res.json();
-            const actions = data.actions || [];
-            let html = `
-                <div class="bg-[#161b22] p-3 rounded-lg mt-2">
-                    <p class="text-xs text-gray-400">Optimization Results</p>
-                    <p class="text-sm text-green-400">${data.message || 'Optimization completed'}</p>
-                    <div class="mt-2 text-xs text-gray-400">Actions taken:</div>
-                    <ul class="text-sm">
-                        ${actions.map(a => `<li class="text-gray-300">• ${a.message}</li>`).join('')}
-                    </ul>
-                </div>
-            `;
-            document.getElementById('optimizationResults').innerHTML = html;
-            loadCampaigns();
-        } catch (e) {
-            document.getElementById('optimizationResults').innerHTML = `<div class="text-red-400 text-sm">Error: ${e.message}</div>`;
-            console.error('Optimization failed:', e);
-        }
-    }
-
-    async function viewOptimizationHistory() {
-        const select = document.getElementById('analystCampaignSelect');
-        const campaignId = select.value;
-        if (!campaignId) {
-            alert('Please select a campaign first.');
-            return;
-        }
-        try {
-            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/optimization-history`, {
-                headers: getHeaders()
-            });
-            if (!res.ok) throw new Error('Failed to load history');
-            const data = await res.json();
-            const history = data.history || [];
-            let html = `
-                <div class="bg-[#161b22] p-3 rounded-lg mt-2">
-                    <p class="text-xs text-gray-400">Optimization History (${history.length} records)</p>
-                    ${history.length > 0 ? `
-                        <div class="mt-2 max-h-48 overflow-y-auto">
-                            ${history.map(h => `
-                                <div class="flex items-start gap-2 p-2 border-b border-[#21262d] text-sm">
-                                    <span class="text-xs text-gray-500 min-w-[120px]">${new Date(h.timestamp).toLocaleString()}</span>
-                                    <span class="text-xs text-blue-400 min-w-[100px]">${h.action_type}</span>
-                                    <span class="text-gray-300">${h.action_description || ''}</span>
-                                    <span class="text-xs ${h.status === 'completed' ? 'text-green-400' : 'text-red-400'} ml-auto">${h.status}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : '<p class="text-gray-500 text-sm">No optimization history yet.</p>'}
-                </div>
-            `;
-            document.getElementById('optimizationResults').innerHTML = html;
-        } catch (e) {
-            document.getElementById('optimizationResults').innerHTML = `<div class="text-red-400 text-sm">Error: ${e.message}</div>`;
-            console.error('History fetch failed:', e);
-        }
     }
 
     // ================================================================
@@ -747,20 +1060,6 @@
     }
 
     // ================================================================
-    // FILTER TABLE
-    // ================================================================
-    function filterTable() {
-        const filter = document.getElementById('languageFilter').value;
-        const rows = document.querySelectorAll('#campaignTableBody tr');
-        rows.forEach(row => {
-            const langCell = row.querySelector('td:nth-child(3) span');
-            if (!langCell) return;
-            const lang = langCell.textContent.split('-')[0];
-            row.style.display = (filter === 'all' || lang === filter) ? '' : 'none';
-        });
-    }
-
-    // ================================================================
     // PLATFORM STATUS
     // ================================================================
     async function checkPlatformStatus() {
@@ -770,27 +1069,42 @@
             });
             if (!res.ok) return;
             const status = await res.json();
-            const googleDot = document.getElementById('googleStatus');
-            const metaDot = document.getElementById('metaStatus');
-            
-            if (status.google_ads.available) {
-                googleDot.className = 'w-2 h-2 rounded-full bg-green-400';
-            } else if (status.google_ads.configured) {
-                googleDot.className = 'w-2 h-2 rounded-full bg-yellow-400';
-            } else {
-                googleDot.className = 'w-2 h-2 rounded-full bg-gray-500';
-            }
-            
-            if (status.meta_ads.available) {
-                metaDot.className = 'w-2 h-2 rounded-full bg-green-400';
-            } else if (status.meta_ads.configured) {
-                metaDot.className = 'w-2 h-2 rounded-full bg-yellow-400';
-            } else {
-                metaDot.className = 'w-2 h-2 rounded-full bg-gray-500';
-            }
+            const setDot = (el, available, configured) => {
+                if (available) el.className = 'w-2 h-2 rounded-full bg-green-400';
+                else if (configured) el.className = 'w-2 h-2 rounded-full bg-yellow-400';
+                else el.className = 'w-2 h-2 rounded-full bg-gray-500';
+            };
+            setDot(document.getElementById('googleStatus'), status.google_ads.available, status.google_ads.configured);
+            setDot(document.getElementById('metaStatus'), status.meta_ads.available, status.meta_ads.configured);
+            setDot(document.getElementById('googleStatusSettings'), status.google_ads.available, status.google_ads.configured);
+            setDot(document.getElementById('metaStatusSettings'), status.meta_ads.available, status.meta_ads.configured);
+            document.getElementById('googleStatusText').textContent = status.google_ads.available ? '✅ Connected' : (status.google_ads.configured ? '⚠️ Configured' : '❌ Not configured');
+            document.getElementById('metaStatusText').textContent = status.meta_ads.available ? '✅ Connected' : (status.meta_ads.configured ? '⚠️ Configured' : '❌ Not configured');
         } catch (e) {
             console.error('Failed to check platform status:', e);
         }
+    }
+
+    // ================================================================
+    // FILTER TABLE
+    // ================================================================
+    function filterTable() {
+        filterTableById('languageFilter', 'campaignTableBody');
+    }
+
+    function filterTable2() {
+        filterTableById('languageFilter2', 'campaignTableBody2');
+    }
+
+    function filterTableById(filterId, tableId) {
+        const filter = document.getElementById(filterId).value;
+        const rows = document.querySelectorAll(`#${tableId} tr`);
+        rows.forEach(row => {
+            const langCell = row.querySelector('td:nth-child(3) span');
+            if (!langCell) return;
+            const lang = langCell.textContent.split('-')[0];
+            row.style.display = (filter === 'all' || lang === filter) ? '' : 'none';
+        });
     }
 
     // ================================================================
@@ -811,12 +1125,10 @@
     // INIT
     // ================================================================
     document.addEventListener('DOMContentLoaded', () => {
-        // Check if user is logged in
         if (!getToken()) {
             window.location.href = '/login.html';
             return;
         }
-        
         loadClients();
         loadCampaigns();
         checkPlatformStatus();
