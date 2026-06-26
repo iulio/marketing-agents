@@ -78,16 +78,13 @@ app.add_middleware(
 )
 
 # Mount static UI
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-if os.path.exists(static_dir):
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 # ================================================================
 # ROOT ENDPOINT
 # ================================================================
-@app.get("/")
-def root():
-    return {"status": "online", "service": "Agentic Marketing Agency"}
+# @app.get("/")
+# def root():
+#     return {"status": "online", "service": "Agentic Marketing Agency"}
 
 # ================================================================
 # AUTHENTICATION ENDPOINTS
@@ -354,3 +351,7 @@ def get_agent_status():
         "launch": "idle",
         "analyst": "idle"
     }
+
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
