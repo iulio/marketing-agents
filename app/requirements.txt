@@ -19,7 +19,7 @@ asyncpg==0.29.0
 sqlalchemy==2.0.31
 psycopg2-binary==2.9.9
 
-# Web Scraping (Playwright)
+# Web Scraping
 playwright==1.46.0
 
 # PDF Reporting
@@ -27,11 +27,11 @@ reportlab==4.2.2
 matplotlib==3.9.2
 jinja2==3.1.4
 
-# Google Ads API (use latest available)
+# Google Ads API
 google-ads==31.1.0
 
 # Meta Ads API
 facebook-business==22.0.0
 
-# Replicate (optional - use Python 3.11 or install separately)
-replicate==1.0.7  # Only works on Python 3.12 or earlier
+# Image Generation (optional - only works on Python <=3.12)
+#replicate==1.0.7
