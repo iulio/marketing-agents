@@ -14,12 +14,24 @@ requests>=2.31.0
 python-multipart==0.0.9
 pyjwt==2.8.0
 
-# Optional: For image generation
-diffusers>=0.26.0
-transformers>=4.35.0
-accelerate>=0.25.0
-replicate>=0.18.0
+# PostgreSQL
+asyncpg==0.29.0
+sqlalchemy==2.0.31
+psycopg2-binary==2.9.9
 
-#Optional: For Google Ads and Meta Ads API integration
-google-ads==24.1.0
+# Web Scraping (Playwright)
+playwright==1.46.0
+
+# PDF Reporting
+reportlab==4.2.2
+matplotlib==3.9.2
+jinja2==3.1.4
+
+# Google Ads API (use latest available)
+google-ads==31.1.0
+
+# Meta Ads API
 facebook-business==22.0.0
+
+# Replicate (optional - use Python 3.11 or install separately)
+replicate==1.0.7  # Only works on Python 3.12 or earlier

@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: marketing-postgres
+    environment:
+      POSTGRES_USER: marketing
+      POSTGRES_PASSWORD: marketing123
+      POSTGRES_DB: marketing_agents
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketing -d marketing_agents"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - marketing_network
+
+  app:
+    build: .
+    container_name: marketing-agents
+    environment:
+      DATABASE_URL: postgresql+asyncpg://marketing:marketing123@postgres:5432/marketing_agents
+      AUTO_OPTIMIZE: "true"
+      OPTIMIZATION_INTERVAL: 60
+      JWT_SECRET_KEY: your-secret-key-change-in-production
+      # Google Ads (optional - uncomment when ready)
+      # GOOGLE_ADS_DEVELOPER_TOKEN: "your_token"
+      # GOOGLE_ADS_CLIENT_ID: "your_client_id"
+      # GOOGLE_ADS_CLIENT_SECRET: "your_client_secret"
+      # GOOGLE_ADS_REFRESH_TOKEN: "your_refresh_token"
+      # GOOGLE_ADS_CUSTOMER_ID: "1234567890"
+      # Meta Ads (optional - uncomment when ready)
+      # META_APP_ID: "your_app_id"
+      # META_APP_SECRET: "your_app_secret"
+      # META_ACCESS_TOKEN: "your_access_token"
+      # META_AD_ACCOUNT_ID: "act_123456789"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+    restart: unless-stopped
+    networks:
+      - marketing_network
+
+volumes:
+  postgres_data:
+
+networks:
+  marketing_network:
+    driver: bridge
