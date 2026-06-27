@@ -505,13 +505,15 @@
             <div class="bg-[#21262d] p-3 rounded-md flex items-center justify-between">
                 <span class="text-sm font-medium">AI Backend</span>
                 <div class="flex items-center gap-3">
-                    <span class="text-xs text-gray-400">Foundry</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="llmToggle" class="sr-only peer" checked disabled>
-                        <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-                    </label>
-                    <span class="text-xs text-gray-400">Local (Ollama)</span>
-                </div>
+    <span class="text-sm text-gray-400">Foundry (Cloud)</span>
+    <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="llmToggle" class="sr-only peer">
+        <div class="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:bg-blue-600 transition-colors duration-200 ease-in-out">
+            <div class="absolute top-[2px] left-[2px] bg-white rounded-full h-5 w-5 transition-all duration-200 ease-in-out peer-checked:translate-x-5"></div>
+        </div>
+    </label>
+    <span class="text-sm text-gray-400">Local (Ollama)</span>
+</div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="closeOnboardModal()" class="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
