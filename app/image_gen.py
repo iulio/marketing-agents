@@ -65,11 +65,16 @@ class ImageGenerator:
             print(f"[ImageGen] HF API error: {e}")
             return None
 
-def generate_campaign_images(prompt: str, num_images: int = 2) -> list:
+from .industry_prompts import get_industry_template
+
+def generate_campaign_images(prompt: str, industry: str = "general", num_images: int = 2) -> list:
+    template = get_industry_template(industry)
+    visual_style = template.get("visual_style", "High-quality professional imagery.")
+    full_prompt = f"{prompt} Style: {visual_style}. Create compelling marketing imagery."
     generator = ImageGenerator()
     images = []
     for i in range(num_images):
-        img = generator.generate(prompt)
+        img = generator.generate(full_prompt)
         if img:
             images.append(img)
     return images

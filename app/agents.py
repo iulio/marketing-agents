@@ -7,6 +7,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_community.chat_models import ChatOllama
 
+from .industry_prompts import get_industry_template
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # ================================================================
@@ -142,36 +143,63 @@ def _fallback_research():
 # AGENT 3: CREATIVE COPYWRITER & ASSET GENERATOR
 # ================================================================
 def creative_node(state: AgencyState) -> AgencyState:
-    """Generates ad copy with platform-specific constraints."""
     client = state.get("client_profile", {})
     market = state.get("market_intelligence", {})
-    plan = market.get("strategy_summary", "")
-    personas = market.get("research", {}).get("buyer_personas", [])
-    
+    website_data = market.get("website_data", {})
+
+    # Extract industry and objective
+    industry = client.get("industry", "general")
+    objective = client.get("objective", "sales")
+    special_events = client.get("special_events", [])
+    product_keywords = client.get("product_keywords", [])
+
+    # Get industry template
+    template = get_industry_template(industry)
+    strategy_focus = template.get("strategy_focus", "")
+    target_audience = template.get("target_audience", "")
+    creative_angles = template.get("creative_angles", [])
+
+    # If products were scraped, use them
+    products = website_data.get("products", [])
+    if products:
+        product_names = ", ".join([p.get("name", "") for p in products if p.get("name")])
+    else:
+        product_names = ", ".join(product_keywords) if product_keywords else "our products"
+
+    # Build the prompt
     prompt = f"""
-    You are a Direct-Response Creative Director specializing in ad copy.
+    You are a Direct-Response Creative Director specializing in the {industry} industry.
+    
+    INDUSTRY TEMPLATE:
+    - Strategy Focus: {strategy_focus}
+    - Target Audience: {target_audience}
+    - Suggested Tone: {template.get('tone_suggestions', ['Professional'])}
+    - Creative Angles: {', '.join(creative_angles[:3])}
+    
+    CLIENT DATA:
+    Client: {client.get('client_name', 'Unknown')}
+    Website: {client.get('website_url', '')}
+    Products: {product_names}
+    Campaign Objective: {objective}
+    Special Events: {', '.join(special_events) if special_events else 'None'}
+    
     Generate 3 Google RSA ad variations (Headlines: max 30 chars, Descriptions: max 90 chars).
     Also generate 3 Meta ad variations (Primary Text: max 125 chars).
-    
-    Client: {client.get('client_name', 'Unknown')}
-    Industry: {client.get('industry', 'Unknown')}
-    Tone: {client.get('tone_of_voice', 'Professional')}
-    Strategy: {plan}
-    Buyer Personas: {personas}
+    Ensure the copy resonates with the target audience and highlights the unique selling points of this business.
+    If special events are provided, incorporate them into the messaging.
     
     Output JSON:
     {{
         "google_ads": [
-            {{"headline": "headline1 (max 30 chars)", "description": "desc1 (max 90 chars)"}},
+            {{"headline": "...", "description": "..."}},
             ...
         ],
         "meta_ads": [
-            {{"primary_text": "text1 (max 125 chars)"}},
+            {{"primary_text": "..."}},
             ...
         ]
     }}
     """
-    
     response = llm.invoke(prompt)
     print(f"[Creative] LLM Response: {response.content[:100]}...")
     

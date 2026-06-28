@@ -75,3 +75,18 @@ class ABTest(Base):
     results = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
+
+# app/models.py (excerpt)
+
+class CampaignObjective(str, Enum):
+    AWARENESS = "awareness"
+    SALES = "sales"
+    TRAFFIC = "traffic"
+    ENGAGEMENT = "engagement"
+
+class OnboardRequest(BaseModel):
+    # ... existing fields ...
+    industry: str = Field(..., min_length=1)
+    objective: CampaignObjective = CampaignObjective.SALES
+    special_events: List[str] = Field(default_factory=list)  # e.g., ["Valentine's Day", "Mother's Day"]
+    product_keywords: List[str] = Field(default_factory=list)  # custom product names
