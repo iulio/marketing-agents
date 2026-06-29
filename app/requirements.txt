@@ -3,7 +3,7 @@ uvicorn[standard]==0.34.0
 gunicorn==23.0.0
 langchain==0.3.13
 langchain-community==0.3.13
-# langchain-ollama==0.1.0   <-- REMOVE THIS LINE
+# langchain-ollama removed to avoid conflict
 langgraph==0.2.56
 pydantic==2.10.4
 python-dotenv==1.0.1
