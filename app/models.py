@@ -4,10 +4,9 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
 import uuid
-from enum import Enum  # <-- CRITICAL: WAS MISSING
-from typing import List, Optional  # <-- CRITICAL: WAS MISSING
-from pydantic import BaseModel, Field, validator  # <-- CRITICAL: WAS MISSING
-
+from enum import Enum  # <-- ADD THIS
+from typing import List, Optional
+from pydantic import BaseModel, Field, validator
 # ================================================================
 # SQLALCHEMY DATABASE MODELS
 # ================================================================
