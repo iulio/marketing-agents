@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agentic Marketing Agency - Login</title>
+    <title>Login - Agentic Marketing</title>
+    <!-- Tailwind CSS (reliable CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body { background: #0f1117; font-family: 'Inter', sans-serif; }
@@ -22,13 +24,11 @@
         <form id="loginForm" onsubmit="login(event)" class="space-y-4">
             <div>
                 <label class="text-xs text-gray-400 block mb-1">Email</label>
-                <input type="email" id="email" value="admin@agency.com"
-                    class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+                <input type="email" id="email" value="admin@agency.com" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-white focus:outline-none focus:border-blue-500">
             </div>
             <div>
                 <label class="text-xs text-gray-400 block mb-1">Password</label>
-                <input type="password" id="password" value="admin123"
-                    class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+                <input type="password" id="password" value="admin123" class="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-white focus:outline-none focus:border-blue-500">
             </div>
             <button type="submit" class="w-full bg-[#238636] hover:bg-[#2ea043] text-white py-2 rounded-md transition flex items-center justify-center gap-2">
                 <i class="fa-regular fa-arrow-right-to-bracket"></i> Sign In
@@ -40,44 +40,44 @@
             <p>Default: admin@agency.com / admin123</p>
         </div>
     </div>
-<script>
-    const API_BASE = window.location.origin;
 
-    async function login(e) {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const errorEl = document.getElementById('loginError');
+    <script>
+        const API_BASE = window.location.origin;
 
-        errorEl.classList.add('hidden');
+        async function login(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('loginError');
 
-        try {
-            const res = await fetch(`${API_BASE}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
+            errorEl.classList.add('hidden');
 
-            if (res.ok) {
-                const data = await res.json();
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                window.location.href = '/';
-            } else {
-                const err = await res.json();
-                errorEl.textContent = err.detail || 'Invalid credentials';
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`, {
+                    method: 'POST'
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/';
+                } else {
+                    const err = await res.json();
+                    errorEl.textContent = err.detail || 'Invalid credentials';
+                    errorEl.classList.remove('hidden');
+                }
+            } catch (e) {
+                errorEl.textContent = 'Login failed. Please try again.';
                 errorEl.classList.remove('hidden');
+                console.error('Login error:', e);
             }
-        } catch (e) {
-            errorEl.textContent = 'Login failed. Please try again.';
-            errorEl.classList.remove('hidden');
-            console.error('Login error:', e);
         }
-    }
 
-    if (localStorage.getItem('token')) {
-        window.location.href = '/';
-    }
-</script>
+        // If already logged in, redirect to dashboard
+        if (localStorage.getItem('token')) {
+            window.location.href = '/';
+        }
+    </script>
 </body>
 </html>

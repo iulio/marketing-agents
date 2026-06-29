@@ -3,7 +3,6 @@ uvicorn[standard]==0.34.0
 gunicorn==23.0.0
 langchain==0.3.13
 langchain-community==0.3.13
-# langchain-ollama removed to avoid conflict
 langgraph==0.2.56
 pydantic==2.10.4
 python-dotenv==1.0.1
@@ -33,3 +32,7 @@ google-ads==31.1.0
 
 # Meta Ads API
 facebook-business==22.0.0
+
+# GCP Vertex AI (remove version pinning)
+langchain-google-vertexai>=0.9.0
+google-cloud-aiplatform>=1.38.0

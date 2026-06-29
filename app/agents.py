@@ -5,9 +5,8 @@ import warnings
 from typing import TypedDict, Literal, Dict, Any
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_community.chat_models import ChatOllama
-
-from .industry_prompts import get_industry_template
+from langchain_community.chat_models import ChatOllama  # Fixed import
+from langchain_google_vertexai import ChatVertexAI
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # ================================================================
@@ -25,58 +24,34 @@ class AgencyState(TypedDict):
     optimization_actions: list
 
 # ================================================================
-# LLM INITIALIZATION
+# LLM INITIALIZATION (Local Ollama)
 # ================================================================
-llm = ChatOllama(
-    model="llama3.2:3b",
-    base_url="http://localhost:11434",
-    temperature=0.7,
-)
-
-# ================================================================
-# AGENT 1: MASTER ORCHESTRATOR
-# ================================================================
-def orchestrator_node(state: AgencyState) -> AgencyState:
-    """Breaks down client brief into sub-tasks and coordinates the workflow."""
-    client = state.get("client_profile", {})
-    
-    prompt = f"""
-    You are the Master Orchestrator of a digital marketing agency.
-    Analyze this client brief and create a structured execution plan.
-    
-    Client: {client.get('client_name', 'Unknown')}
-    Industry: {client.get('industry', 'Unknown')}
-    Website: {client.get('website_url', 'Unknown')}
-    Budget: ${client.get('daily_budget', 0)}/day
-    Target Locations: {client.get('target_geo', [])}
-    Tone: {client.get('tone_of_voice', 'Professional')}
-    
-    Output a JSON with:
-    1. "strategy_summary": Brief 1-sentence strategy
-    2. "target_audience": Primary audience description
-    3. "key_benefits": 3 key selling points
-    4. "recommended_channels": ["Google", "Meta", "Both"]
-    """
-    
-    response = llm.invoke(prompt)
-    print(f"[Orchestrator] LLM Response: {response.content[:100]}...")
-    
+def get_ollama_llm():
+    """Initialize Ollama LLM with fallback to simulation if unavailable."""
     try:
-        content = response.content
-        start = content.find('{')
-        end = content.rfind('}') + 1
-        if start != -1 and end != 0:
-            json_str = content[start:end]
-            plan = json.loads(json_str)
+        # Try to connect to Ollama
+        import requests
+        response = requests.get("http://localhost:11434/api/tags", timeout=2)
+        if response.status_code == 200:
+            print("[LLM] ✅ Ollama is running. Using local LLM.")
+            return ChatOllama(
+                model="llama3.2:3b",
+                base_url="http://localhost:11434",
+                temperature=0.7,
+            )
         else:
-            plan = plan = _fallback_plan()
+            print("[LLM] ⚠️ Ollama not responding. Using fallback.")
+            return None
     except:
-        plan = plan = _fallback_plan()
-    
-    state["market_intelligence"] = plan
-    return state
+        print("[LLM] ⚠️ Ollama not available. Using fallback.")
+        return None
 
-def _fallback_plan():
+llm = get_ollama_llm()
+
+# ================================================================
+# FALLBACK FUNCTIONS (when Ollama is unavailable)
+# ================================================================
+def fallback_strategy() -> Dict:
     return {
         "strategy_summary": "Build awareness through targeted campaigns.",
         "target_audience": "Professionals interested in technology",
@@ -84,50 +59,7 @@ def _fallback_plan():
         "recommended_channels": ["Google", "Meta"]
     }
 
-# ================================================================
-# AGENT 2: STRATEGIC MARKET RESEARCHER
-# ================================================================
-def researcher_node(state: AgencyState) -> AgencyState:
-    """Analyzes the target market, competitors, and customer personas."""
-    client = state.get("client_profile", {})
-    plan = state.get("market_intelligence", {})
-    
-    prompt = f"""
-    You are a Strategic Market Researcher. Analyze this client and provide detailed market intelligence.
-    
-    Client: {client.get('client_name', 'Unknown')}
-    Industry: {client.get('industry', 'Unknown')}
-    Strategy: {plan.get('strategy_summary', 'Unknown')}
-    Target Audience: {plan.get('target_audience', 'Unknown')}
-    
-    Output a JSON with:
-    1. "buyer_personas": Array of 2 personas with (name, age, job, pain_points, goals)
-    2. "competitor_insights": Array of 2 competitors with (name, strengths, weaknesses)
-    3. "keyword_clusters": Array of 5-8 high-intent keywords
-    4. "market_opportunities": 3 opportunities or gaps
-    """
-    
-    response = llm.invoke(prompt)
-    print(f"[Researcher] LLM Response: {response.content[:100]}...")
-    
-    try:
-        content = response.content
-        start = content.find('{')
-        end = content.rfind('}') + 1
-        if start != -1 and end != 0:
-            json_str = content[start:end]
-            research = json.loads(json_str)
-        else:
-            research = _fallback_research()
-    except:
-        research = _fallback_research()
-    
-    existing = state.get("market_intelligence", {})
-    existing["research"] = research
-    state["market_intelligence"] = existing
-    return state
-
-def _fallback_research():
+def fallback_research() -> Dict:
     return {
         "buyer_personas": [
             {"name": "Professional", "age": 30, "job": "Manager", "pain_points": "Time", "goals": "Results"}
@@ -139,96 +71,7 @@ def _fallback_research():
         "market_opportunities": ["Organic growth"]
     }
 
-# ================================================================
-# AGENT 3: CREATIVE COPYWRITER & ASSET GENERATOR
-# ================================================================
-def creative_node(state: AgencyState) -> AgencyState:
-    client = state.get("client_profile", {})
-    market = state.get("market_intelligence", {})
-    website_data = market.get("website_data", {})
-
-    # Extract industry and objective
-    industry = client.get("industry", "general")
-    objective = client.get("objective", "sales")
-    special_events = client.get("special_events", [])
-    product_keywords = client.get("product_keywords", [])
-
-    # Get industry template
-    template = get_industry_template(industry)
-    strategy_focus = template.get("strategy_focus", "")
-    target_audience = template.get("target_audience", "")
-    creative_angles = template.get("creative_angles", [])
-
-    # If products were scraped, use them
-    products = website_data.get("products", [])
-    if products:
-        product_names = ", ".join([p.get("name", "") for p in products if p.get("name")])
-    else:
-        product_names = ", ".join(product_keywords) if product_keywords else "our products"
-
-    # Build the prompt
-    prompt = f"""
-    You are a Direct-Response Creative Director specializing in the {industry} industry.
-    
-    INDUSTRY TEMPLATE:
-    - Strategy Focus: {strategy_focus}
-    - Target Audience: {target_audience}
-    - Suggested Tone: {template.get('tone_suggestions', ['Professional'])}
-    - Creative Angles: {', '.join(creative_angles[:3])}
-    
-    CLIENT DATA:
-    Client: {client.get('client_name', 'Unknown')}
-    Website: {client.get('website_url', '')}
-    Products: {product_names}
-    Campaign Objective: {objective}
-    Special Events: {', '.join(special_events) if special_events else 'None'}
-    
-    Generate 3 Google RSA ad variations (Headlines: max 30 chars, Descriptions: max 90 chars).
-    Also generate 3 Meta ad variations (Primary Text: max 125 chars).
-    Ensure the copy resonates with the target audience and highlights the unique selling points of this business.
-    If special events are provided, incorporate them into the messaging.
-    
-    Output JSON:
-    {{
-        "google_ads": [
-            {{"headline": "...", "description": "..."}},
-            ...
-        ],
-        "meta_ads": [
-            {{"primary_text": "..."}},
-            ...
-        ]
-    }}
-    """
-    response = llm.invoke(prompt)
-    print(f"[Creative] LLM Response: {response.content[:100]}...")
-    
-    try:
-        content = response.content
-        start = content.find('{')
-        end = content.rfind('}') + 1
-        if start != -1 and end != 0:
-            json_str = content[start:end]
-            creatives = json.loads(json_str)
-        else:
-            creatives = _fallback_creatives()
-    except:
-        creatives = _fallback_creatives()
-    
-    # Try to generate images
-    try:
-        from .image_gen import generate_campaign_images
-        image_prompt = f"Create a professional marketing image for a {client.get('industry', 'business')} company. Target audience: {plan}."
-        images = generate_campaign_images(image_prompt, num_images=2)
-        creatives["images"] = images
-    except Exception as e:
-        print(f"[Creative] Image generation skipped: {e}")
-        creatives["images"] = []
-    
-    state["creative_assets"] = creatives
-    return state
-
-def _fallback_creatives():
+def fallback_creatives() -> Dict:
     return {
         "google_ads": [
             {"headline": "Innovative SaaS Solution", "description": "Scale your business with AI."}
@@ -238,6 +81,160 @@ def _fallback_creatives():
         ],
         "images": []
     }
+
+# ================================================================
+# AGENT 1: MASTER ORCHESTRATOR
+# ================================================================
+def orchestrator_node(state: AgencyState) -> AgencyState:
+    """Breaks down client brief into sub-tasks and coordinates the workflow."""
+    client = state.get("client_profile", {})
+    industry = client.get("industry", "Unknown")
+    
+    if llm is None:
+        print("[Orchestrator] Using fallback strategy (Ollama not available).")
+        plan = fallback_strategy()
+    else:
+        prompt = f"""
+        You are the Master Orchestrator of a digital marketing agency.
+        Analyze this client brief and create a structured execution plan.
+        
+        Client: {client.get('client_name', 'Unknown')}
+        Industry: {industry}
+        Website: {client.get('website_url', 'Unknown')}
+        Budget: ${client.get('daily_budget', 0)}/day
+        Target Locations: {client.get('target_geo', [])}
+        Tone: {client.get('tone_of_voice', 'Professional')}
+        
+        Output a JSON with:
+        1. "strategy_summary": Brief 1-sentence strategy
+        2. "target_audience": Primary audience description
+        3. "key_benefits": 3 key selling points
+        4. "recommended_channels": ["Google", "Meta", "Both"]
+        """
+        
+        try:
+            response = llm.invoke(prompt)
+            print(f"[Orchestrator] LLM Response: {response.content[:100]}...")
+            content = response.content
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            if start != -1 and end != 0:
+                json_str = content[start:end]
+                plan = json.loads(json_str)
+            else:
+                plan = fallback_strategy()
+        except Exception as e:
+            print(f"[Orchestrator] Error: {e}. Using fallback.")
+            plan = fallback_strategy()
+    
+    state["market_intelligence"] = plan
+    return state
+
+# ================================================================
+# AGENT 2: STRATEGIC MARKET RESEARCHER
+# ================================================================
+def researcher_node(state: AgencyState) -> AgencyState:
+    """Analyzes the target market, competitors, and customer personas."""
+    client = state.get("client_profile", {})
+    plan = state.get("market_intelligence", {})
+    strategy = plan.get("strategy_summary", "Unknown")
+    
+    if llm is None:
+        print("[Researcher] Using fallback research (Ollama not available).")
+        research = fallback_research()
+    else:
+        prompt = f"""
+        You are a Strategic Market Researcher. Analyze this client and provide detailed market intelligence.
+        
+        Client: {client.get('client_name', 'Unknown')}
+        Industry: {client.get('industry', 'Unknown')}
+        Strategy: {strategy}
+        Target Audience: {plan.get('target_audience', 'Unknown')}
+        
+        Output a JSON with:
+        1. "buyer_personas": Array of 2 personas with (name, age, job, pain_points, goals)
+        2. "competitor_insights": Array of 2 competitors with (name, strengths, weaknesses)
+        3. "keyword_clusters": Array of 5-8 high-intent keywords
+        4. "market_opportunities": 3 opportunities or gaps
+        """
+        
+        try:
+            response = llm.invoke(prompt)
+            print(f"[Researcher] LLM Response: {response.content[:100]}...")
+            content = response.content
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            if start != -1 and end != 0:
+                json_str = content[start:end]
+                research = json.loads(json_str)
+            else:
+                research = fallback_research()
+        except Exception as e:
+            print(f"[Researcher] Error: {e}. Using fallback.")
+            research = fallback_research()
+    
+    existing = state.get("market_intelligence", {})
+    existing["research"] = research
+    state["market_intelligence"] = existing
+    return state
+
+# ================================================================
+# AGENT 3: CREATIVE COPYWRITER & ASSET GENERATOR
+# ================================================================
+def creative_node(state: AgencyState) -> AgencyState:
+    """Generates ad copy with platform-specific constraints."""
+    client = state.get("client_profile", {})
+    market = state.get("market_intelligence", {})
+    plan = market.get("strategy_summary", "")
+    personas = market.get("research", {}).get("buyer_personas", [])
+    
+    if llm is None:
+        print("[Creative] Using fallback creatives (Ollama not available).")
+        creatives = fallback_creatives()
+    else:
+        prompt = f"""
+        You are a Direct-Response Creative Director specializing in ad copy.
+        Generate 3 Google RSA ad variations (Headlines: max 30 chars, Descriptions: max 90 chars).
+        Also generate 3 Meta ad variations (Primary Text: max 125 chars).
+        
+        Client: {client.get('client_name', 'Unknown')}
+        Industry: {client.get('industry', 'Unknown')}
+        Tone: {client.get('tone_of_voice', 'Professional')}
+        Strategy: {plan}
+        Buyer Personas: {json.dumps(personas)}
+        
+        Output JSON:
+        {{
+            "google_ads": [
+                {{"headline": "headline1 (max 30 chars)", "description": "desc1 (max 90 chars)"}},
+                ...
+            ],
+            "meta_ads": [
+                {{"primary_text": "text1 (max 125 chars)"}},
+                ...
+            ]
+        }}
+        """
+        
+        try:
+            response = llm.invoke(prompt)
+            print(f"[Creative] LLM Response: {response.content[:100]}...")
+            content = response.content
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            if start != -1 and end != 0:
+                json_str = content[start:end]
+                creatives = json.loads(json_str)
+            else:
+                creatives = fallback_creatives()
+        except Exception as e:
+            print(f"[Creative] Error: {e}. Using fallback.")
+            creatives = fallback_creatives()
+    
+    # Add placeholder images (image generation is optional)
+    creatives["images"] = []
+    state["creative_assets"] = creatives
+    return state
 
 # ================================================================
 # AGENT 4: HUMAN REVIEW GATE
@@ -253,7 +250,7 @@ def human_review_node(state: AgencyState) -> AgencyState:
         print("[HumanReview] ❌ Rejected. Routing back to creative.")
     else:
         print("[HumanReview] ⏳ Waiting for human approval...")
-        state["human_feedback"] = {"status": "APPROVED"}
+        state["human_feedback"] = {"status": "APPROVED"}  # Auto-approve for testing
     
     return state
 

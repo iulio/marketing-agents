@@ -2,33 +2,32 @@
 
 INDUSTRY_TEMPLATES = {
     "flower_shop": {
-        "strategy_focus": "Emphasize the beauty, freshness, and emotional impact of flowers. Highlight special occasions, gifting, and local delivery.",
-        "target_audience": "Adults 25-55, gift-givers, event planners, and couples.",
-        "tone_suggestions": ["Romantic", "Warm", "Elegant", "Urgent (for holidays)"],
-        "visual_style": "Vibrant colors, high-contrast floral arrangements, soft lighting, lifestyle shots of happy recipients.",
+        "strategy_focus": "Emphasize beauty, freshness, and emotional impact.",
+        "target_audience": "Adults 25-55, gift-givers, event planners.",
+        "tone_suggestions": ["Romantic", "Warm", "Elegant"],
+        "visual_style": "Vibrant colors, floral arrangements, lifestyle shots.",
         "creative_angles": [
             "Surprise your loved one with a beautiful bouquet.",
-            "Fresh flowers for every occasion – delivered today.",
-            "Create unforgettable moments with our curated arrangements.",
-            "Valentine's Day special – order now for early delivery."
+            "Fresh flowers delivered today.",
+            "Valentine's Day special – order now."
         ]
     },
     "restaurant": {
-        "strategy_focus": "Focus on the dining experience, taste, ambiance, and special offers. Highlight cuisine type and location.",
-        "target_audience": "Local foodies, families, couples, and tourists.",
-        "tone_suggestions": ["Appetizing", "Warm", "Inviting", "Exclusive"],
-        "visual_style": "Close-up shots of dishes, warm lighting, cozy interior, happy diners.",
+        "strategy_focus": "Focus on dining experience, taste, and ambiance.",
+        "target_audience": "Local foodies, families, couples.",
+        "tone_suggestions": ["Appetizing", "Warm", "Inviting"],
+        "visual_style": "Close-up shots of dishes, warm lighting.",
         "creative_angles": [
-            "Experience the taste of [Cuisine] at our table.",
+            "Experience the taste of [Cuisine].",
             "Book your table now and enjoy a free appetizer.",
             "Family dinner special – 20% off for groups of 4+."
         ]
     },
     "dentist": {
-        "strategy_focus": "Build trust, highlight technology, and offer pain-free solutions. Emphasize professionalism and results.",
+        "strategy_focus": "Build trust, highlight technology, and offer pain-free solutions.",
         "target_audience": "Adults 25-65, families, people with dental anxiety.",
         "tone_suggestions": ["Professional", "Caring", "Reassuring"],
-        "visual_style": "Clean, bright, professional clinic images, smiling patients.",
+        "visual_style": "Clean, bright, professional clinic images.",
         "creative_angles": [
             "State-of-the-art dentistry – comfortable and gentle.",
             "Your smile is our priority. Book a free consultation.",
@@ -38,8 +37,8 @@ INDUSTRY_TEMPLATES = {
 }
 
 DEFAULT_TEMPLATE = {
-    "strategy_focus": "Drive awareness and sales through targeted digital campaigns.",
-    "target_audience": "General audience based on location and demographics.",
+    "strategy_focus": "Drive awareness and sales through targeted campaigns.",
+    "target_audience": "General audience based on location.",
     "tone_suggestions": ["Professional", "Friendly"],
     "visual_style": "High-quality professional imagery.",
     "creative_angles": [
@@ -50,7 +49,6 @@ DEFAULT_TEMPLATE = {
 }
 
 def get_industry_template(industry: str):
-    """Return the template for a given industry, or default if not found."""
     if not industry:
         return DEFAULT_TEMPLATE
     return INDUSTRY_TEMPLATES.get(industry.lower().replace(" ", "_"), DEFAULT_TEMPLATE)
