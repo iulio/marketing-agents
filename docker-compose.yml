@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   postgres:
@@ -22,7 +21,7 @@ services:
 
   app:
     build: .
-    container_name: marketing-agents
+    container_name: marketing-agents-agency
     environment:
       DATABASE_URL: postgresql+asyncpg://marketing:marketing123@postgres:5432/marketing_agents
       AUTO_OPTIMIZE: "true"

@@ -69,9 +69,9 @@ def orchestrator_node(state: AgencyState) -> AgencyState:
             json_str = content[start:end]
             plan = json.loads(json_str)
         else:
-            plan = self._fallback_plan()
+            plan = plan = _fallback_plan()
     except:
-        plan = self._fallback_plan()
+        plan = plan = _fallback_plan()
     
     state["market_intelligence"] = plan
     return state

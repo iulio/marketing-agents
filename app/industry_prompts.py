@@ -10,7 +10,7 @@ INDUSTRY_TEMPLATES = {
             "Surprise your loved one with a beautiful bouquet.",
             "Fresh flowers for every occasion – delivered today.",
             "Create unforgettable moments with our curated arrangements.",
-            "Valentine’s Day special – order now for early delivery."
+            "Valentine's Day special – order now for early delivery."
         ]
     },
     "restaurant": {
@@ -35,7 +35,6 @@ INDUSTRY_TEMPLATES = {
             "Invisalign offers – transform your smile without braces."
         ]
     },
-    # Add more industries: salon, gym, real estate, etc.
 }
 
 DEFAULT_TEMPLATE = {
@@ -52,4 +51,6 @@ DEFAULT_TEMPLATE = {
 
 def get_industry_template(industry: str):
     """Return the template for a given industry, or default if not found."""
+    if not industry:
+        return DEFAULT_TEMPLATE
     return INDUSTRY_TEMPLATES.get(industry.lower().replace(" ", "_"), DEFAULT_TEMPLATE)

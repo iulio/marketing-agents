@@ -3,6 +3,7 @@ uvicorn[standard]==0.34.0
 gunicorn==23.0.0
 langchain==0.3.13
 langchain-community==0.3.13
+# langchain-ollama==0.1.0   <-- REMOVE THIS LINE
 langgraph==0.2.56
 pydantic==2.10.4
 python-dotenv==1.0.1
@@ -32,6 +33,3 @@ google-ads==31.1.0
 
 # Meta Ads API
 facebook-business==22.0.0
-
-# Image Generation (optional - only works on Python <=3.12)
-#replicate==1.0.7
