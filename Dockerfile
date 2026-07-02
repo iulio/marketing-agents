@@ -33,8 +33,9 @@ COPY app/ ./app/
 # Creează directorul pentru date (dacă este necesar)
 RUN mkdir -p /app/data
 
-# Instalează browserele Playwright (am instalat manual dependențele de sistem mai sus)
+# Instalează browserele Playwright cu toate dependențele
 RUN playwright install chromium
+RUN playwright install-deps
 
 # Expune portul aplicației
 EXPOSE 8000
