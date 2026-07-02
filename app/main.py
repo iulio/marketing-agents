@@ -9,7 +9,7 @@ from typing import Dict, Any
 
 from .models import OnboardRequest, CampaignResponse
 from .agents import graph, AgencyState
-from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns
+from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns, delete_client
 from .analyst import PerformanceMonitor, run_immediate_optimization, fetch_real_kpis, refresh_kpis
 from .auth import create_default_admin, generate_token, verify_user, get_user_by_email
 from .middleware import require_role
@@ -162,26 +162,27 @@ async def list_client_campaigns(request: Request, client_id: str):
         })
     return {"campaigns": result}
 
+@app.delete("/api/clients/{client_id}")
+@require_role(["admin"])
+async def delete_client_endpoint(request: Request, client_id: str):
+    """Delete a client and all their associated campaigns."""
+    user = request.state.user
+    if user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    client = get_client(client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    success = delete_client(client_id)
+    if success:
+        return {"message": f"Client '{client_id}' deleted successfully", "client_id": client_id}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to delete client")
+
 # ================================================================
 # CAMPAIGN ENDPOINTS
 # ================================================================
-@app.post("/api/campaigns/onboard")
-async def onboard_campaign(
-    request: Request,
-    campaign_data: OnboardRequest,
-    client_id: str = Query(None, description="Client ID (optional)")
-):
-    if not client_id:
-        # Auto-create default client
-        client_data = {
-            "name": campaign_data.client_name or "Default Client",
-            "industry": campaign_data.industry or "General",
-            "website": campaign_data.website_url or "",
-        }
-        client_id = await create_client(client_data)
-        print(f"[Onboard] Created default client: {client_id}")
-    # ... rest of code
-
 @app.post("/api/campaigns/onboard")
 async def onboard_campaign(
     request: Request,
@@ -200,7 +201,6 @@ async def onboard_campaign(
             user = getattr(request.state, 'user', None)
             if user and user.get('role') in ['admin', 'client_manager']:
                 # Create a default client for the admin
-                from .storage import create_client
                 client_data = {
                     "name": campaign_data.client_name or "Default Client",
                     "industry": campaign_data.industry or "General",
@@ -212,16 +212,18 @@ async def onboard_campaign(
                 raise HTTPException(status_code=400, detail="client_id required for non-admin users")
         
         # Verify client exists
-        from .storage import get_client
         if not get_client(client_id):
             raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found")
         
         # ... rest of your existing code (create campaign, run agents, etc.)
         # (Keep the rest of the function exactly as you have it)
         
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"[Onboard] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    # ... rest of the code (existing)
+
 @app.get("/api/campaigns")
 def list_campaigns():
     result = []
