@@ -5,8 +5,16 @@ import warnings
 from typing import TypedDict, Literal, Dict, Any
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_community.chat_models import ChatOllama  # Fixed import
-from langchain_google_vertexai import ChatVertexAI
+
+# LLM imports
+from langchain_community.chat_models import ChatOllama
+
+# Optional: GCP Vertex AI (only if you have credentials)
+try:
+    from langchain_google_vertexai import ChatVertexAI
+except ImportError:
+    ChatVertexAI = None
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # ================================================================
@@ -24,32 +32,41 @@ class AgencyState(TypedDict):
     optimization_actions: list
 
 # ================================================================
-# LLM INITIALIZATION (Local Ollama)
+# LLM INITIALIZATION (Local by default, Vertex AI optional)
 # ================================================================
-def get_ollama_llm():
-    """Initialize Ollama LLM with fallback to simulation if unavailable."""
-    try:
-        # Try to connect to Ollama
-        import requests
-        response = requests.get("http://localhost:11434/api/tags", timeout=2)
-        if response.status_code == 200:
-            print("[LLM] ✅ Ollama is running. Using local LLM.")
-            return ChatOllama(
-                model="llama3.2:3b",
-                base_url="http://localhost:11434",
+def get_llm():
+    """Initialize the LLM based on environment variable."""
+    backend = os.getenv("LLM_BACKEND", "local").lower()
+    
+    if backend == "vertex" and ChatVertexAI is not None:
+        # Try to use GCP Vertex AI
+        project = os.getenv("GCP_PROJECT_ID")
+        location = os.getenv("GCP_LOCATION", "us-central1")
+        model = os.getenv("VERTEX_MODEL", "gemini-1.5-flash")
+        
+        if project:
+            print("[LLM] Using Vertex AI (GCP).")
+            return ChatVertexAI(
+                project=project,
+                location=location,
+                model_name=model,
                 temperature=0.7,
             )
         else:
-            print("[LLM] ⚠️ Ollama not responding. Using fallback.")
-            return None
-    except:
-        print("[LLM] ⚠️ Ollama not available. Using fallback.")
-        return None
+            print("[LLM] Vertex AI requested but GCP_PROJECT_ID not set. Falling back to Ollama.")
+    
+    # Default: local Ollama
+    print("[LLM] Using local Ollama.")
+    return ChatOllama(
+        model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
+        base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        temperature=0.7,
+    )
 
-llm = get_ollama_llm()
+llm = get_llm()
 
 # ================================================================
-# FALLBACK FUNCTIONS (when Ollama is unavailable)
+# FALLBACK FUNCTIONS (when LLM is unavailable)
 # ================================================================
 def fallback_strategy() -> Dict:
     return {
@@ -91,7 +108,7 @@ def orchestrator_node(state: AgencyState) -> AgencyState:
     industry = client.get("industry", "Unknown")
     
     if llm is None:
-        print("[Orchestrator] Using fallback strategy (Ollama not available).")
+        print("[Orchestrator] Using fallback strategy (LLM unavailable).")
         plan = fallback_strategy()
     else:
         prompt = f"""
@@ -122,6 +139,7 @@ def orchestrator_node(state: AgencyState) -> AgencyState:
                 json_str = content[start:end]
                 plan = json.loads(json_str)
             else:
+                print("[Orchestrator] Could not parse JSON. Using fallback.")
                 plan = fallback_strategy()
         except Exception as e:
             print(f"[Orchestrator] Error: {e}. Using fallback.")
@@ -140,7 +158,7 @@ def researcher_node(state: AgencyState) -> AgencyState:
     strategy = plan.get("strategy_summary", "Unknown")
     
     if llm is None:
-        print("[Researcher] Using fallback research (Ollama not available).")
+        print("[Researcher] Using fallback research (LLM unavailable).")
         research = fallback_research()
     else:
         prompt = f"""
@@ -168,6 +186,7 @@ def researcher_node(state: AgencyState) -> AgencyState:
                 json_str = content[start:end]
                 research = json.loads(json_str)
             else:
+                print("[Researcher] Could not parse JSON. Using fallback.")
                 research = fallback_research()
         except Exception as e:
             print(f"[Researcher] Error: {e}. Using fallback.")
@@ -189,7 +208,7 @@ def creative_node(state: AgencyState) -> AgencyState:
     personas = market.get("research", {}).get("buyer_personas", [])
     
     if llm is None:
-        print("[Creative] Using fallback creatives (Ollama not available).")
+        print("[Creative] Using fallback creatives (LLM unavailable).")
         creatives = fallback_creatives()
     else:
         prompt = f"""
@@ -226,12 +245,13 @@ def creative_node(state: AgencyState) -> AgencyState:
                 json_str = content[start:end]
                 creatives = json.loads(json_str)
             else:
+                print("[Creative] Could not parse JSON. Using fallback.")
                 creatives = fallback_creatives()
         except Exception as e:
             print(f"[Creative] Error: {e}. Using fallback.")
             creatives = fallback_creatives()
     
-    # Add placeholder images (image generation is optional)
+    # Placeholder for images (optional)
     creatives["images"] = []
     state["creative_assets"] = creatives
     return state
@@ -250,7 +270,8 @@ def human_review_node(state: AgencyState) -> AgencyState:
         print("[HumanReview] ❌ Rejected. Routing back to creative.")
     else:
         print("[HumanReview] ⏳ Waiting for human approval...")
-        state["human_feedback"] = {"status": "APPROVED"}  # Auto-approve for testing
+        # For testing, auto-approve (remove in production)
+        state["human_feedback"] = {"status": "APPROVED"}
     
     return state
 

@@ -1,6 +1,6 @@
 # app/main.py - MAIN APPLICATION
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request , Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -166,52 +166,62 @@ async def list_client_campaigns(request: Request, client_id: str):
 # CAMPAIGN ENDPOINTS
 # ================================================================
 @app.post("/api/campaigns/onboard")
-async def onboard_campaign(request: Request, campaign_data: OnboardRequest):
-    client_id = request.query_params.get('client_id')
+async def onboard_campaign(
+    request: Request,
+    campaign_data: OnboardRequest,
+    client_id: str = Query(None, description="Client ID (optional)")
+):
     if not client_id:
-        user = getattr(request.state, 'user', None)
-        if user and user.get('client_id'):
-            client_id = user['client_id']
-        else:
-            raise HTTPException(status_code=400, detail="client_id required")
-    
-    if not get_client(client_id):
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    campaign_id = str(uuid.uuid4())[:8]
-    thread_id = campaign_id
-    
-    initial_state: AgencyState = {
-        "client_profile": campaign_data.dict(),
-        "market_intelligence": {},
-        "creative_assets": {},
-        "deployment_status": {},
-        "human_feedback": {"status": "pending"},
-        "validation_errors": [],
-        "analysis": {},
-        "last_optimization": "",
-        "optimization_actions": []
-    }
-    
-    config = {"configurable": {"thread_id": thread_id}}
-    final_state = graph.invoke(initial_state, config=config)
-    
-    campaigns[campaign_id] = {
-        "state": final_state,
-        "thread_id": thread_id,
-        "status": "pending_review",
-        "client_id": client_id,
-    }
-    
-    save_campaign_state(campaign_id, final_state, "pending_review", client_id)
-    
-    creatives = final_state.get("creative_assets", {})
-    return CampaignResponse(
-        campaign_id=campaign_id,
-        status="pending_review",
-        message=f"Campaign created with {len(creatives.get('google_ads', []))} Google ads and {len(creatives.get('meta_ads', []))} Meta ads."
-    )
+        # Auto-create default client
+        client_data = {
+            "name": campaign_data.client_name or "Default Client",
+            "industry": campaign_data.industry or "General",
+            "website": campaign_data.website_url or "",
+        }
+        client_id = await create_client(client_data)
+        print(f"[Onboard] Created default client: {client_id}")
+    # ... rest of code
 
+@app.post("/api/campaigns/onboard")
+async def onboard_campaign(
+    request: Request,
+    campaign_data: OnboardRequest,
+    client_id: str = Query(None, description="Client ID (optional, creates default if not provided)")
+):
+    """
+    Create a new campaign.
+    - If client_id is provided, use that client.
+    - If not, create a default client automatically.
+    """
+    try:
+        # If no client_id, create a default client
+        if not client_id:
+            # Check if user is authenticated
+            user = getattr(request.state, 'user', None)
+            if user and user.get('role') in ['admin', 'client_manager']:
+                # Create a default client for the admin
+                from .storage import create_client
+                client_data = {
+                    "name": campaign_data.client_name or "Default Client",
+                    "industry": campaign_data.industry or "General",
+                    "website": campaign_data.website_url or "",
+                }
+                client_id = create_client(client_data)
+                print(f"[Onboard] Created default client: {client_id}")
+            else:
+                raise HTTPException(status_code=400, detail="client_id required for non-admin users")
+        
+        # Verify client exists
+        from .storage import get_client
+        if not get_client(client_id):
+            raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found")
+        
+        # ... rest of your existing code (create campaign, run agents, etc.)
+        # (Keep the rest of the function exactly as you have it)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    # ... rest of the code (existing)
 @app.get("/api/campaigns")
 def list_campaigns():
     result = []

@@ -332,23 +332,45 @@
                     <h1 class="text-2xl font-bold">Settings</h1>
                     <p class="text-gray-400 text-sm">Configure your marketing agent system</p>
                 </div>
+                <div>
+    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-user-plus text-green-400"></i> Create New Client</h3>
+    <div class="mt-2 flex flex-wrap gap-2">
+        <input type="text" id="newClientName" placeholder="Client Name" class="bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1 text-sm text-gray-300">
+        <input type="text" id="newClientIndustry" placeholder="Industry" class="bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1 text-sm text-gray-300">
+        <button onclick="createClient()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-1 rounded-md text-sm transition">
+            <i class="fa-solid fa-plus"></i> Add Client
+        </button>
+    </div>
+    <div id="clientCreationStatus" class="text-sm mt-1"></div>
+</div>
+<div>
+    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-user-plus text-green-400"></i> Create New Client</h3>
+    <div class="mt-2 flex flex-wrap gap-2">
+        <input type="text" id="newClientName" placeholder="Client Name" class="bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1 text-sm text-gray-300">
+        <input type="text" id="newClientIndustry" placeholder="Industry" class="bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1 text-sm text-gray-300">
+        <button onclick="createClient()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-1 rounded-md text-sm transition">
+            <i class="fa-solid fa-plus"></i> Add Client
+        </button>
+    </div>
+    <div id="clientCreationStatus" class="text-sm mt-1"></div>
+</div>
             </div>
 
             <div class="glass-card rounded-lg p-5 border border-[#30363d] space-y-6">
 
                 <!-- AI Backend -->
                 <div>
-                    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-brain text-purple-400"></i> AI Backend</h3>
-                    <div class="flex items-center gap-3 mt-2">
-                        <span class="text-sm text-gray-400">Foundry (Cloud)</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="llmToggleSettings" class="sr-only peer" checked disabled>
-                            <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-                        </label>
-                        <span class="text-sm text-gray-400">Local (Ollama)</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Currently using <span class="text-yellow-400">Local (Ollama)</span> with llama3.2:3b model</p>
-                </div>
+    <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-brain text-purple-400"></i> AI Backend</h3>
+    <div class="flex items-center gap-3 mt-2">
+        <span class="text-sm text-gray-400">Vertex AI (GCP)</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="llmToggleSettings" class="sr-only peer" checked disabled>
+            <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+        </label>
+        <span class="text-sm text-gray-400">Local (Ollama)</span>
+    </div>
+    <p class="text-xs text-gray-500 mt-1">Currently using <span class="text-yellow-400">Local (Ollama)</span> with llama3.2:3b model</p>
+</div>
 
                 <hr class="border-[#30363d]">
 
@@ -505,14 +527,12 @@
             <div class="bg-[#21262d] p-3 rounded-md flex items-center justify-between">
                 <span class="text-sm font-medium">AI Backend</span>
                 <div class="flex items-center gap-3">
-    <span class="text-sm text-gray-400">Foundry (Cloud)</span>
-    <label class="relative inline-flex items-center cursor-pointer">
-        <input type="checkbox" id="llmToggle" class="sr-only peer">
-        <div class="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:bg-blue-600 transition-colors duration-200 ease-in-out">
-            <div class="absolute top-[2px] left-[2px] bg-white rounded-full h-5 w-5 transition-all duration-200 ease-in-out peer-checked:translate-x-5"></div>
-        </div>
-    </label>
-    <span class="text-sm text-gray-400">Local (Ollama)</span>
+    <span class="text-xs text-gray-400">Vertex AI (GCP)</span>
+<label class="relative inline-flex items-center cursor-pointer">
+    <input type="checkbox" id="llmToggle" class="sr-only peer" checked disabled>
+    <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+</label>
+<span class="text-xs text-gray-400">Local (Ollama)</span>
 </div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
@@ -676,7 +696,32 @@
             if (currentVal) select.value = currentVal;
         });
     }
-
+async function createClient() {
+    const name = document.getElementById('newClientName').value.trim();
+    const industry = document.getElementById('newClientIndustry').value.trim();
+    if (!name) { alert('Client name is required'); return; }
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    try {
+        const res = await fetch(`${API_BASE}/api/clients`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ name, industry })
+        });
+        if (!res.ok) throw new Error('Failed to create client');
+        const data = await res.json();
+        document.getElementById('clientCreationStatus').innerHTML = `<span class="text-green-400">✅ Client created! ID: ${data.client_id}</span>`;
+        loadClients();
+        document.getElementById('newClientName').value = '';
+        document.getElementById('newClientIndustry').value = '';
+    } catch (e) {
+        document.getElementById('clientCreationStatus').innerHTML = `<span class="text-red-400">❌ ${e.message}</span>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Client';
+    }
+}
     // ================================================================
     // CREATIVE REVIEW
     // ================================================================
@@ -1016,50 +1061,56 @@
     // ================================================================
     // SUBMIT ONBOARD
     // ================================================================
-    async function submitOnboard(e) {
-        e.preventDefault();
-        const payload = {
-            client_name: document.getElementById('clientName').value,
-            website_url: document.getElementById('websiteUrl').value,
-            language: document.getElementById('campaignLanguage').value,
-            industry: document.getElementById('industry').value,
-            daily_budget: parseFloat(document.getElementById('dailyBudget').value),
-            target_geo: document.getElementById('targetGeo').value.split(',').map(s => s.trim()),
-            tone_of_voice: document.getElementById('toneOfVoice').value,
-            cultural_triggers: document.getElementById('culturalTriggers').value.split(',').map(s => s.trim()),
-            llm_backend: 'local'
-        };
+   async function submitOnboard(e) {
+    e.preventDefault();
+    const payload = {
+        client_name: document.getElementById('clientName').value,
+        website_url: document.getElementById('websiteUrl').value,
+        language: document.getElementById('campaignLanguage').value,
+        industry: document.getElementById('industry').value,
+        daily_budget: parseFloat(document.getElementById('dailyBudget').value),
+        target_geo: document.getElementById('targetGeo').value.split(',').map(s => s.trim()),
+        tone_of_voice: document.getElementById('toneOfVoice').value,
+        cultural_triggers: document.getElementById('culturalTriggers').value.split(',').map(s => s.trim()),
+        llm_backend: 'local',
+        objective: document.getElementById('objective').value,
+        special_events: document.getElementById('specialEvents').value.split(',').map(s => s.trim()).filter(Boolean),
+        product_keywords: document.getElementById('productKeywords').value.split(',').map(s => s.trim()).filter(Boolean)
+    };
 
-        const btn = document.querySelector('#onboardModal button[type="submit"]');
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Orchestrating...';
-        btn.disabled = true;
+    const btn = document.querySelector('#onboardModal button[type="submit"]');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Orchestrating...';
+    btn.disabled = true;
 
-        try {
-            let url = `${API_BASE}/api/campaigns/onboard`;
-            if (currentClientId) {
-                url += `?client_id=${currentClientId}`;
-            }
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error('Failed to create campaign');
-            const data = await res.json();
-            alert(`✅ Campaign ${data.campaign_id} created!\n${data.message}`);
-            closeOnboardModal();
-            loadCampaigns();
-            setTimeout(() => {
-                document.getElementById('creativeCampaignSelect').value = data.campaign_id;
-                loadCreatives();
-            }, 1000);
-        } catch (error) {
-            alert(`❌ Error: ${error.message}`);
-        } finally {
-            btn.innerHTML = '<i class="fa-regular fa-rocket"></i> Start Orchestration';
-            btn.disabled = false;
+    try {
+        let url = `${API_BASE}/api/campaigns/onboard`;
+        // Always send client_id – if currentClientId is empty, backend will create one
+        if (currentClientId) {
+            url += `?client_id=${currentClientId}`;
         }
+        // If no client_id, the backend will handle it (we just fixed that)
+        
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Failed to create campaign');
+        const data = await res.json();
+        alert(`✅ Campaign ${data.campaign_id} created!\n${data.message}`);
+        closeOnboardModal();
+        loadCampaigns();
+        setTimeout(() => {
+            document.getElementById('creativeCampaignSelect').value = data.campaign_id;
+            loadCreatives();
+        }, 1000);
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    } finally {
+        btn.innerHTML = '<i class="fa-regular fa-rocket"></i> Start Orchestration';
+        btn.disabled = false;
     }
+}
 
     // ================================================================
     // PLATFORM STATUS
