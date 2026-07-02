@@ -108,12 +108,15 @@ class CampaignObjective(str, Enum):
     ENGAGEMENT = "engagement"
 
 class OnboardRequest(BaseModel):
+    # Required fields
     client_name: str = Field(..., min_length=1, max_length=100)
     website_url: str = Field(..., pattern=r"^https?://.+")
-    language: Language = Language.EN_US
     industry: str = Field(..., min_length=1)
     daily_budget: float = Field(..., gt=0, le=10000)
     target_geo: List[str] = Field(..., min_items=1)
+    
+    # Optional fields with defaults
+    language: Language = Language.EN_US
     tone_of_voice: ToneOfVoice = ToneOfVoice.PROFESSIONAL
     cultural_triggers: List[str] = Field(default_factory=list)
     llm_backend: str = Field(default="local", pattern="^(foundry|local)$")
