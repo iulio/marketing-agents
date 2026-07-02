@@ -266,6 +266,23 @@ def get_client(client_id: str) -> Optional[Dict]:
         return item
     return None
 
+def delete_client(client_id: str) -> bool:
+    """Delete a client and all associated campaigns."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Delete client campaigns first
+        cursor.execute('DELETE FROM campaigns WHERE client_id = ?', (client_id,))
+        # Delete client
+        cursor.execute('DELETE FROM clients WHERE id = ?', (client_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[Storage] Error deleting client: {e}")
+        conn.close()
+        return False
+
 # ================================================================
 # USER FUNCTIONS
 # ================================================================
