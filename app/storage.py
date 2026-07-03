@@ -147,6 +147,37 @@ def get_all_campaigns() -> List[Dict]:
     return result
 
 def get_client_campaigns(client_id: str) -> List[Dict]:
+
+# ================================================================
+# CAMPAIGN DELETE FUNCTION
+# ================================================================
+
+def delete_campaign(campaign_id: str) -> bool:
+    """Delete a campaign and its associated data (optimization history)."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Delete optimization history first (foreign key relationship)
+        cursor.execute(
+            'DELETE FROM optimization_history WHERE campaign_id = ?', 
+            (campaign_id,)
+        )
+        
+        # Delete the campaign
+        cursor.execute(
+            'DELETE FROM campaigns WHERE campaign_id = ?', 
+            (campaign_id,)
+        )
+        
+        conn.commit()
+        deleted_rows = cursor.rowcount
+        conn.close()
+        return deleted_rows > 0
+    except Exception as e:
+        print(f"[Storage] Error deleting campaign {campaign_id}: {e}")
+        conn.close()
+        return False
+
     """Get all campaigns for a specific client."""
     conn = get_db_connection()
     cursor = conn.cursor()

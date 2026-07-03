@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agentic Marketing Control Room</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body { background: #0f1117; font-family: 'Inter', sans-serif; }
@@ -154,6 +156,20 @@
                 </div>
             </div>
 
+
+            <!-- A/B TESTING PANEL -->
+            <div class="glass-card rounded-lg p-5 border border-[#30363d]">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-flask text-purple-400"></i> A/B Testing</h3>
+                    <button onclick="createABTest()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-3 py-1 rounded text-xs transition">
+                        <i class="fa-solid fa-plus"></i> Create Test
+                    </button>
+                </div>
+                <div id="abTestResults" class="mt-2 text-xs text-gray-400">
+                    No active tests for this campaign.
+                </div>
+            </div>
+
             <!-- PERFORMANCE ANALYST PANEL -->
             <div class="glass-card rounded-lg p-5 border border-[#30363d]">
                 <div class="flex justify-between items-center mb-4">
@@ -181,6 +197,58 @@
                 </div>
                 <div id="optimizationResults" class="mt-3"></div>
             </div>
+
+            <!-- ANALYTICS DASHBOARD -->
+            <div id="analytics-dashboard-section" style="display:none;" class="space-y-6">
+                <div class="glass-card rounded-lg p-5 border border-[#30363d]">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-chart-simple text-blue-400"></i> Campaign Analytics
+                        </h2>
+                        <div class="flex gap-2">
+                            <select id="analyticsCampaignSelect" onchange="loadAnalyticsData()" 
+                                    class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                                <option value="all">All Campaigns</option>
+                            </select>
+                            <select id="analyticsDaysSelect" onchange="loadAnalyticsData()"
+                                    class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                                <option value="7">Last 7 Days</option>
+                                <option value="30" selected>Last 30 Days</option>
+                                <option value="90">Last 90 Days</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-4 mb-4" id="analyticsSummaryCards">
+                        <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d]">
+                            <p class="text-xs text-gray-400">Total Impressions</p>
+                            <p class="text-xl font-bold text-blue-400" id="analyticsImpressions">0</p>
+                        </div>
+                        <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d]">
+                            <p class="text-xs text-gray-400">Total Clicks</p>
+                            <p class="text-xl font-bold text-green-400" id="analyticsClicks">0</p>
+                        </div>
+                        <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d]">
+                            <p class="text-xs text-gray-400">Avg CTR</p>
+                            <p class="text-xl font-bold text-yellow-400" id="analyticsCtr">0%</p>
+                        </div>
+                        <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d]">
+                            <p class="text-xs text-gray-400">Total Spend</p>
+                            <p class="text-xl font-bold text-purple-400" id="analyticsSpend">$0</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d] h-64">
+                            <p class="text-xs text-gray-400 mb-2">Impressions & Clicks</p>
+                            <canvas id="impressionsChart" style="width:100%;height:250px;"></canvas>
+                        </div>
+                        <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d] h-64">
+                            <p class="text-xs text-gray-400 mb-2">CTR Trend</p>
+                            <canvas id="ctrChart" style="width:100%;height:250px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- CAMPAIGN TABLE -->
             <div class="glass-card rounded-lg p-5 border border-[#30363d] overflow-x-auto">
@@ -218,6 +286,71 @@
             </div>
 
         </div> <!-- END section-dashboard -->
+
+        <!-- ============================================================ -->
+        <!-- SECTION: ANALYTICS -->
+        <!-- ============================================================ -->
+        <div id="section-analytics" style="display:none;" class="space-y-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">Analytics Dashboard</h1>
+                    <p class="text-gray-400 text-sm">Performance insights and trends across all campaigns</p>
+                </div>
+            </div>
+            <!-- Analytics content loaded dynamically via JavaScript -->
+            <div id="analyticsDashboardContent" style="display:none;">
+                <div class="space-y-6">
+                    <div class="glass-card rounded-lg p-5 border border-[#30363d]">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold flex items-center gap-2">
+                                <i class="fa-solid fa-chart-simple text-blue-400"></i> Campaign Analytics
+                            </h2>
+                            <div class="flex gap-2">
+                                <select id="analyticsCampaignSelect" onchange="loadAnalyticsData()" 
+                                        class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                                    <option value="all">All Campaigns</option>
+                                </select>
+                                <select id="analyticsDaysSelect" onchange="loadAnalyticsData()"
+                                        class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
+                                    <option value="7">Last 7 Days</option>
+                                    <option value="30" selected>Last 30 Days</option>
+                                    <option value="90">Last 90 Days</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-4 gap-4 mb-4" id="analyticsSummaryCards">
+                            <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d]">
+                                <p class="text-xs text-gray-400">Total Impressions</p>
+                                <p class="text-xl font-bold text-blue-400" id="analyticsImpressions">0</p>
+                            </div>
+                            <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d]">
+                                <p class="text-xs text-gray-400">Total Clicks</p>
+                                <p class="text-xl font-bold text-green-400" id="analyticsClicks">0</p>
+                            </div>
+                            <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d]">
+                                <p class="text-xs text-gray-400">Avg CTR</p>
+                                <p class="text-xl font-bold text-yellow-400" id="analyticsCtr">0%</p>
+                            </div>
+                            <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d]">
+                                <p class="text-xs text-gray-400">Total Spend</p>
+                                <p class="text-xl font-bold text-purple-400" id="analyticsSpend">$0</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d] h-64">
+                                <p class="text-xs text-gray-400 mb-2">Impressions & Clicks</p>
+                                <canvas id="impressionsChart" style="width:100%;height:250px;"></canvas>
+                            </div>
+                            <div class="bg-[#161b22] p-3 rounded-lg border border-[#30363d] h-64">
+                                <p class="text-xs text-gray-400 mb-2">CTR Trend</p>
+                                <canvas id="ctrChart" style="width:100%;height:250px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
 
         <!-- ============================================================ -->
@@ -662,6 +795,8 @@
                         <button class="text-gray-400 hover:text-white ml-2"><i class="fa-regular fa-pause"></i></button>
                     `}
                     <button class="text-gray-400 hover:text-white ml-2"><i class="fa-regular fa-clone"></i></button>
+                    <button onclick="deleteCampaign('${c.campaign_id}')" class="text-red-400 hover:text-red-300 ml-2"><i class="fa-regular fa-trash-can"></i></button>
+
                 </td>
             `;
             tbody.appendChild(tr);
@@ -696,6 +831,166 @@
             if (currentVal) select.value = currentVal;
         });
     }
+
+    // ================================================================
+    // A/B TESTING FUNCTIONS
+    // ================================================================
+    let currentABTestId = null;
+
+    async function createABTest() {
+        const campaignId = document.getElementById('creativeCampaignSelect').value;
+        if (!campaignId) {
+            alert('Please select a campaign first.');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/creatives`, {
+                headers: getHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to fetch creatives');
+            const creatives = await res.json();
+            
+            // Check if we have at least 2 Google ads
+            const googleAds = creatives.google_ads || [];
+            if (googleAds.length < 2) {
+                alert('Need at least 2 Google Ads to create an A/B test.');
+                return;
+            }
+
+            // Prepare variants from Google Ads
+            const variants = googleAds.map((ad, idx) => ({
+                id: `variant_${idx + 1}`,
+                name: ad.headline || `Variant ${idx + 1}`,
+                content: ad
+            }));
+
+            // Create test
+            const testRes = await fetch(`${API_BASE}/api/campaigns/${campaignId}/ab-test`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(variants)
+            });
+            if (!testRes.ok) throw new Error('Failed to create A/B test');
+            const testData = await testRes.json();
+            
+            currentABTestId = testData.test_id;
+            alert(`✅ A/B test created! Test ID: ${testData.test_id}`);
+            await loadABTestResults(campaignId);
+        } catch (e) {
+            alert(`❌ Error: ${e.message}`);
+            console.error(e);
+        }
+    }
+
+    async function loadABTestResults(campaignId) {
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/ab-test/results`, {
+                headers: getHeaders()
+            });
+            if (!res.ok) {
+                // 404 means no test yet
+                document.getElementById('abTestResults').innerHTML = 
+                    '<span class="text-gray-500">No A/B tests available for this campaign.</span>';
+                return;
+            }
+            const data = await res.json();
+            
+            if (data.status === 'running') {
+                document.getElementById('abTestResults').innerHTML = `
+                    <div class="text-yellow-400">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Test running... 
+                        ${data.remaining_hours ? `${Math.round(data.remaining_hours)} hours remaining` : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            if (data.status === 'completed') {
+                const winners = data.winners || [];
+                const losers = data.losers || [];
+                let html = `<div class="bg-[#161b22] p-2 rounded">
+                    <p class="text-green-400 font-medium">✅ Test Completed</p>
+                    <p class="text-xs text-gray-400">Winners:</p>
+                    <ul class="text-sm text-green-300">`;
+                winners.forEach(w => {
+                    html += `<li>• ${w.data.name || w.variant_id} (CTR: ${w.ctr}%)</li>`;
+                });
+                html += `</ul>`;
+                if (losers.length) {
+                    html += `<p class="text-xs text-gray-400 mt-1">Losers:</p>
+                        <ul class="text-sm text-red-300">`;
+                    losers.forEach(l => {
+                        html += `<li>• ${l.data.name || l.variant_id} (CTR: ${l.ctr}%)</li>`;
+                    });
+                    html += `</ul>`;
+                }
+                html += `<div class="mt-2">
+                    <button onclick="promoteABWinner('${campaignId}')" 
+                            class="bg-[#238636] hover:bg-[#2ea043] text-white px-2 py-1 rounded text-xs transition">
+                        Promote Winner
+                    </button>
+                </div>`;
+                html += `</div>`;
+                document.getElementById('abTestResults').innerHTML = html;
+                return;
+            }
+
+            document.getElementById('abTestResults').innerHTML = 
+                `<span class="text-gray-500">No test data available.</span>`;
+        } catch (e) {
+            console.error('Error loading A/B test results:', e);
+            document.getElementById('abTestResults').innerHTML = 
+                '<span class="text-red-400">Error loading test results.</span>';
+        }
+    }
+
+    async function promoteABWinner(campaignId) {
+        if (!confirm('Promote the winning variant to the main campaign?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/ab-test/promote`, {
+                method: 'POST',
+                headers: getHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to promote winner');
+            const data = await res.json();
+            alert(`✅ ${data.message}`);
+            loadABTestResults(campaignId);
+        } catch (e) {
+            alert(`❌ Error: ${e.message}`);
+        }
+    }
+
+    // ================================================================
+    // CAMPAIGN DELETE FUNCTION
+    // ================================================================
+    async function deleteCampaign(campaignId) {
+        if (!confirm(`Are you sure you want to delete campaign ${campaignId}? This action cannot be undone.`)) {
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
+            if (!res.ok) throw new Error('Failed to delete campaign');
+            const data = await res.json();
+            alert(`✅ ${data.message}`);
+            loadCampaigns(); // Refresh the table
+            
+            // Clear creative preview if this campaign was selected
+            const select = document.getElementById('creativeCampaignSelect');
+            if (select.value === campaignId) {
+                select.value = '';
+                document.getElementById('creativeCarousel').innerHTML = 
+                    '<div class="text-gray-400 text-sm p-4">No creatives loaded. Select a campaign above.</div>';
+            }
+        } catch (e) {
+            alert(`❌ Error: ${e.message}`);
+            console.error(e);
+        }
+    }
+
 async function createClient() {
     const name = document.getElementById('newClientName').value.trim();
     const industry = document.getElementById('newClientIndustry').value.trim();
@@ -742,6 +1037,8 @@ async function createClient() {
             renderCreatives('creativeCarousel', creatives);
             renderCreatives('creativeCarouselStudio', creatives);
             document.getElementById('creativePanelInfo').textContent = `Campaign: ${campaignId}`;
+            await loadABTestResults(campaignId);
+
         } catch (e) {
             console.error('Failed to load creatives:', e);
             const msg = '<div class="text-red-400 text-sm p-4">Failed to load creatives.</div>';
@@ -1177,6 +1474,157 @@ async function createClient() {
     // ================================================================
     // INIT
     // ================================================================
+
+    // ================================================================
+    // ANALYTICS & CHARTS FUNCTIONS
+    // ================================================================
+    let impressionsChart = null;
+    let ctrChart = null;
+
+    async function loadAnalyticsData() {
+        const campaignId = document.getElementById('analyticsCampaignSelect').value;
+        const days = document.getElementById('analyticsDaysSelect').value;
+        
+        let url = `${API_BASE}/api/analytics/all`;
+        if (campaignId !== 'all') {
+            url = `${API_BASE}/api/analytics/${campaignId}?days=${days}`;
+        }
+        
+        try {
+            const res = await fetch(url, { headers: getHeaders() });
+            if (!res.ok) throw new Error('Failed to load analytics');
+            const data = await res.json();
+            
+            // Update summary cards
+            if (data.aggregated) {
+                document.getElementById('analyticsImpressions').textContent = data.aggregated.total_impressions.toLocaleString();
+                document.getElementById('analyticsClicks').textContent = data.aggregated.total_clicks.toLocaleString();
+                document.getElementById('analyticsCtr').textContent = `${data.aggregated.avg_ctr}%`;
+                document.getElementById('analyticsSpend').textContent = `$${data.aggregated.total_spend.toFixed(2)}`;
+            } else if (data.summary && data.daily) {
+                const totalImpressions = data.daily.reduce((sum, d) => sum + d.impressions, 0);
+                const totalClicks = data.daily.reduce((sum, d) => sum + d.clicks, 0);
+                const totalSpend = data.daily.reduce((sum, d) => sum + d.spend, 0);
+                const avgCtr = data.daily.reduce((sum, d) => sum + d.ctr, 0) / (data.daily.length || 1);
+                document.getElementById('analyticsImpressions').textContent = totalImpressions.toLocaleString();
+                document.getElementById('analyticsClicks').textContent = totalClicks.toLocaleString();
+                document.getElementById('analyticsCtr').textContent = `${avgCtr.toFixed(2)}%`;
+                document.getElementById('analyticsSpend').textContent = `$${totalSpend.toFixed(2)}`;
+                
+                renderCharts(data.daily);
+            }
+        } catch (e) {
+            console.error('Failed to load analytics:', e);
+            document.getElementById('analyticsImpressions').textContent = 'Error';
+            document.getElementById('analyticsClicks').textContent = '0';
+            document.getElementById('analyticsCtr').textContent = '0%';
+            document.getElementById('analyticsSpend').textContent = '$0';
+        }
+    }
+
+    function renderCharts(dailyData) {
+        const labels = dailyData.map(d => d.date);
+        const impressions = dailyData.map(d => d.impressions);
+        const clicks = dailyData.map(d => d.clicks);
+        const ctr = dailyData.map(d => d.ctr);
+        
+        // Impressions & Clicks Chart
+        if (impressionsChart) {
+            impressionsChart.destroy();
+            impressionsChart = null;
+        }
+        const ctx1 = document.getElementById('impressionsChart').getContext('2d');
+        impressionsChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Impressions',
+                        data: impressions,
+                        borderColor: '#58a6ff',
+                        backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Clicks',
+                        data: clicks,
+                        borderColor: '#3fb950',
+                        backgroundColor: 'rgba(63, 185, 80, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        labels: { color: '#8b949e', font: { size: 11 } }
+                    },
+                    title: { display: true, text: 'Performance Over Time' }
+                },
+                scales: {
+                    x: { ticks: { color: '#8b949e', font: { size: 10 } } },
+                    y: { ticks: { color: '#8b949e', font: { size: 10 } } }
+                }
+            }
+        });
+        
+        // CTR Chart
+        if (ctrChart) {
+            ctrChart.destroy();
+            ctrChart = null;
+        }
+        const ctx2 = document.getElementById('ctrChart').getContext('2d');
+        ctrChart = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'CTR (%)',
+                    data: ctr,
+                    borderColor: '#f0883e',
+                    backgroundColor: 'rgba(240, 136, 62, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        labels: { color: '#8b949e', font: { size: 11 } }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: '#8b949e', font: { size: 10 } } },
+                    y: { ticks: { color: '#8b949e', font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // Show analytics dashboard when navigation clicks "Analytics" link (optional future feature)
+    document.querySelectorAll('#sidebarNav .nav-link[data-section="analytics"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('[id^="section-"]').forEach(section => section.style.display = 'none');
+            this.classList.add('active');
+            const target = document.getElementById('section-analytics');
+            if (target) target.style.display = 'block';
+            
+            // Also load analytics data for all campaigns by default
+            setTimeout(() => {
+                document.getElementById('analyticsCampaignSelect').value = 'all';
+                loadAnalyticsData();
+            }, 500);
+        });
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
         if (!getToken()) {
             window.location.href = '/login.html';

@@ -1,6 +1,6 @@
 # app/main.py - MAIN APPLICATION
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request , Query
+from fastapi import FastAPI, HTTPException, Request , Query, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -9,10 +9,15 @@ from typing import Dict, Any
 
 from .models import OnboardRequest, CampaignResponse
 from .agents import graph, AgencyState
-from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns, delete_client
+from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns, delete_client, delete_campaign
+from .analytics import generate_daily_metrics, aggregate_metrics
+from .scheduler import CampaignScheduler
 from .analyst import PerformanceMonitor, run_immediate_optimization, fetch_real_kpis, refresh_kpis
 from .auth import create_default_admin, generate_token, verify_user, get_user_by_email
 from .middleware import require_role
+
+from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
+
 from .kpi_fetcher import KPIFetcher
 from pydantic import BaseModel
 
@@ -47,6 +52,9 @@ async def lifespan(app: FastAPI):
                 'client_name': item['state'].get('client_profile', {}).get('client_name', 'Unknown'),
                 'language': item['state'].get('client_profile', {}).get('language', 'en-US'),
                 'created_at': item['created_at']
+
+scheduler = CampaignScheduler()
+
             }
         print(f"[Startup] Loaded {len(db_campaigns)} campaigns from database")
     except Exception as e:
@@ -264,6 +272,91 @@ async def approve_campaign(campaign_id: str):
     data["status"] = "active"
     campaigns[campaign_id] = data
     
+
+@app.delete("/api/campaigns/{campaign_id}")
+@require_role(["admin", "client_manager"])
+async def delete_campaign_endpoint(request: Request, campaign_id: str):
+    """Delete a campaign and its associated data."""
+    # Check if campaign exists in memory or database
+    if campaign_id not in campaigns:
+        # Try to get from database
+        from .storage import get_client_campaigns
+        try:
+            client = request.state.user
+            if client['role'] != 'admin':
+                raise HTTPException(status_code=403, detail="Access denied")
+            
+            all_campaigns = get_all_campaigns()
+            db_campaign_found = any(c['campaign_id'] == campaign_id for c in all_campaigns)
+            
+            if not db_campaign_found:
+                raise HTTPException(status_code=404, detail="Campaign not found in database")
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=str(e))
+    
+    # Remove from memory if it exists there
+    if campaign_id in campaigns:
+        del campaigns[campaign_id]
+    
+    # Remove from database
+    from .storage import delete_campaign
+    success = await delete_campaign(campaign_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Campaign not found in database")
+    
+    return {"message": f"Campaign {campaign_id} deleted successfully"}
+
+@app.get("/api/campaigns/{campaign_id}/report")
+async def get_campaign_report(campaign_id: str):
+    """Generate and download a PDF report for the campaign."""
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    data = campaigns[campaign_id]
+    state = data["state"]
+    client_profile = state.get("client_profile", {})
+    
+    # Get campaign metrics
+    kpis = fetch_real_kpis(campaign_id, client_profile.get("platform", "auto"))
+    if not kpis:
+        kpis = {
+            "impressions": 0,
+            "clicks": 0,
+            "ctr": 0,
+            "cpc": 0.0,
+            "conversions": 0,
+            "roas": 0.0,
+            "cost": 0.0
+        }
+    
+    # Get analysis (use last optimization or generate default)
+    from .storage import get_optimization_history
+    history = get_optimization_history(campaign_id, limit=1)
+    if history:
+        analysis = {"summary": history[0].get("action_description", ""), "recommendations": []}
+    else:
+        analysis = {
+            "summary": "Campaign performing within expected parameters.",
+            "recommendations": [],
+            "creative_feedback": None,
+            "score": 75
+        }
+    
+    # Generate PDF report
+    from .reporting import ReportGenerator
+    generator = ReportGenerator()
+    pdf_bytes = generator.generate_report(
+        campaign_data={"client_name": client_profile.get("client_name", "Unnamed Campaign")},
+        metrics=kpis,
+        analysis=analysis
+    )
+    
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={campaign_id}_report.pdf"}
+    )
+
     save_campaign_state(campaign_id, final_state, "active", data.get("client_id"))
     
     return {"status": "approved", "campaign_id": campaign_id}
@@ -363,6 +456,113 @@ def get_agent_status():
         "launch": "idle",
         "analyst": "idle"
     }
+
+
+# ================================================================
+# ANALYTICS ENDPOINTS
+# ================================================================
+@app.get("/api/analytics/{campaign_id}")
+async def get_analytics(campaign_id: str, days: int = Query(30, ge=1, le=90)):
+    """Get analytics data for a campaign."""
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Generate daily metrics (simulated for now, can use real API later)
+    daily_data = generate_daily_metrics(campaign_id, days)
+    
+    # Get current KPIs from memory
+    state = campaigns[campaign_id]["state"]
+    deployment = state.get("deployment_status", {})
+    
+    return {
+        "campaign_id": campaign_id,
+        "daily": daily_data,
+        "summary": {
+            "status": campaigns[campaign_id].get("status", "unknown"),
+            "created_at": campaigns[campaign_id].get("created_at"),
+            "total_spend": sum(d["spend"] for d in daily_data),
+            "avg_ctr": round(sum(d["ctr"] for d in daily_data) / len(daily_data), 2) if daily_data else 0,
+            "trend": get_performance_trend(daily_data, "impressions")
+        }
+    }
+
+@app.get("/api/analytics/all")
+async def get_all_analytics():
+    """Get aggregated analytics for all campaigns."""
+    all_campaigns = []
+    for cid, data in campaigns.items():
+        state = data.get("state", {})
+        creatives = state.get("creative_assets", {})
+        kpis = kpi_store.get(cid, {})
+        
+        # Get client profile name
+        client_name = ""
+        try:
+            client = get_client(data.get("client_id"))
+            if client:
+                client_name = client.get("name", "Unnamed")
+        except Exception:
+            pass
+        
+        all_campaigns.append({
+            "campaign_id": cid,
+            "name": client_name or state.get("client_profile", {}).get("client_name", "Unknown"),
+            "status": data.get("status", "unknown"),
+            "metrics": kpis,
+            "creatives_count": {
+                "google": len(creatives.get("google_ads", [])),
+                "meta": len(creatives.get("meta_ads", []))
+            }
+        })
+    
+    aggregated = aggregate_metrics(all_campaigns)
+    
+    return {
+        "campaigns": all_campaigns,
+        "aggregated": aggregated
+    }
+
+# ================================================================
+# SCHEDULING ENDPOINTS
+# ================================================================
+from pydantic import BaseModel
+
+class ScheduleData(BaseModel):
+    start_date: str
+    end_date: str
+    start_time: str = "00:00"
+    end_time: str = "23:59"
+
+@app.post("/api/campaigns/{campaign_id}/schedule")
+@require_role(["admin", "client_manager"])
+async def schedule_campaign_endpoint(campaign_id: str, schedule_data: ScheduleData):
+    """Schedule a campaign for specific dates/times."""
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    result = scheduler.schedule_campaign(
+        campaign_id,
+        schedule_data.start_date,
+        schedule_data.end_date,
+        schedule_data.start_time,
+        schedule_data.end_time
+    )
+    return {"success": result, "campaign_id": campaign_id}
+
+@app.delete("/api/campaigns/{campaign_id}/schedule")
+@require_role(["admin", "client_manager"])
+async def unschedule_campaign_endpoint(campaign_id: str):
+    """Remove schedule for a campaign."""
+    result = scheduler.unschedule_campaign(campaign_id)
+    return {"success": result, "campaign_id": campaign_id}
+
+@app.get("/api/campaigns/{campaign_id}/schedule")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def get_campaign_schedule_endpoint(campaign_id: str):
+    """Get schedule for a campaign."""
+    return scheduler.get_schedule(campaign_id)
+
+# ================================================================
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
