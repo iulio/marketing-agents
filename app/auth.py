@@ -9,7 +9,7 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-from .storage import get_user_by_email, verify_user, create_user, get_all_users
+from .storage import get_user_by_email, verify_user, create_user, get_all_users, update_user_password
 
 def generate_token(user_id: str, email: str, role: str, client_id: Optional[str] = None) -> str:
     """Generate a JWT token for the user."""
@@ -48,14 +48,19 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def create_default_admin():
     """Create a default admin user if none exists."""
+    admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@agency.com")
+    admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
     users = get_all_users()
     if not users:
         print("[Auth] Creating default admin user...")
         create_user({
-            "email": "admin@agency.com",
-            "password": "admin123",
+            "email": admin_email,
+            "password": admin_password,
             "full_name": "Agency Admin",
             "role": "admin",
             "client_id": None
         })
-        print("[Auth] Default admin created: admin@agency.com / admin123")
+        print(f"[Auth] Default admin created: {admin_email}")
+    elif os.getenv("RESET_DEFAULT_ADMIN_PASSWORD", "false").lower() == "true":
+        if update_user_password(admin_email, admin_password):
+            print(f"[Auth] Default admin password reset: {admin_email}")

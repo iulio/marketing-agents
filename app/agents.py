@@ -6,14 +6,7 @@ from typing import TypedDict, Literal, Dict, Any
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-# LLM imports
-from langchain_community.chat_models import ChatOllama
-
-# Optional: GCP Vertex AI (only if you have credentials)
-try:
-    from langchain_google_vertexai import ChatVertexAI
-except ImportError:
-    ChatVertexAI = None
+from .cloud_llm import extract_json_object, get_cloud_llm
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -32,36 +25,14 @@ class AgencyState(TypedDict):
     optimization_actions: list
 
 # ================================================================
-# LLM INITIALIZATION (Local by default, Vertex AI optional)
+# LLM INITIALIZATION
 # ================================================================
 def get_llm():
-    """Initialize the LLM based on environment variable."""
-    backend = os.getenv("LLM_BACKEND", "local").lower()
-    
-    if backend == "vertex" and ChatVertexAI is not None:
-        # Try to use GCP Vertex AI
-        project = os.getenv("GCP_PROJECT_ID")
-        location = os.getenv("GCP_LOCATION", "us-central1")
-        model = os.getenv("VERTEX_MODEL", "gemini-1.5-flash")
-        
-        if project:
-            print("[LLM] Using Vertex AI (GCP).")
-            return ChatVertexAI(
-                project=project,
-                location=location,
-                model_name=model,
-                temperature=0.7,
-            )
-        else:
-            print("[LLM] Vertex AI requested but GCP_PROJECT_ID not set. Falling back to Ollama.")
-    
-    # Default: local Ollama
-    print("[LLM] Using local Ollama.")
-    return ChatOllama(
-        model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
-        base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        temperature=0.7,
-    )
+    """Initialize Google Cloud Vertex AI Gemini LLM."""
+    model = os.getenv("GEMINI_MODEL", os.getenv("CLOUD_LLM_MODEL", "gemini-2.5-flash"))
+    location = os.getenv("GOOGLE_CLOUD_LOCATION", os.getenv("GCP_LOCATION", "global"))
+    print(f"[LLM] Using Vertex AI Gemini model: {model} ({location})")
+    return get_cloud_llm(temperature=0.7)
 
 llm = get_llm()
 
@@ -136,8 +107,9 @@ def orchestrator_node(state: AgencyState) -> AgencyState:
             start = content.find('{')
             end = content.rfind('}') + 1
             if start != -1 and end != 0:
-                json_str = content[start:end]
-                plan = json.loads(json_str)
+                plan = extract_json_object(content)
+                if plan is None:
+                    raise ValueError("No JSON object found in LLM response")
             else:
                 print("[Orchestrator] Could not parse JSON. Using fallback.")
                 plan = fallback_strategy()
@@ -183,8 +155,9 @@ def researcher_node(state: AgencyState) -> AgencyState:
             start = content.find('{')
             end = content.rfind('}') + 1
             if start != -1 and end != 0:
-                json_str = content[start:end]
-                research = json.loads(json_str)
+                research = extract_json_object(content)
+                if research is None:
+                    raise ValueError("No JSON object found in LLM response")
             else:
                 print("[Researcher] Could not parse JSON. Using fallback.")
                 research = fallback_research()
@@ -242,8 +215,9 @@ def creative_node(state: AgencyState) -> AgencyState:
             start = content.find('{')
             end = content.rfind('}') + 1
             if start != -1 and end != 0:
-                json_str = content[start:end]
-                creatives = json.loads(json_str)
+                creatives = extract_json_object(content)
+                if creatives is None:
+                    raise ValueError("No JSON object found in LLM response")
             else:
                 print("[Creative] Could not parse JSON. Using fallback.")
                 creatives = fallback_creatives()
