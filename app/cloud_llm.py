@@ -39,6 +39,7 @@ class CloudLLM:
             config=types.GenerateContentConfig(
                 max_output_tokens=self.max_tokens,
                 temperature=self.temperature,
+                response_mime_type="application/json",
             ),
         )
         return LLMResponse(content=response.text or "")
