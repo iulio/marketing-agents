@@ -1,5 +1,6 @@
 # app/middleware.py
 from fastapi import Request, HTTPException
+from functools import wraps
 from typing import Optional
 from .auth import verify_token
 
@@ -13,6 +14,7 @@ async def get_current_user(token: str) -> Optional[dict]:
 def require_role(allowed_roles: list):
     """Decorator to check if user has required role."""
     def decorator(func):
+        @wraps(func)
         async def wrapper(*args, **kwargs):
             # Get token from request
             request = kwargs.get('request')

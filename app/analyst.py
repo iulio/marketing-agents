@@ -12,8 +12,7 @@ import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
-from langchain_community.chat_models import ChatOllama
-
+from .cloud_llm import extract_json_object, get_cloud_llm
 from .storage import save_optimization_action, save_campaign_state
 from .kpi_fetcher import KPIFetcher
 from .agents import creative_node
@@ -30,11 +29,7 @@ MIN_ROAS = float(os.getenv("MIN_ROAS", "1.5"))
 # ================================================================
 # LLM INITIALIZATION
 # ================================================================
-llm = ChatOllama(
-    model="llama3.2:3b",
-    base_url="http://localhost:11434",
-    temperature=0.3,
-)
+llm = get_cloud_llm(temperature=0.3)
 
 # ================================================================
 # KPI FETCHER
@@ -84,8 +79,9 @@ def analyze_performance(campaign_data: Dict[str, Any]) -> Dict[str, Any]:
         start = content.find('{')
         end = content.rfind('}') + 1
         if start != -1 and end != 0:
-            json_str = content[start:end]
-            return json.loads(json_str)
+            parsed = extract_json_object(content)
+            if parsed is not None:
+                return parsed
     except:
         pass
     

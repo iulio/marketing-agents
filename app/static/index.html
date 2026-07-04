@@ -61,7 +61,7 @@
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-bold">Agency Control Room</h1>
-                    <p class="text-gray-400 text-sm">Local LLM • Development Mode</p>
+                    <p class="text-gray-400 text-sm">Google Cloud Agent Platform</p>
                 </div>
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center gap-2">
@@ -75,7 +75,7 @@
                     </button>
                     <div class="flex items-center gap-2 text-sm bg-[#21262d] px-3 py-1.5 rounded-full border border-[#30363d]">
                         <i class="fa-regular fa-circle-check text-green-400"></i>
-                        <span class="text-gray-300">LLM: <span class="font-mono text-yellow-400">Local (Ollama)</span></span>
+                        <span class="text-gray-300">LLM: <span class="font-mono text-green-400">Claude Fable 5</span></span>
                     </div>
                     <div class="flex items-center gap-3 text-sm">
                         <div class="flex items-center gap-1">
@@ -495,14 +495,14 @@
                 <div>
     <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-brain text-purple-400"></i> AI Backend</h3>
     <div class="flex items-center gap-3 mt-2">
-        <span class="text-sm text-gray-400">Vertex AI (GCP)</span>
+        <span class="text-sm text-gray-400">Claude Fable 5</span>
         <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="llmToggleSettings" class="sr-only peer" checked disabled>
             <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
         </label>
-        <span class="text-sm text-gray-400">Local (Ollama)</span>
+        <span class="text-sm text-gray-400">Google Cloud</span>
     </div>
-    <p class="text-xs text-gray-500 mt-1">Currently using <span class="text-yellow-400">Local (Ollama)</span> with llama3.2:3b model</p>
+    <p class="text-xs text-gray-500 mt-1">Currently using <span class="text-green-400">Claude Fable 5</span> on Google Cloud Agent Platform.</p>
 </div>
 
                 <hr class="border-[#30363d]">
@@ -576,7 +576,7 @@
                     <h3 class="text-lg font-medium flex items-center gap-2"><i class="fa-solid fa-info-circle text-blue-400"></i> System Info</h3>
                     <div class="mt-2 space-y-1 text-sm">
                         <p><span class="text-gray-400">Version:</span> 1.0.0</p>
-                        <p><span class="text-gray-400">LLM Model:</span> llama3.2:3b (Ollama)</p>
+                        <p><span class="text-gray-400">LLM Model:</span> Claude Fable 5 (Google Cloud Agent Platform)</p>
                         <p><span class="text-gray-400">Auto-Optimization:</span> <span class="text-green-400">Enabled</span></p>
                         <p><span class="text-gray-400">Optimization Interval:</span> 60 seconds</p>
                     </div>
@@ -660,12 +660,12 @@
             <div class="bg-[#21262d] p-3 rounded-md flex items-center justify-between">
                 <span class="text-sm font-medium">AI Backend</span>
                 <div class="flex items-center gap-3">
-    <span class="text-xs text-gray-400">Vertex AI (GCP)</span>
+    <span class="text-xs text-gray-400">Claude Fable 5</span>
 <label class="relative inline-flex items-center cursor-pointer">
     <input type="checkbox" id="llmToggle" class="sr-only peer" checked disabled>
     <div class="w-9 h-5 bg-blue-600 peer-focus:outline-none rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
 </label>
-<span class="text-xs text-gray-400">Local (Ollama)</span>
+<span class="text-xs text-gray-400">Google Cloud</span>
 </div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
@@ -1358,6 +1358,18 @@ async function createClient() {
     // ================================================================
     // SUBMIT ONBOARD
     // ================================================================
+    function splitList(value) {
+        return (value || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    function normalizeTone(value) {
+        const normalized = (value || '').toLowerCase();
+        if (normalized.includes('friendly')) return 'friendly';
+        if (normalized.includes('urgent')) return 'urgent';
+        if (normalized.includes('luxury')) return 'luxury';
+        return 'professional';
+    }
+
    async function submitOnboard(e) {
     e.preventDefault();
     const payload = {
@@ -1366,13 +1378,13 @@ async function createClient() {
         language: document.getElementById('campaignLanguage').value,
         industry: document.getElementById('industry').value,
         daily_budget: parseFloat(document.getElementById('dailyBudget').value),
-        target_geo: document.getElementById('targetGeo').value.split(',').map(s => s.trim()),
-        tone_of_voice: document.getElementById('toneOfVoice').value,
-        cultural_triggers: document.getElementById('culturalTriggers').value.split(',').map(s => s.trim()),
-        llm_backend: 'local',
-        objective: document.getElementById('objective').value,
-        special_events: document.getElementById('specialEvents').value.split(',').map(s => s.trim()).filter(Boolean),
-        product_keywords: document.getElementById('productKeywords').value.split(',').map(s => s.trim()).filter(Boolean)
+        target_geo: splitList(document.getElementById('targetGeo').value),
+        tone_of_voice: normalizeTone(document.getElementById('toneOfVoice').value),
+        cultural_triggers: splitList(document.getElementById('culturalTriggers').value),
+        llm_backend: 'cloud',
+        objective: document.getElementById('objective')?.value || 'sales',
+        special_events: splitList(document.getElementById('specialEvents')?.value || ''),
+        product_keywords: splitList(document.getElementById('productKeywords')?.value || '')
     };
 
     const btn = document.querySelector('#onboardModal button[type="submit"]');
@@ -1392,7 +1404,13 @@ async function createClient() {
             headers: getHeaders(),
             body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('Failed to create campaign');
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            const detail = Array.isArray(err.detail)
+                ? err.detail.map(item => item.msg).join(', ')
+                : (err.detail || 'Failed to create campaign');
+            throw new Error(detail);
+        }
         const data = await res.json();
         alert(`✅ Campaign ${data.campaign_id} created!\n${data.message}`);
         closeOnboardModal();

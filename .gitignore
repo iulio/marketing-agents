@@ -49,7 +49,6 @@ data/
 
 # Docker
 *.log
-.dockerignore
 
 # Testing
 .pytest_cache/

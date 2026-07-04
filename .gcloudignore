@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.env.*
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite3
+data/
+logs/
+playwright-report/
+test-results/
+app/credentials/
+.gcp-*.tmp

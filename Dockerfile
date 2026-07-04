@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
@@ -38,7 +38,7 @@ RUN playwright install chromium
 RUN playwright install-deps
 
 # Expune portul aplicației
-EXPOSE 8000
+EXPOSE 8080
 
 # Rulează aplicația cu uvicorn
-ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

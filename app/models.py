@@ -119,7 +119,7 @@ class OnboardRequest(BaseModel):
     language: Language = Language.EN_US
     tone_of_voice: ToneOfVoice = ToneOfVoice.PROFESSIONAL
     cultural_triggers: List[str] = Field(default_factory=list)
-    llm_backend: str = Field(default="local", pattern="^(foundry|local)$")
+    llm_backend: str = Field(default="cloud", pattern="^(cloud)$")
     platform: str = Field(default="auto", pattern="^(auto|google|meta)$")
     objective: CampaignObjective = CampaignObjective.SALES
     special_events: List[str] = Field(default_factory=list)

@@ -27,6 +27,7 @@ from pydantic import BaseModel
 campaigns: Dict[str, Any] = {}
 kpi_store: Dict[str, Any] = {}
 monitor = PerformanceMonitor(campaigns, kpi_store)
+scheduler = CampaignScheduler()
 
 # ================================================================
 # LIFESPAN MANAGER
@@ -49,12 +50,10 @@ async def lifespan(app: FastAPI):
                 'state': item['state'],
                 'status': item['status'],
                 'thread_id': campaign_id,
+                'client_id': item.get('client_id'),
                 'client_name': item['state'].get('client_profile', {}).get('client_name', 'Unknown'),
                 'language': item['state'].get('client_profile', {}).get('language', 'en-US'),
                 'created_at': item['created_at']
-
-scheduler = CampaignScheduler()
-
             }
         print(f"[Startup] Loaded {len(db_campaigns)} campaigns from database")
     except Exception as e:
@@ -94,6 +93,14 @@ app.add_middleware(
 # def root():
 #     return {"status": "online", "service": "Agentic Marketing Agency"}
 
+@app.get("/healthz")
+def healthz():
+    return {"status": "online", "service": "Agentic Marketing Agency"}
+
+@app.get("/api/healthz")
+def api_healthz():
+    return {"status": "online", "service": "Agentic Marketing Agency"}
+
 # ================================================================
 # AUTHENTICATION ENDPOINTS
 # ================================================================
@@ -103,8 +110,18 @@ class LoginRequest(BaseModel):
     password: str
 
 @app.post("/api/auth/login")
-async def login(login_data: LoginRequest):
-    user = verify_user(login_data.email, login_data.password)
+async def login(
+    login_data: LoginRequest | None = None,
+    email: str | None = Query(None),
+    password: str | None = Query(None),
+):
+    if login_data:
+        email = login_data.email
+        password = login_data.password
+    if not email or not password:
+        raise HTTPException(status_code=422, detail="Email and password are required")
+
+    user = verify_user(email, password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = generate_token(user['id'], user['email'], user['role'], user.get('client_id'))
@@ -192,6 +209,7 @@ async def delete_client_endpoint(request: Request, client_id: str):
 # CAMPAIGN ENDPOINTS
 # ================================================================
 @app.post("/api/campaigns/onboard")
+@require_role(["admin", "client_manager"])
 async def onboard_campaign(
     request: Request,
     campaign_data: OnboardRequest,
@@ -223,9 +241,40 @@ async def onboard_campaign(
         if not get_client(client_id):
             raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found")
         
-        # ... rest of your existing code (create campaign, run agents, etc.)
-        # (Keep the rest of the function exactly as you have it)
-        
+        campaign_id = str(uuid.uuid4())[:8]
+        initial_state = {
+            "client_profile": campaign_data.model_dump(mode="json"),
+            "market_intelligence": {},
+            "creative_assets": {},
+            "deployment_status": {},
+            "human_feedback": {},
+            "validation_errors": [],
+            "analysis": {},
+            "last_optimization": "",
+            "optimization_actions": [],
+        }
+
+        config = {"configurable": {"thread_id": campaign_id}}
+        final_state = graph.invoke(initial_state, config=config)
+        status = "pending_review"
+
+        campaigns[campaign_id] = {
+            "state": final_state,
+            "status": status,
+            "thread_id": campaign_id,
+            "client_id": client_id,
+            "client_name": campaign_data.client_name,
+            "language": campaign_data.language.value,
+            "created_at": None,
+        }
+        save_campaign_state(campaign_id, final_state, status, client_id)
+
+        return {
+            "campaign_id": campaign_id,
+            "status": status,
+            "message": "Campaign created and ready for review",
+        }
+
     except HTTPException:
         raise
     except Exception as e:
@@ -271,7 +320,8 @@ async def approve_campaign(campaign_id: str):
     data["state"] = final_state
     data["status"] = "active"
     campaigns[campaign_id] = data
-    
+    save_campaign_state(campaign_id, final_state, "active", data.get("client_id"))
+    return {"status": "approved", "campaign_id": campaign_id}
 
 @app.delete("/api/campaigns/{campaign_id}")
 @require_role(["admin", "client_manager"])
@@ -300,7 +350,7 @@ async def delete_campaign_endpoint(request: Request, campaign_id: str):
     
     # Remove from database
     from .storage import delete_campaign
-    success = await delete_campaign(campaign_id)
+    success = delete_campaign(campaign_id)
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found in database")
     
@@ -356,10 +406,6 @@ async def get_campaign_report(campaign_id: str):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={campaign_id}_report.pdf"}
     )
-
-    save_campaign_state(campaign_id, final_state, "active", data.get("client_id"))
-    
-    return {"status": "approved", "campaign_id": campaign_id}
 
 @app.post("/api/campaigns/{campaign_id}/reject")
 async def reject_campaign(campaign_id: str):
@@ -535,7 +581,7 @@ class ScheduleData(BaseModel):
 
 @app.post("/api/campaigns/{campaign_id}/schedule")
 @require_role(["admin", "client_manager"])
-async def schedule_campaign_endpoint(campaign_id: str, schedule_data: ScheduleData):
+async def schedule_campaign_endpoint(request: Request, campaign_id: str, schedule_data: ScheduleData):
     """Schedule a campaign for specific dates/times."""
     if campaign_id not in campaigns:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -551,14 +597,14 @@ async def schedule_campaign_endpoint(campaign_id: str, schedule_data: ScheduleDa
 
 @app.delete("/api/campaigns/{campaign_id}/schedule")
 @require_role(["admin", "client_manager"])
-async def unschedule_campaign_endpoint(campaign_id: str):
+async def unschedule_campaign_endpoint(request: Request, campaign_id: str):
     """Remove schedule for a campaign."""
     result = scheduler.unschedule_campaign(campaign_id)
     return {"success": result, "campaign_id": campaign_id}
 
 @app.get("/api/campaigns/{campaign_id}/schedule")
 @require_role(["admin", "client_manager", "client_viewer"])
-async def get_campaign_schedule_endpoint(campaign_id: str):
+async def get_campaign_schedule_endpoint(request: Request, campaign_id: str):
     """Get schedule for a campaign."""
     return scheduler.get_schedule(campaign_id)
 
