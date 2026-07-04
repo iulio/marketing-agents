@@ -28,10 +28,10 @@ class AgencyState(TypedDict):
 # LLM INITIALIZATION
 # ================================================================
 def get_llm():
-    """Initialize Google Cloud Agent Platform / Model Garden LLM."""
-    model = os.getenv("AGENT_PLATFORM_MODEL", "claude-fable-5")
-    region = os.getenv("GCP_AGENT_PLATFORM_REGION", os.getenv("GCP_LOCATION", "global"))
-    print(f"[LLM] Using Google Cloud Agent Platform model: {model} ({region})")
+    """Initialize Google Cloud Vertex AI Gemini LLM."""
+    model = os.getenv("GEMINI_MODEL", os.getenv("CLOUD_LLM_MODEL", "gemini-2.5-flash"))
+    location = os.getenv("GOOGLE_CLOUD_LOCATION", os.getenv("GCP_LOCATION", "global"))
+    print(f"[LLM] Using Vertex AI Gemini model: {model} ({location})")
     return get_cloud_llm(temperature=0.7)
 
 llm = get_llm()

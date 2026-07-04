@@ -28,8 +28,8 @@ services:
       JWT_SECRET_KEY: your-secret-key-change-in-production
       GCP_PROJECT_ID: marketing-online-500822
       GCP_LOCATION: global
-      GCP_AGENT_PLATFORM_REGION: global
-      AGENT_PLATFORM_MODEL: claude-fable-5
+      GOOGLE_CLOUD_LOCATION: global
+      GEMINI_MODEL: gemini-2.5-flash
       LLM_MAX_TOKENS: 4096
     ports:
       - "8000:8000"
