@@ -42,6 +42,19 @@ def _scalar_or_none(result) -> Optional[Any]:
     return row[0] if row else None
 
 
+
+
+def _ensure_client_platform_status_column(conn):
+    if IS_SQLITE:
+        columns = [row[1] for row in conn.execute(text("PRAGMA table_info(clients)"))]
+    else:
+        columns = [row[0] for row in conn.execute(text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'clients'
+        """))]
+    if "platform_status" not in columns:
+        conn.execute(text("ALTER TABLE clients ADD COLUMN platform_status TEXT DEFAULT 'inactive'"))
 def init_db():
     """Create all tables if they do not exist."""
     optimization_id = "INTEGER PRIMARY KEY AUTOINCREMENT" if IS_SQLITE else "SERIAL PRIMARY KEY"
@@ -79,10 +92,12 @@ def init_db():
                 billing_email TEXT,
                 billing_info TEXT,
                 settings TEXT,
+                platform_status TEXT DEFAULT 'inactive',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
         """))
+        _ensure_client_platform_status_column(conn)
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -256,8 +271,8 @@ def create_client(client_data: Dict) -> str:
         conn.execute(
             text("""
                 INSERT INTO clients
-                (id, name, industry, website, logo_url, billing_email, billing_info, settings, created_at, updated_at)
-                VALUES (:id, :name, :industry, :website, :logo_url, :billing_email, :billing_info, :settings, :created_at, :updated_at)
+                (id, name, industry, website, logo_url, billing_email, billing_info, settings, platform_status, created_at, updated_at)
+                VALUES (:id, :name, :industry, :website, :logo_url, :billing_email, :billing_info, :settings, :platform_status, :created_at, :updated_at)
             """),
             {
                 "id": client_id,
@@ -268,6 +283,7 @@ def create_client(client_data: Dict) -> str:
                 "billing_email": client_data.get("billing_email", ""),
                 "billing_info": json.dumps(client_data.get("billing_info", {})),
                 "settings": json.dumps(client_data.get("settings", {})),
+                "platform_status": client_data.get("platform_status", "inactive"),
                 "created_at": now,
                 "updated_at": now,
             },
@@ -278,12 +294,23 @@ def create_client(client_data: Dict) -> str:
 def _hydrate_client(item: Dict[str, Any]) -> Dict[str, Any]:
     item["billing_info"] = _json_load(item.get("billing_info"), {})
     item["settings"] = _json_load(item.get("settings"), {})
+    item["platform_status"] = item.get("platform_status") or "inactive"
+    item["campaign_count"] = int(item.get("campaign_count") or 0)
     return item
 
 
 def get_all_clients() -> List[Dict]:
     with engine.begin() as conn:
-        rows = _rows(conn.execute(text("SELECT * FROM clients ORDER BY created_at DESC")))
+        rows = _rows(conn.execute(text("""
+            SELECT c.*, COALESCE(cc.campaign_count, 0) AS campaign_count
+            FROM clients c
+            LEFT JOIN (
+                SELECT client_id, COUNT(*) AS campaign_count
+                FROM campaigns
+                GROUP BY client_id
+            ) cc ON cc.client_id = c.id
+            ORDER BY c.created_at DESC
+        """)))
     return [_hydrate_client(item) for item in rows]
 
 
@@ -296,11 +323,61 @@ def get_client(client_id: str) -> Optional[Dict]:
     return _hydrate_client(dict(row._mapping)) if row else None
 
 
+
+
+def update_client(client_id: str, updates: Dict) -> bool:
+    allowed_fields = {
+        "name",
+        "industry",
+        "website",
+        "logo_url",
+        "billing_email",
+        "billing_info",
+        "settings",
+        "platform_status",
+    }
+    values: Dict[str, Any] = {"client_id": client_id, "updated_at": datetime.utcnow().isoformat()}
+    assignments = []
+    for field in allowed_fields:
+        if field not in updates:
+            continue
+        value = updates[field]
+        if field in {"billing_info", "settings"}:
+            value = json.dumps(value or {})
+        values[field] = value
+        assignments.append(f"{field} = :{field}")
+    if not assignments:
+        return False
+    assignments.append("updated_at = :updated_at")
+    with engine.begin() as conn:
+        result = conn.execute(
+            text(f"UPDATE clients SET {', '.join(assignments)} WHERE id = :client_id"),
+            values,
+        )
+    return result.rowcount > 0
+
 def delete_client(client_id: str) -> bool:
     with engine.begin() as conn:
         conn.execute(
+            text("""
+                DELETE FROM optimization_history
+                WHERE campaign_id IN (
+                    SELECT campaign_id FROM campaigns WHERE client_id = :client_id
+                )
+            """),
+            {"client_id": client_id},
+        )
+        conn.execute(
+            text("DELETE FROM api_keys WHERE client_id = :client_id"),
+            {"client_id": client_id},
+        )
+        conn.execute(
             text("DELETE FROM campaigns WHERE client_id = :client_id"),
             {"client_id": client_id},
+        )
+        conn.execute(
+            text("UPDATE users SET client_id = NULL, updated_at = :updated_at WHERE client_id = :client_id"),
+            {"client_id": client_id, "updated_at": datetime.utcnow().isoformat()},
         )
         result = conn.execute(
             text("DELETE FROM clients WHERE id = :client_id"),

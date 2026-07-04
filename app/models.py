@@ -36,6 +36,7 @@ class Client(Base):
     billing_email = Column(String)
     billing_info = Column(JSON)
     settings = Column(JSON)
+    platform_status = Column(String, default="inactive")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     users = relationship("User", backref="client")
