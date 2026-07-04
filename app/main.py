@@ -139,14 +139,20 @@ async def login(
 
 
 
+VALID_CLIENT_STATUSES = {"active", "inactive", "pending", "suspended", "archived"}
+
 # ================================================================
 # CLIENT MANAGEMENT ENDPOINTS
 # ================================================================
-from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user
+from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client
 
 @app.post("/api/clients")
 @require_role(["admin"])
 async def create_new_client(request: Request, client_data: dict):
+    if not str(client_data.get("name", "")).strip():
+        raise HTTPException(status_code=422, detail="Client name is required")
+    if client_data.get("platform_status", "inactive") not in VALID_CLIENT_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid platform_status")
     client_id = create_client(client_data)
     return {"client_id": client_id, "message": "Client created"}
 
@@ -186,6 +192,37 @@ async def list_client_campaigns(request: Request, client_id: str):
             "created_at": c['created_at']
         })
     return {"campaigns": result}
+
+
+@app.patch("/api/clients/{client_id}")
+@require_role(["admin"])
+async def update_client_endpoint(request: Request, client_id: str, updates: dict):
+    client = get_client(client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if "platform_status" in updates and updates["platform_status"] not in VALID_CLIENT_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid platform_status")
+    if "name" in updates and not str(updates["name"]).strip():
+        raise HTTPException(status_code=422, detail="Client name is required")
+    success = update_client(client_id, updates)
+    if not success:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    return {"message": "Client updated", "client": get_client(client_id)}
+
+@app.patch("/api/clients/{client_id}/status")
+@require_role(["admin", "client_manager"])
+async def update_client_status_endpoint(request: Request, client_id: str, status_data: dict):
+    user = request.state.user
+    if user["role"] != "admin" and user.get("client_id") != client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    new_status = status_data.get("platform_status")
+    if new_status not in VALID_CLIENT_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    client = get_client(client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    update_client(client_id, {"platform_status": new_status})
+    return {"message": f"Status updated to {new_status}", "platform_status": new_status}
 
 @app.delete("/api/clients/{client_id}")
 @require_role(["admin"])
@@ -231,16 +268,22 @@ async def onboard_campaign(
                     "name": campaign_data.client_name or "Default Client",
                     "industry": campaign_data.industry or "General",
                     "website": campaign_data.website_url or "",
+                    "platform_status": "active",
                 }
                 client_id = create_client(client_data)
                 print(f"[Onboard] Created default client: {client_id}")
             else:
                 raise HTTPException(status_code=400, detail="client_id required for non-admin users")
         
-        # Verify client exists
-        if not get_client(client_id):
+        # Verify client exists and is allowed to create campaigns
+        client = get_client(client_id)
+        if not client:
             raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found")
-        
+        if client.get("platform_status") in {"inactive", "suspended"}:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Client platform status is {client.get('platform_status')}; campaign orchestration is disabled",
+            )
         campaign_id = str(uuid.uuid4())[:8]
         initial_state = {
             "client_profile": campaign_data.model_dump(mode="json"),
