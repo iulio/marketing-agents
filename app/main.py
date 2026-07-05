@@ -1,11 +1,14 @@
 # app/main.py - MAIN APPLICATION
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request , Query, Response
+from fastapi import FastAPI, HTTPException, Request , Query, Response, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
 from typing import Dict, Any
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from .models import OnboardRequest, CampaignResponse
 from .agents import graph, AgencyState
@@ -14,12 +17,21 @@ from .analytics import generate_daily_metrics, aggregate_metrics
 from .scheduler import CampaignScheduler
 from .analyst import PerformanceMonitor, run_immediate_optimization, fetch_real_kpis, refresh_kpis
 from .auth import create_default_admin, generate_token, verify_user, get_user_by_email
-from .middleware import require_role
+from .middleware import require_role, get_current_user
+from .stripe import create_checkout_session, handle_webhook
+from .email import send_welcome_email
 
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
+from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync
 
 from .kpi_fetcher import KPIFetcher
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+
+security = HTTPBearer(auto_error=False)
+
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(dsn=sentry_dsn, integrations=[FastApiIntegration()])
 
 # ================================================================
 # IN-MEMORY STORAGE
@@ -84,7 +96,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static UI
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # ================================================================
 # ROOT ENDPOINT
@@ -108,6 +122,12 @@ def api_healthz():
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
 
 @app.post("/api/auth/login")
 async def login(
@@ -144,8 +164,6 @@ VALID_CLIENT_STATUSES = {"active", "inactive", "pending", "suspended", "archived
 # ================================================================
 # CLIENT MANAGEMENT ENDPOINTS
 # ================================================================
-from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client
-
 @app.post("/api/clients")
 @require_role(["admin"])
 async def create_new_client(request: Request, client_data: dict):
@@ -155,6 +173,65 @@ async def create_new_client(request: Request, client_data: dict):
         raise HTTPException(status_code=400, detail="Invalid platform_status")
     client_id = create_client(client_data)
     return {"client_id": client_id, "message": "Client created"}
+
+
+@app.post("/api/auth/signup")
+async def signup(signup_data: SignupRequest):
+    existing_user = get_user_by_email(signup_data.email)
+    if existing_user:
+        raise HTTPException(status_code=409, detail="User already exists")
+    user_id = create_user({
+        "email": signup_data.email,
+        "password": signup_data.password,
+        "full_name": signup_data.full_name,
+        "role": "client_viewer",
+        "client_id": None,
+        "subscription_status": "trial",
+    })
+    send_welcome_email(signup_data.email, signup_data.full_name)
+    return {"user_id": user_id, "message": "Signup successful"}
+
+
+@app.post("/api/payments/create-checkout")
+async def create_checkout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user = await get_current_user(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    db_user = get_user_by_email(user["email"])
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    checkout_url = create_checkout_session(
+        db_user["id"],
+        db_user["email"],
+        os.getenv("STRIPE_PRICE_PRO", ""),
+        os.getenv("STRIPE_SUCCESS_URL", "http://localhost:8000/signup.html?success=1"),
+        os.getenv("STRIPE_CANCEL_URL", "http://localhost:8000/signup.html?canceled=1"),
+    )
+    return {"checkout_url": checkout_url}
+
+
+@app.post("/api/payments/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+    _event, status = await handle_webhook(payload, sig_header)
+    if status in {"Invalid payload", "Invalid signature"}:
+        raise HTTPException(status_code=400, detail=status)
+    return {"status": status}
+
+
+@app.get("/api/admin/analytics")
+@require_role(["admin"])
+async def admin_analytics(request: Request):
+    return {
+        "total_clients": get_total_clients_sync(),
+        "active_campaigns": get_active_campaigns_sync(),
+        "new_signups": get_new_signups_sync(),
+    }
 
 @app.get("/api/clients")
 @require_role(["admin"])
@@ -704,6 +781,5 @@ async def get_campaign_schedule_endpoint(request: Request, campaign_id: str):
 
 # ================================================================
 
-static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")

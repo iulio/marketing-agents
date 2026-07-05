@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head><title>Sign Up</title><script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-gray-900 text-white">
+<div class="max-w-md mx-auto mt-20 p-6 bg-gray-800 rounded-xl">
+    <h1 class="text-2xl font-bold mb-4">Create your account</h1>
+    <form id="signupForm">
+        <div class="mb-4">
+            <label class="block text-sm">Full Name</label>
+            <input type="text" id="fullName" class="w-full p-2 rounded bg-gray-700 border border-gray-600" required>
+        </div>
+        <div class="mb-4">
+            <label class="block text-sm">Email</label>
+            <input type="email" id="email" class="w-full p-2 rounded bg-gray-700 border border-gray-600" required>
+        </div>
+        <div class="mb-4">
+            <label class="block text-sm">Password</label>
+            <input type="password" id="password" class="w-full p-2 rounded bg-gray-700 border border-gray-600" required>
+        </div>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded">Sign Up</button>
+        <p id="message" class="mt-2 text-sm"></p>
+    </form>
+    <p class="mt-4 text-center text-gray-400">Already have an account? <a href="/login.html" class="text-blue-400">Login</a></p>
+</div>
+<script>
+    document.getElementById('signupForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fullName = document.getElementById('fullName').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const msg = document.getElementById('message');
+        try {
+            const res = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, full_name: fullName })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                msg.textContent = 'Account created! Please login.';
+                msg.className = 'text-green-400';
+                setTimeout(() => window.location.href = '/login.html', 2000);
+            } else {
+                msg.textContent = data.detail || 'Error';
+                msg.className = 'text-red-400';
+            }
+        } catch (err) {
+            msg.textContent = 'Server error';
+            msg.className = 'text-red-400';
+        }
+    });
+</script>
+</body>
+</html>

@@ -3,201 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agentic Marketing Control Room</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <title>AI Marketing Agency</title>
     <style>
-        body { background: #0f1117; font-family: 'Inter', sans-serif; }
-        .glass-card { background: rgba(22, 27, 34, 0.8); backdrop-filter: blur(12px); border: 1px solid #2d333b; }
-        .agent-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .status-idle { background: #3fb950; box-shadow: 0 0 8px #3fb950; }
-        .status-working { background: #d29922; box-shadow: 0 0 8px #d29922; animation: pulse 1.5s infinite; }
-        .status-error { background: #f85149; box-shadow: 0 0 8px #f85149; }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-        .creative-card:hover { transform: translateY(-4px); transition: all 0.2s ease; border-color: #58a6ff; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .modal-backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
-        .status-badge-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-        .status-badge-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
-        .status-badge-draft { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
-        .status-badge-rejected { background: rgba(248, 81, 73, 0.2); color: #f87171; }
-        .status-badge-unknown { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
-        .nav-link { color: #6b7280; transition: color 0.2s; }
-        .nav-link:hover { color: #ffffff; }
-        .nav-link.active { color: #ffffff; }
-        .nav-link i { font-size: 1.25rem; }
-        .client-status-active { background: rgba(34, 197, 94, 0.16); color: #4ade80; border-color: rgba(74, 222, 128, 0.35); }
-        .client-status-inactive { background: rgba(248, 81, 73, 0.14); color: #f87171; border-color: rgba(248, 113, 113, 0.35); }
-        .client-status-pending { background: rgba(251, 191, 36, 0.14); color: #fbbf24; border-color: rgba(251, 191, 36, 0.35); }
-        .client-status-suspended { background: rgba(249, 115, 22, 0.14); color: #fb923c; border-color: rgba(251, 146, 60, 0.35); }
-        .client-status-archived { background: rgba(156, 163, 175, 0.14); color: #d1d5db; border-color: rgba(209, 213, 219, 0.28); }
+        :root {
+            color-scheme: dark;
+        }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hero {
+            max-width: 720px;
+            padding: 48px 24px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+        p {
+            font-size: 1.125rem;
+            color: #cbd5e1;
+            margin-bottom: 32px;
+        }
+        a {
+            display: inline-block;
+            padding: 14px 24px;
+            border-radius: 999px;
+            background: #22c55e;
+            color: #052e16;
+            text-decoration: none;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
-
-<div id="app" class="flex h-screen text-gray-200 overflow-hidden">
-
-    <!-- SIDEBAR -->
-    <aside class="w-20 bg-[#161b22] border-r border-[#2d333b] flex flex-col items-center py-6 space-y-8">
-        <div class="text-2xl font-bold text-white"><i class="fa-regular fa-robot"></i></div>
-        <nav class="flex flex-col space-y-6 text-xl" id="sidebarNav">
-            <a href="#" class="nav-link active" data-section="dashboard" title="Dashboard"><i class="fa-solid fa-gauge-high"></i></a>
-            <a href="#" class="nav-link" data-section="campaigns" title="Campaigns"><i class="fa-solid fa-bullhorn"></i></a>
-            <a href="#" class="nav-link" data-section="clients" title="Clients"><i class="fa-solid fa-building-user"></i></a>
-            <a href="#" class="nav-link" data-section="creatives" title="Creative Studio"><i class="fa-regular fa-pen-to-square"></i></a>
-            <a href="#" class="nav-link" data-section="analytics" title="Analytics"><i class="fa-solid fa-chart-line"></i></a>
-            <a href="#" class="nav-link" data-section="settings" title="Settings"><i class="fa-solid fa-gear"></i></a>
-        </nav>
-        <div class="mt-auto text-gray-600 text-xl">
-            <i class="fa-regular fa-circle-question"></i>
-        </div>
-    </aside>
-
-    <!-- MAIN CONTENT -->
-    <main class="flex-1 overflow-y-auto p-6">
-
-        <!-- ============================================================ -->
-        <!-- SECTION: DASHBOARD (default) -->
-        <!-- ============================================================ -->
-        <div id="section-dashboard" class="space-y-6">
-
-            <!-- HEADER + AGENT STATUS -->
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-bold">Agency Control Room</h1>
-                    <p class="text-gray-400 text-sm">Google Cloud Vertex AI</p>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center gap-2">
-                        <label class="text-gray-400 text-sm">Client:</label>
-                        <select id="clientSelect" onchange="switchClient()" class="bg-[#0d1117] border border-[#30363d] rounded-md px-2 py-1 text-sm text-gray-300">
-                            <option value="">All Clients</option>
-                        </select>
-                    </div>
-                    <button onclick="openOnboardModal()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition">
-                        <i class="fa-solid fa-plus"></i> New Campaign
-                    </button>
-                    <div class="flex items-center gap-2 text-sm bg-[#21262d] px-3 py-1.5 rounded-full border border-[#30363d]">
-                        <i class="fa-regular fa-circle-check text-green-400"></i>
-                        <span class="text-gray-300">LLM: <span class="font-mono text-green-400">Gemini 2.5 Flash</span></span>
-                    </div>
-                    <div class="flex items-center gap-3 text-sm">
-                        <div class="flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full" id="googleStatus"></span>
-                            <span class="text-gray-400 text-xs">Google</span>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full" id="metaStatus"></span>
-                            <span class="text-gray-400 text-xs">Meta</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AGENT STATUS ROW -->
-            <div class="grid grid-cols-5 gap-4">
-                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                    <div class="agent-status-dot status-idle" id="dot-orchestrator"></div>
-                    <div><p class="text-xs text-gray-400">Master</p><p class="text-sm font-medium">Orchestrator</p></div>
-                </div>
-                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                    <div class="agent-status-dot status-idle" id="dot-research"></div>
-                    <div><p class="text-xs text-gray-400">Research</p><p class="text-sm font-medium">Analyst</p></div>
-                </div>
-                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                    <div class="agent-status-dot status-idle" id="dot-creative"></div>
-                    <div><p class="text-xs text-gray-400">Creative</p><p class="text-sm font-medium">Copy & Asset</p></div>
-                </div>
-                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                    <div class="agent-status-dot status-idle" id="dot-launch"></div>
-                    <div><p class="text-xs text-gray-400">Launch</p><p class="text-sm font-medium">Engineer</p></div>
-                </div>
-                <div class="glass-card rounded-lg p-4 flex items-center gap-3">
-                    <div class="agent-status-dot status-idle" id="dot-analyst"></div>
-                    <div><p class="text-xs text-gray-400">Performance</p><p class="text-sm font-medium">Optimizer</p></div>
-                </div>
-            </div>
-
-            <!-- KPI CARDS -->
-            <div class="grid grid-cols-4 gap-4">
-                <div class="glass-card rounded-lg p-4">
-                    <p class="text-gray-400 text-xs uppercase tracking-wider">Total Spend</p>
-                    <p class="text-2xl font-bold" id="totalSpend">€1,245.00</p>
-                    <p class="text-green-400 text-xs">+12% vs last week</p>
-                </div>
-                <div class="glass-card rounded-lg p-4">
-                    <p class="text-gray-400 text-xs uppercase tracking-wider">Avg. CTR</p>
-                    <p class="text-2xl font-bold" id="avgCtr">4.8%</p>
-                    <p class="text-green-400 text-xs">+0.6% improvement</p>
-                </div>
-                <div class="glass-card rounded-lg p-4">
-                    <p class="text-gray-400 text-xs uppercase tracking-wider">Active Campaigns</p>
-                    <p class="text-2xl font-bold" id="activeCampaigns">0</p>
-                    <p class="text-blue-400 text-xs" id="pendingCount">0 pending approval</p>
-                </div>
-                <div class="glass-card rounded-lg p-4">
-                    <p class="text-gray-400 text-xs uppercase tracking-wider">Conversions</p>
-                    <p class="text-2xl font-bold" id="conversions">287</p>
-                    <p class="text-yellow-400 text-xs">Target: 350</p>
-                </div>
-            </div>
-
-            <!-- CREATIVE REVIEW PANEL -->
-            <div class="glass-card rounded-lg p-5 border border-[#30363d]">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-regular fa-pen-to-square text-blue-400"></i> Creative Review</h2>
-                        <p class="text-xs text-gray-400" id="creativePanelInfo">Select a campaign to review creatives</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <select id="creativeCampaignSelect" onchange="loadCreatives()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
-                            <option value="">Select Campaign</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-2" id="creativeCarousel">
-                    <div class="text-gray-400 text-sm p-4">No creatives loaded. Select a campaign above.</div>
-                </div>
-            </div>
-
-
-            <!-- A/B TESTING PANEL -->
-            <div class="glass-card rounded-lg p-5 border border-[#30363d]">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-flask text-purple-400"></i> A/B Testing</h3>
-                    <button onclick="createABTest()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-3 py-1 rounded text-xs transition">
-                        <i class="fa-solid fa-plus"></i> Create Test
-                    </button>
-                </div>
-                <div id="abTestResults" class="mt-2 text-xs text-gray-400">
-                    No active tests for this campaign.
-                </div>
-            </div>
-
-            <!-- PERFORMANCE ANALYST PANEL -->
-            <div class="glass-card rounded-lg p-5 border border-[#30363d]">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h2 class="text-lg font-semibold flex items-center gap-2"><i class="fa-solid fa-chart-line text-purple-400"></i> Performance Analyst</h2>
-                        <p class="text-xs text-gray-400" id="analystPanelInfo">Select a campaign to analyze performance</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <select id="analystCampaignSelect" onchange="loadAnalytics()" class="bg-[#0d1117] border border-[#30363d] text-sm rounded-md px-2 py-1 text-gray-300">
-                            <option value="">Select Campaign</option>
-                        </select>
-                        <button onclick="runAnalysis()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
-                            <i class="fa-solid fa-microchip"></i> Analyze
-                        </button>
-                        <button onclick="runOptimization()" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> Optimize
-                        </button>
-                        <button onclick="viewOptimizationHistory()" class="bg-[#21262d] hover:bg-[#30363d] text-white px-3 py-1 rounded-md text-sm transition flex items-center gap-1">
-                            <i class="fa-regular fa-clock"></i> History
-                        </button>
-                    </div>
-                </div>
+    <main class="hero">
+        <h1>Launch high-performing marketing campaigns faster.</h1>
+        <p>Automate campaign planning, creative generation, and performance insights from a single AI-powered workspace.</p>
+        <a href="/signup.html">Start Free Trial</a>
+    </main>
+</body>
+</html>
                 <div id="analyticsResults">
                     <div class="text-gray-400 text-sm p-4">Select a campaign and click "Analyze" to get performance insights.</div>
                 </div>

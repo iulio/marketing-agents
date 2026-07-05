@@ -55,6 +55,34 @@ def _ensure_client_platform_status_column(conn):
         """))]
     if "platform_status" not in columns:
         conn.execute(text("ALTER TABLE clients ADD COLUMN platform_status TEXT DEFAULT 'inactive'"))
+
+
+def _get_table_columns(conn, table_name: str) -> List[str]:
+    if IS_SQLITE:
+        return [row[1] for row in conn.execute(text(f"PRAGMA table_info({table_name})"))]
+    return [
+        row[0]
+        for row in conn.execute(
+            text("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = :table_name
+            """),
+            {"table_name": table_name},
+        )
+    ]
+
+
+def _ensure_user_billing_columns(conn):
+    columns = _get_table_columns(conn, "users")
+    if "stripe_customer_id" not in columns:
+        conn.execute(text("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT"))
+    if "subscription_status" not in columns:
+        conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status TEXT DEFAULT 'trial'"))
+    if "plan" not in columns:
+        conn.execute(text("ALTER TABLE users ADD COLUMN plan TEXT"))
+
+
 def init_db():
     """Create all tables if they do not exist."""
     optimization_id = "INTEGER PRIMARY KEY AUTOINCREMENT" if IS_SQLITE else "SERIAL PRIMARY KEY"
@@ -106,10 +134,14 @@ def init_db():
                 full_name TEXT,
                 role TEXT NOT NULL CHECK(role IN ('admin', 'client_manager', 'client_viewer')),
                 client_id TEXT,
+                stripe_customer_id TEXT,
+                subscription_status TEXT DEFAULT 'trial',
+                plan TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
         """))
+        _ensure_user_billing_columns(conn)
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS api_keys (
                 id TEXT PRIMARY KEY,
@@ -394,8 +426,8 @@ def create_user(user_data: Dict) -> str:
         conn.execute(
             text("""
                 INSERT INTO users
-                (id, email, password_hash, full_name, role, client_id, created_at, updated_at)
-                VALUES (:id, :email, :password_hash, :full_name, :role, :client_id, :created_at, :updated_at)
+                (id, email, password_hash, full_name, role, client_id, stripe_customer_id, subscription_status, plan, created_at, updated_at)
+                VALUES (:id, :email, :password_hash, :full_name, :role, :client_id, :stripe_customer_id, :subscription_status, :plan, :created_at, :updated_at)
             """),
             {
                 "id": user_id,
@@ -404,11 +436,49 @@ def create_user(user_data: Dict) -> str:
                 "full_name": user_data.get("full_name", ""),
                 "role": user_data["role"],
                 "client_id": user_data.get("client_id"),
+                "stripe_customer_id": user_data.get("stripe_customer_id"),
+                "subscription_status": user_data.get("subscription_status", "trial"),
+                "plan": user_data.get("plan"),
                 "created_at": now,
                 "updated_at": now,
             },
         )
     return user_id
+
+
+async def update_user_role(user_id: str, role: str) -> bool:
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE users
+                SET role = :role, updated_at = :updated_at
+                WHERE id = :user_id
+            """),
+            {"user_id": user_id, "role": role, "updated_at": datetime.utcnow().isoformat()},
+        )
+    return result.rowcount > 0
+
+
+async def update_user_stripe_id(user_id: str, stripe_customer_id: str, subscription_status: str = "active", plan: str = "pro") -> bool:
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE users
+                SET stripe_customer_id = :stripe_customer_id,
+                    subscription_status = :subscription_status,
+                    plan = :plan,
+                    updated_at = :updated_at
+                WHERE id = :user_id
+            """),
+            {
+                "user_id": user_id,
+                "stripe_customer_id": stripe_customer_id,
+                "subscription_status": subscription_status,
+                "plan": plan,
+                "updated_at": datetime.utcnow().isoformat(),
+            },
+        )
+    return result.rowcount > 0
 
 
 def get_user_by_email(email: str) -> Optional[Dict]:
@@ -459,6 +529,30 @@ def update_user_password(email: str, password: str) -> bool:
             },
         )
     return result.rowcount > 0
+
+
+def get_total_clients_sync() -> int:
+    with engine.begin() as conn:
+        result = conn.execute(text("SELECT COUNT(*) FROM clients"))
+        return int(_scalar_or_none(result) or 0)
+
+
+def get_active_campaigns_sync() -> int:
+    with engine.begin() as conn:
+        result = conn.execute(text("SELECT COUNT(*) FROM campaigns WHERE status = 'active'"))
+        return int(_scalar_or_none(result) or 0)
+
+
+def get_new_signups_sync(days: int = 30) -> int:
+    if IS_SQLITE:
+        query = text("SELECT COUNT(*) FROM users WHERE datetime(created_at) >= datetime('now', :modifier)")
+        params = {"modifier": f"-{days} days"}
+    else:
+        query = text("SELECT COUNT(*) FROM users WHERE CAST(created_at AS timestamp) >= NOW() - (:days * INTERVAL '1 day')")
+        params = {"days": days}
+    with engine.begin() as conn:
+        result = conn.execute(query, params)
+        return int(_scalar_or_none(result) or 0)
 
 
 init_db()
