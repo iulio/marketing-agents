@@ -7,6 +7,8 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from .cloud_llm import extract_json_object, get_cloud_llm
+from .industry_prompts import get_industry_template
+from .seasonal import get_upcoming_events
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -82,16 +84,24 @@ def orchestrator_node(state: AgencyState) -> AgencyState:
         print("[Orchestrator] Using fallback strategy (LLM unavailable).")
         plan = fallback_strategy()
     else:
+        industry_template = get_industry_template(industry)
+        upcoming_events = get_upcoming_events()
+        cultural_triggers = client.get("cultural_triggers", [])
+        special_events = client.get("special_events", [])
         prompt = f"""
-        You are the Master Orchestrator of a digital marketing agency.
+        You are the Master Orchestrator of a digital marketing agency focused on European localization.
         Analyze this client brief and create a structured execution plan.
         
         Client: {client.get('client_name', 'Unknown')}
         Industry: {industry}
+        Industry guidance: {json.dumps(industry_template, ensure_ascii=False)}
         Website: {client.get('website_url', 'Unknown')}
-        Budget: ${client.get('daily_budget', 0)}/day
+        Budget: €{float(client.get('daily_budget', 0) or 0):,.2f}/day
         Target Locations: {client.get('target_geo', [])}
-        Tone: {client.get('tone_of_voice', 'Professional')}
+        Language: {client.get('language', 'en-US')}
+        Tone: {client.get('tone_of_voice', 'professional')}
+        Cultural Triggers: {cultural_triggers or special_events or upcoming_events}
+        Upcoming Seasonal Events: {upcoming_events}
         
         Output a JSON with:
         1. "strategy_summary": Brief 1-sentence strategy
@@ -176,6 +186,7 @@ def researcher_node(state: AgencyState) -> AgencyState:
 def creative_node(state: AgencyState) -> AgencyState:
     """Generates ad copy with platform-specific constraints."""
     client = state.get("client_profile", {})
+    industry = client.get("industry", "Unknown")
     market = state.get("market_intelligence", {})
     plan = market.get("strategy_summary", "")
     personas = market.get("research", {}).get("buyer_personas", [])
@@ -184,16 +195,26 @@ def creative_node(state: AgencyState) -> AgencyState:
         print("[Creative] Using fallback creatives (LLM unavailable).")
         creatives = fallback_creatives()
     else:
+        industry_template = get_industry_template(industry)
+        upcoming_events = get_upcoming_events()
+        cultural_triggers = client.get("cultural_triggers", []) or client.get("special_events", []) or upcoming_events
         prompt = f"""
-        You are a Direct-Response Creative Director specializing in ad copy.
+        You are a Direct-Response Creative Director specializing in ad copy for European markets.
         Generate 3 Google RSA ad variations (Headlines: max 30 chars, Descriptions: max 90 chars).
         Also generate 3 Meta ad variations (Primary Text: max 125 chars).
         
         Client: {client.get('client_name', 'Unknown')}
         Industry: {client.get('industry', 'Unknown')}
-        Tone: {client.get('tone_of_voice', 'Professional')}
+        Tone: {client.get('tone_of_voice', 'professional')}
+        Language: {client.get('language', 'en-US')}
+        Budget: €{float(client.get('daily_budget', 0) or 0):,.2f}/day
         Strategy: {plan}
         Buyer Personas: {json.dumps(personas)}
+        Industry guidance: {json.dumps(industry_template, ensure_ascii=False)}
+        Cultural triggers: {json.dumps(cultural_triggers, ensure_ascii=False)}
+        Upcoming seasonal events: {json.dumps(upcoming_events, ensure_ascii=False)}
+        Tone suggestions: {json.dumps(industry_template.get('tone_suggestions', []), ensure_ascii=False)}
+        Visual style: {industry_template.get('visual_style', '')}
         
         Output JSON:
         {{

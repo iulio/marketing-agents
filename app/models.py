@@ -101,6 +101,11 @@ class ToneOfVoice(str, Enum):
     FRIENDLY = "friendly"
     URGENT = "urgent"
     LUXURY = "luxury"
+    AUTHORITATIVE = "authoritative"
+    EMPATHETIC = "empathetic"
+    CASUAL = "casual"
+    INSPIRATIONAL = "inspirational"
+    HUMOROUS = "humorous"
 
 class CampaignObjective(str, Enum):
     AWARENESS = "awareness"
@@ -113,7 +118,7 @@ class OnboardRequest(BaseModel):
     client_name: str = Field(..., min_length=1, max_length=100)
     website_url: str = Field(..., pattern=r"^https?://.+")
     industry: str = Field(..., min_length=1)
-    daily_budget: float = Field(..., gt=0, le=10000)
+    daily_budget: float = Field(..., ge=5, le=10000, description="Daily budget in Euros (€)")
     target_geo: List[str] = Field(..., min_items=1)
     
     # Optional fields with defaults
@@ -129,7 +134,7 @@ class OnboardRequest(BaseModel):
     @validator('daily_budget')
     def validate_budget(cls, v):
         if v < 5:
-            raise ValueError('Daily budget must be at least $5')
+            raise ValueError('Daily budget must be at least €5')
         return v
 
 class CreativeAsset(BaseModel):
@@ -141,3 +146,5 @@ class CampaignResponse(BaseModel):
     campaign_id: str
     status: str
     message: str
+
+
