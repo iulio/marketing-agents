@@ -9,7 +9,16 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
+from .encryption import encrypt, decrypt
+
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "marketing_agents.db")
+
+SETTINGS_KEY_GLOBAL_AD_CREDENTIALS = "global_ad_credentials"
+AUDIT_STATUS_NEW = "new"
+AUDIT_STATUS_CONTACTED = "contacted"
+AUDIT_STATUS_QUALIFIED = "qualified"
+AUDIT_STATUS_WON = "won"
+AUDIT_STATUS_LOST = "lost"
 
 
 def _sync_database_url() -> str:
@@ -83,6 +92,84 @@ def _ensure_user_billing_columns(conn):
         conn.execute(text("ALTER TABLE users ADD COLUMN plan TEXT"))
 
 
+def _ensure_client_credential_columns(conn):
+    columns = _get_table_columns(conn, "clients")
+    credential_columns = {
+        "google_ads_developer_token": "TEXT",
+        "google_ads_client_id": "TEXT",
+        "google_ads_client_secret": "TEXT",
+        "google_ads_refresh_token": "TEXT",
+        "google_ads_customer_id": "TEXT",
+        "meta_app_id": "TEXT",
+        "meta_app_secret": "TEXT",
+        "meta_access_token": "TEXT",
+        "meta_ad_account_id": "TEXT",
+        "google_ads_configured": "BOOLEAN DEFAULT 0" if IS_SQLITE else "BOOLEAN DEFAULT FALSE",
+        "meta_ads_configured": "BOOLEAN DEFAULT 0" if IS_SQLITE else "BOOLEAN DEFAULT FALSE",
+    }
+    for column_name, column_type in credential_columns.items():
+        if column_name not in columns:
+            conn.execute(text(f"ALTER TABLE clients ADD COLUMN {column_name} {column_type}"))
+
+
+def _ensure_settings_table(conn):
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            is_encrypted INTEGER DEFAULT 0,
+            updated_at TEXT NOT NULL
+        )
+    """))
+
+
+def _ensure_leads_table(conn):
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS leads (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            email TEXT,
+            website TEXT NOT NULL,
+            company TEXT,
+            source TEXT DEFAULT 'audit',
+            status TEXT DEFAULT 'new',
+            notes TEXT,
+            audit_id TEXT,
+            proposal_id TEXT,
+            follow_up_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """))
+
+
+def _ensure_audit_reports_table(conn):
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS audit_reports (
+            id TEXT PRIMARY KEY,
+            website TEXT NOT NULL,
+            title TEXT,
+            audit_json TEXT NOT NULL,
+            lead_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """))
+
+
+def _ensure_proposals_table(conn):
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS proposals (
+            id TEXT PRIMARY KEY,
+            lead_id TEXT,
+            website TEXT,
+            proposal_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """))
+
+
 def init_db():
     """Create all tables if they do not exist."""
     optimization_id = "INTEGER PRIMARY KEY AUTOINCREMENT" if IS_SQLITE else "SERIAL PRIMARY KEY"
@@ -121,11 +208,23 @@ def init_db():
                 billing_info TEXT,
                 settings TEXT,
                 platform_status TEXT DEFAULT 'inactive',
+                google_ads_developer_token TEXT,
+                google_ads_client_id TEXT,
+                google_ads_client_secret TEXT,
+                google_ads_refresh_token TEXT,
+                google_ads_customer_id TEXT,
+                meta_app_id TEXT,
+                meta_app_secret TEXT,
+                meta_access_token TEXT,
+                meta_ad_account_id TEXT,
+                google_ads_configured INTEGER DEFAULT 0,
+                meta_ads_configured INTEGER DEFAULT 0,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
         """))
         _ensure_client_platform_status_column(conn)
+        _ensure_client_credential_columns(conn)
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -154,6 +253,118 @@ def init_db():
                 is_active INTEGER DEFAULT 1
             )
         """))
+        _ensure_settings_table(conn)
+        _ensure_leads_table(conn)
+        _ensure_audit_reports_table(conn)
+        _ensure_proposals_table(conn)
+
+
+def set_setting(key: str, value: Any, encrypt_value: bool = False) -> None:
+    serialized = json.dumps(value) if not isinstance(value, str) else value
+    stored_value = encrypt(serialized) if encrypt_value else serialized
+    now = datetime.utcnow().isoformat()
+    with engine.begin() as conn:
+        existing = _scalar_or_none(
+            conn.execute(text("SELECT key FROM settings WHERE key = :key"), {"key": key})
+        )
+        if existing:
+            conn.execute(
+                text("""
+                    UPDATE settings
+                    SET value = :value, is_encrypted = :is_encrypted, updated_at = :updated_at
+                    WHERE key = :key
+                """),
+                {
+                    "key": key,
+                    "value": stored_value,
+                    "is_encrypted": 1 if encrypt_value else 0,
+                    "updated_at": now,
+                },
+            )
+        else:
+            conn.execute(
+                text("""
+                    INSERT INTO settings (key, value, is_encrypted, updated_at)
+                    VALUES (:key, :value, :is_encrypted, :updated_at)
+                """),
+                {
+                    "key": key,
+                    "value": stored_value,
+                    "is_encrypted": 1 if encrypt_value else 0,
+                    "updated_at": now,
+                },
+            )
+
+
+def get_setting(key: str, default: Any = None) -> Any:
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT value, is_encrypted FROM settings WHERE key = :key"),
+            {"key": key},
+        ).first()
+    if not row:
+        return default
+    raw_value = decrypt(row[0]) if row[1] else row[0]
+    try:
+        return json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError):
+        return raw_value
+
+
+def _mask_secret(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    if len(value) <= 4:
+        return "*" * len(value)
+    return f"{'*' * (len(value) - 4)}{value[-4:]}"
+
+
+def save_global_ad_credentials(creds: Dict[str, Any]) -> Dict[str, Any]:
+    payload = {
+        "google_ads_developer_token": creds.get("google_ads_developer_token") or "",
+        "google_ads_client_id": creds.get("google_ads_client_id") or "",
+        "google_ads_client_secret": creds.get("google_ads_client_secret") or "",
+        "google_ads_refresh_token": creds.get("google_ads_refresh_token") or "",
+        "google_ads_customer_id": creds.get("google_ads_customer_id") or "",
+        "meta_app_id": creds.get("meta_app_id") or "",
+        "meta_app_secret": creds.get("meta_app_secret") or "",
+        "meta_access_token": creds.get("meta_access_token") or "",
+        "meta_ad_account_id": creds.get("meta_ad_account_id") or "",
+        "google_ads_configured": bool(creds.get("google_ads_developer_token") or os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN")),
+        "meta_ads_configured": bool(creds.get("meta_app_id") or os.getenv("META_APP_ID")),
+    }
+    set_setting(SETTINGS_KEY_GLOBAL_AD_CREDENTIALS, payload, encrypt_value=True)
+    return payload
+
+
+def load_global_ad_credentials(mask_secrets: bool = False) -> Dict[str, Any]:
+    stored = get_setting(SETTINGS_KEY_GLOBAL_AD_CREDENTIALS, default={}) or {}
+    fallback = {
+        "google_ads_developer_token": os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN", ""),
+        "google_ads_client_id": os.getenv("GOOGLE_ADS_CLIENT_ID", ""),
+        "google_ads_client_secret": os.getenv("GOOGLE_ADS_CLIENT_SECRET", ""),
+        "google_ads_refresh_token": os.getenv("GOOGLE_ADS_REFRESH_TOKEN", ""),
+        "google_ads_customer_id": os.getenv("GOOGLE_ADS_CUSTOMER_ID", ""),
+        "meta_app_id": os.getenv("META_APP_ID", ""),
+        "meta_app_secret": os.getenv("META_APP_SECRET", ""),
+        "meta_access_token": os.getenv("META_ACCESS_TOKEN", ""),
+        "meta_ad_account_id": os.getenv("META_AD_ACCOUNT_ID", ""),
+    }
+    merged = {**fallback, **stored}
+    merged["google_ads_configured"] = bool(merged.get("google_ads_developer_token"))
+    merged["meta_ads_configured"] = bool(merged.get("meta_app_id"))
+    if not mask_secrets:
+        return merged
+    masked = dict(merged)
+    for key in [
+        "google_ads_developer_token",
+        "google_ads_client_secret",
+        "google_ads_refresh_token",
+        "meta_app_secret",
+        "meta_access_token",
+    ]:
+        masked[key] = _mask_secret(masked.get(key))
+    return masked
 
 
 def save_campaign_state(
@@ -225,16 +436,7 @@ def get_all_campaigns() -> List[Dict]:
 
 
 def get_client_campaigns(client_id: str) -> List[Dict]:
-    with engine.begin() as conn:
-        rows = _rows(
-            conn.execute(
-                text("SELECT * FROM campaigns WHERE client_id = :client_id ORDER BY created_at DESC"),
-                {"client_id": client_id},
-            )
-        )
-    for item in rows:
-        item["state"] = _json_load(item["state"], {})
-    return rows
+    return get_all_campaigns()
 
 
 def delete_campaign(campaign_id: str) -> bool:
@@ -531,6 +733,81 @@ def update_user_password(email: str, password: str) -> bool:
     return result.rowcount > 0
 
 
+async def update_client_credentials(client_id: str, creds: dict):
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                UPDATE clients
+                SET google_ads_developer_token = :google_ads_developer_token,
+                    google_ads_client_id = :google_ads_client_id,
+                    google_ads_client_secret = :google_ads_client_secret,
+                    google_ads_refresh_token = :google_ads_refresh_token,
+                    google_ads_customer_id = :google_ads_customer_id,
+                    meta_app_id = :meta_app_id,
+                    meta_app_secret = :meta_app_secret,
+                    meta_access_token = :meta_access_token,
+                    meta_ad_account_id = :meta_ad_account_id,
+                    google_ads_configured = :google_ads_configured,
+                    meta_ads_configured = :meta_ads_configured,
+                    updated_at = :updated_at
+                WHERE id = :client_id
+            """),
+            {
+                "client_id": client_id,
+                "google_ads_developer_token": encrypt(creds.get("google_ads_developer_token")),
+                "google_ads_client_id": encrypt(creds.get("google_ads_client_id")),
+                "google_ads_client_secret": encrypt(creds.get("google_ads_client_secret")),
+                "google_ads_refresh_token": encrypt(creds.get("google_ads_refresh_token")),
+                "google_ads_customer_id": encrypt(creds.get("google_ads_customer_id")),
+                "meta_app_id": encrypt(creds.get("meta_app_id")),
+                "meta_app_secret": encrypt(creds.get("meta_app_secret")),
+                "meta_access_token": encrypt(creds.get("meta_access_token")),
+                "meta_ad_account_id": encrypt(creds.get("meta_ad_account_id")),
+                "google_ads_configured": bool(creds.get("google_ads_developer_token")),
+                "meta_ads_configured": bool(creds.get("meta_app_id")),
+                "updated_at": datetime.utcnow().isoformat(),
+            },
+        )
+
+
+async def get_client_credentials(client_id: str) -> dict:
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT * FROM clients WHERE id = :client_id"),
+            {"client_id": client_id},
+        ).first()
+    if not row:
+        return {}
+    client = dict(row._mapping)
+    return {
+        "google_ads_developer_token": decrypt(client.get("google_ads_developer_token")),
+        "google_ads_client_id": decrypt(client.get("google_ads_client_id")),
+        "google_ads_client_secret": decrypt(client.get("google_ads_client_secret")),
+        "google_ads_refresh_token": decrypt(client.get("google_ads_refresh_token")),
+        "google_ads_customer_id": decrypt(client.get("google_ads_customer_id")),
+        "meta_app_id": decrypt(client.get("meta_app_id")),
+        "meta_app_secret": decrypt(client.get("meta_app_secret")),
+        "meta_access_token": decrypt(client.get("meta_access_token")),
+        "meta_ad_account_id": decrypt(client.get("meta_ad_account_id")),
+        "google_ads_configured": bool(client.get("google_ads_configured")),
+        "meta_ads_configured": bool(client.get("meta_ads_configured")),
+    }
+
+
+async def get_credential_status(client_id: str) -> dict:
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT google_ads_configured, meta_ads_configured FROM clients WHERE id = :client_id"),
+            {"client_id": client_id},
+        ).first()
+    if not row:
+        return {"google_ads": False, "meta_ads": False}
+    return {
+        "google_ads": bool(row[0]),
+        "meta_ads": bool(row[1]),
+    }
+
+
 def get_total_clients_sync() -> int:
     with engine.begin() as conn:
         result = conn.execute(text("SELECT COUNT(*) FROM clients"))
@@ -553,6 +830,119 @@ def get_new_signups_sync(days: int = 30) -> int:
     with engine.begin() as conn:
         result = conn.execute(query, params)
         return int(_scalar_or_none(result) or 0)
+
+
+def create_lead(lead_data: Dict[str, Any]) -> str:
+    now = datetime.utcnow().isoformat()
+    lead_id = lead_data.get("id", str(uuid.uuid4())[:8])
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO leads
+                (id, name, email, website, company, source, status, notes, audit_id, proposal_id, follow_up_at, created_at, updated_at)
+                VALUES (:id, :name, :email, :website, :company, :source, :status, :notes, :audit_id, :proposal_id, :follow_up_at, :created_at, :updated_at)
+            """),
+            {
+                "id": lead_id,
+                "name": lead_data.get("name", ""),
+                "email": lead_data.get("email", ""),
+                "website": lead_data.get("website", ""),
+                "company": lead_data.get("company", ""),
+                "source": lead_data.get("source", "audit"),
+                "status": lead_data.get("status", AUDIT_STATUS_NEW),
+                "notes": lead_data.get("notes", ""),
+                "audit_id": lead_data.get("audit_id"),
+                "proposal_id": lead_data.get("proposal_id"),
+                "follow_up_at": lead_data.get("follow_up_at"),
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+    return lead_id
+
+
+def get_all_leads() -> List[Dict[str, Any]]:
+    with engine.begin() as conn:
+        return _rows(conn.execute(text("SELECT * FROM leads ORDER BY created_at DESC")))
+
+
+def update_lead(lead_id: str, updates: Dict[str, Any]) -> bool:
+    allowed = {"name", "email", "website", "company", "source", "status", "notes", "audit_id", "proposal_id", "follow_up_at"}
+    assignments = []
+    params: Dict[str, Any] = {"lead_id": lead_id, "updated_at": datetime.utcnow().isoformat()}
+    for field in allowed:
+        if field in updates:
+            assignments.append(f"{field} = :{field}")
+            params[field] = updates[field]
+    if not assignments:
+        return False
+    assignments.append("updated_at = :updated_at")
+    with engine.begin() as conn:
+        result = conn.execute(text(f"UPDATE leads SET {', '.join(assignments)} WHERE id = :lead_id"), params)
+    return result.rowcount > 0
+
+
+def save_audit_report(audit_data: Dict[str, Any], lead_id: Optional[str] = None) -> str:
+    now = datetime.utcnow().isoformat()
+    audit_id = str(uuid.uuid4())[:8]
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO audit_reports (id, website, title, audit_json, lead_id, created_at, updated_at)
+                VALUES (:id, :website, :title, :audit_json, :lead_id, :created_at, :updated_at)
+            """),
+            {
+                "id": audit_id,
+                "website": audit_data.get("url", ""),
+                "title": audit_data.get("data", {}).get("title", ""),
+                "audit_json": json.dumps(audit_data),
+                "lead_id": lead_id,
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+    return audit_id
+
+
+def get_audit_report(audit_id: str) -> Optional[Dict[str, Any]]:
+    with engine.begin() as conn:
+        row = conn.execute(text("SELECT * FROM audit_reports WHERE id = :audit_id"), {"audit_id": audit_id}).first()
+    if not row:
+        return None
+    item = dict(row._mapping)
+    item["audit_json"] = _json_load(item.get("audit_json"), {})
+    return item
+
+
+def save_proposal_record(proposal_data: Dict[str, Any], lead_id: Optional[str] = None, website: str = "") -> str:
+    now = datetime.utcnow().isoformat()
+    proposal_id = str(uuid.uuid4())[:8]
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO proposals (id, lead_id, website, proposal_json, created_at, updated_at)
+                VALUES (:id, :lead_id, :website, :proposal_json, :created_at, :updated_at)
+            """),
+            {
+                "id": proposal_id,
+                "lead_id": lead_id,
+                "website": website,
+                "proposal_json": json.dumps(proposal_data),
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+    return proposal_id
+
+
+def get_proposal_record(proposal_id: str) -> Optional[Dict[str, Any]]:
+    with engine.begin() as conn:
+        row = conn.execute(text("SELECT * FROM proposals WHERE id = :proposal_id"), {"proposal_id": proposal_id}).first()
+    if not row:
+        return None
+    item = dict(row._mapping)
+    item["proposal_json"] = _json_load(item.get("proposal_json"), {})
+    return item
 
 
 init_db()

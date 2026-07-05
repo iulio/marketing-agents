@@ -85,6 +85,13 @@ class ApiKey(Base):
     expires_at = Column(DateTime)
     is_active = Column(Boolean, default=True)
 
+class Setting(Base):
+    __tablename__ = "settings"
+    key = Column(String, primary_key=True)
+    value = Column(Text)
+    is_encrypted = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class ABTest(Base):
     __tablename__ = "ab_tests"
     id = Column(String, primary_key=True, default=gen_uuid)
@@ -142,6 +149,9 @@ class OnboardRequest(BaseModel):
     objective: CampaignObjective = CampaignObjective.SALES
     special_events: List[str] = Field(default_factory=list)
     product_keywords: List[str] = Field(default_factory=list)
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    duration_days: Optional[int] = Field(default=None, ge=1, le=365)
 
     @validator('daily_budget')
     def validate_budget(cls, v):

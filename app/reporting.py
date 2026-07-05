@@ -229,3 +229,112 @@ RECOMMENDATIONS
         report += "\n========================================\nEND OF REPORT\n========================================\n"
         
         return report.encode('utf-8')
+
+
+def generate_audit_pdf(audit_data: dict) -> bytes:
+    if not REPORTLAB_AVAILABLE:
+        fallback = [
+            "FREE MARKETING AUDIT",
+            f"Website: {audit_data.get('url', '')}",
+            f"SEO Score: {audit_data.get('audit', {}).get('seo_score', 'N/A')}/100",
+            f"Ads Opportunity: {audit_data.get('audit', {}).get('ads_opportunity', 'N/A')}",
+            "",
+            "Recommendations:",
+        ]
+        for rec in audit_data.get('audit', {}).get('recommendations', []):
+            fallback.append(f"- [{rec.get('priority', 'medium')}] {rec.get('text', '')}")
+        return "\n".join(fallback).encode('utf-8')
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('AuditTitle', parent=styles['Heading1'], fontSize=24, spaceAfter=24)
+    story = []
+
+    story.append(Paragraph("Free Marketing Audit", title_style))
+    story.append(Paragraph(f"Website: {audit_data.get('url', '')}", styles['Normal']))
+    story.append(Paragraph(f"SEO Score: {audit_data.get('audit', {}).get('seo_score', 'N/A')}/100", styles['Normal']))
+    story.append(Paragraph(f"Ads Opportunity: {audit_data.get('audit', {}).get('ads_opportunity', 'N/A')}", styles['Normal']))
+    story.append(Paragraph(f"Social Presence: {audit_data.get('audit', {}).get('social_presence', 'N/A')}", styles['Normal']))
+    story.append(Paragraph(f"Content Quality: {audit_data.get('audit', {}).get('content_quality', 'N/A')}", styles['Normal']))
+    story.append(Spacer(1, 0.25 * inch))
+    story.append(Paragraph("Summary", styles['Heading2']))
+    story.append(Paragraph(audit_data.get('audit', {}).get('summary', 'No summary available.'), styles['Normal']))
+    story.append(Spacer(1, 0.2 * inch))
+    story.append(Paragraph("Recommendations", styles['Heading2']))
+    for rec in audit_data.get('audit', {}).get('recommendations', []):
+        story.append(Paragraph(f"- [{rec.get('priority', 'medium')}] {rec.get('text', '')}", styles['Normal']))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def generate_proposal_pdf(proposal_data: dict, client_info: dict | None = None) -> bytes:
+    if not REPORTLAB_AVAILABLE:
+        lines = [
+            "MARKETING PROPOSAL",
+            f"Client: {(client_info or {}).get('name', 'Unknown')}",
+            f"Website: {(client_info or {}).get('website', '')}",
+            "",
+            f"Summary: {proposal_data.get('summary', '')}",
+            f"Current Situation: {proposal_data.get('current_situation', '')}",
+            f"Strategy: {proposal_data.get('strategy', '')}",
+            f"Timeline: {proposal_data.get('timeline', '')}",
+            f"Expected Results: {proposal_data.get('expected_results', '')}",
+        ]
+        for pkg in proposal_data.get('packages', []):
+            lines.append(f"- {pkg.get('name')}: €{pkg.get('price')} | {', '.join(pkg.get('features', []))}")
+        return "\n".join(lines).encode('utf-8')
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('ProposalTitle', parent=styles['Heading1'], fontSize=24, spaceAfter=24)
+    story = []
+    client_info = client_info or {}
+
+    story.append(Paragraph("Marketing Growth Proposal", title_style))
+    story.append(Paragraph(f"Client: {client_info.get('name', 'Unknown')}", styles['Normal']))
+    story.append(Paragraph(f"Website: {client_info.get('website', '')}", styles['Normal']))
+    story.append(Paragraph(f"Industry: {client_info.get('industry', '')}", styles['Normal']))
+    story.append(Spacer(1, 0.25 * inch))
+
+    story.append(Paragraph("Executive Summary", styles['Heading2']))
+    story.append(Paragraph(proposal_data.get('summary', ''), styles['Normal']))
+    story.append(Spacer(1, 0.15 * inch))
+    story.append(Paragraph("Current Situation", styles['Heading2']))
+    story.append(Paragraph(proposal_data.get('current_situation', ''), styles['Normal']))
+    story.append(Spacer(1, 0.15 * inch))
+    story.append(Paragraph("Proposed Strategy", styles['Heading2']))
+    story.append(Paragraph(proposal_data.get('strategy', ''), styles['Normal']))
+    story.append(Spacer(1, 0.15 * inch))
+    story.append(Paragraph("Package Options", styles['Heading2']))
+
+    package_rows = [["Package", "Price", "Features"]]
+    for pkg in proposal_data.get('packages', []):
+        package_rows.append([
+            pkg.get('name', ''),
+            f"€{pkg.get('price', 0)}",
+            ", ".join(pkg.get('features', [])),
+        ])
+    if len(package_rows) > 1:
+        table = Table(package_rows, colWidths=[1.5 * inch, 1.0 * inch, 3.5 * inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ]))
+        story.append(table)
+
+    story.append(Spacer(1, 0.15 * inch))
+    story.append(Paragraph("Timeline", styles['Heading2']))
+    story.append(Paragraph(proposal_data.get('timeline', ''), styles['Normal']))
+    story.append(Spacer(1, 0.15 * inch))
+    story.append(Paragraph("Expected Results", styles['Heading2']))
+    story.append(Paragraph(proposal_data.get('expected_results', ''), styles['Normal']))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competitive Heatmap</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen">
+    <div class="max-w-4xl mx-auto mt-16 p-6 bg-slate-800 rounded-xl shadow-xl">
+        <h1 class="text-3xl font-bold">Competitive Heatmap</h1>
+        <p class="text-slate-400 text-sm mt-2">Compare a client domain against competitors on key marketing metrics.</p>
+
+        <form id="heatmapForm" class="mt-6 space-y-4">
+            <div>
+                <label class="block text-sm mb-2">Client Domain</label>
+                <input type="text" id="clientDomain" placeholder="example.com" class="w-full p-3 rounded bg-slate-700 border border-slate-600" required>
+            </div>
+            <div>
+                <label class="block text-sm mb-2">Competitor Domains</label>
+                <textarea id="competitorDomains" rows="4" placeholder="competitor1.com, competitor2.com, competitor3.com" class="w-full p-3 rounded bg-slate-700 border border-slate-600" required></textarea>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded font-medium">Generate Heatmap</button>
+            <div id="heatmapStatus" class="text-sm"></div>
+        </form>
+
+        <div id="heatmapResults" class="mt-6 hidden">
+            <h2 class="text-xl font-semibold mb-3">Results</h2>
+            <div class="mb-4 flex gap-3">
+                <a href="/static/audit.html" class="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded">Open Audit Tool</a>
+                <a href="/static/index.html" class="bg-slate-600 hover:bg-slate-700 px-4 py-2 rounded">Back to Dashboard</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm border border-slate-700">
+                    <thead class="bg-slate-700">
+                        <tr>
+                            <th class="p-3 text-left">Domain</th>
+                            <th class="p-3 text-left">Ad Spend</th>
+                            <th class="p-3 text-left">CTR</th>
+                            <th class="p-3 text-left">Keywords</th>
+                            <th class="p-3 text-left">Followers</th>
+                            <th class="p-3 text-left">SEO Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="heatmapTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('heatmapForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const domain = document.getElementById('clientDomain').value.trim();
+            const competitors = document.getElementById('competitorDomains').value.split(',').map(v => v.trim()).filter(Boolean);
+            const status = document.getElementById('heatmapStatus');
+            status.textContent = '⏳ Generating comparison...';
+            try {
+                const res = await fetch('/api/competitor/heatmap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain, competitors })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Unknown error');
+                status.textContent = '✅ Heatmap ready!';
+                const rows = [data.client, ...(data.competitors || [])];
+                document.getElementById('heatmapTableBody').innerHTML = rows.map(row => `
+                    <tr class="border-t border-slate-700 ${row.domain === data.client.domain ? 'bg-blue-900/20' : ''}">
+                        <td class="p-3">${row.domain}</td>
+                        <td class="p-3">€${row.ad_spend}</td>
+                        <td class="p-3">${row.ctr}%</td>
+                        <td class="p-3">${row.keywords}</td>
+                        <td class="p-3">${row.social_followers}</td>
+                        <td class="p-3">${row.seo_score}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('heatmapResults').classList.remove('hidden');
+            } catch (err) {
+                status.textContent = `❌ Error: ${err.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
