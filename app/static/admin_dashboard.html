@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Admin Dashboard</title><script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-gray-900 text-white">
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold">Admin Dashboard</h1>
+    <div class="grid grid-cols-4 gap-4 mt-6">
+        <div class="bg-gray-800 p-4 rounded-xl"><p class="text-gray-400">Total Clients</p><p id="totalClients" class="text-3xl font-bold">-</p></div>
+        <div class="bg-gray-800 p-4 rounded-xl"><p class="text-gray-400">Active Campaigns</p><p id="activeCampaigns" class="text-3xl font-bold">-</p></div>
+        <div class="bg-gray-800 p-4 rounded-xl"><p class="text-gray-400">New Signups (7d)</p><p id="newSignups" class="text-3xl font-bold">-</p></div>
+        <div class="bg-gray-800 p-4 rounded-xl"><p class="text-gray-400">MRR</p><p id="mrr" class="text-3xl font-bold">-</p></div>
+    </div>
+</div>
+<script>
+    fetch('/api/admin/analytics', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('totalClients').textContent = data.total_clients;
+            document.getElementById('activeCampaigns').textContent = data.active_campaigns;
+            document.getElementById('newSignups').textContent = data.new_signups_7d;
+            document.getElementById('mrr').textContent = '€' + (data.mrr || 0);
+        });
+</script>
+</body>
+</html>

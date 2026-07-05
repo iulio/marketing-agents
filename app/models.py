@@ -25,6 +25,9 @@ class User(Base):
     client_id = Column(String, ForeignKey("clients.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    stripe_customer_id = Column(String, nullable=True)
+    subscription_status = Column(String, default="trial")
+    plan = Column(String, nullable=True)  # e.g., "pro", "agency"
 
 class Client(Base):
     __tablename__ = "clients"
@@ -37,6 +40,15 @@ class Client(Base):
     billing_info = Column(JSON)
     settings = Column(JSON)
     platform_status = Column(String, default="inactive")
+    google_ads_developer_token = Column(String, nullable=True)
+    google_ads_client_id = Column(String, nullable=True)
+    google_ads_client_secret = Column(String, nullable=True)
+    google_ads_refresh_token = Column(String, nullable=True)
+    google_ads_customer_id = Column(String, nullable=True)
+    meta_app_id = Column(String, nullable=True)
+    meta_app_secret = Column(String, nullable=True)
+    meta_access_token = Column(String, nullable=True)
+    meta_ad_account_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     users = relationship("User", backref="client")
@@ -72,6 +84,13 @@ class ApiKey(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime)
     is_active = Column(Boolean, default=True)
+
+class Setting(Base):
+    __tablename__ = "settings"
+    key = Column(String, primary_key=True)
+    value = Column(Text)
+    is_encrypted = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class ABTest(Base):
     __tablename__ = "ab_tests"
@@ -130,6 +149,9 @@ class OnboardRequest(BaseModel):
     objective: CampaignObjective = CampaignObjective.SALES
     special_events: List[str] = Field(default_factory=list)
     product_keywords: List[str] = Field(default_factory=list)
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    duration_days: Optional[int] = Field(default=None, ge=1, le=365)
 
     @validator('daily_budget')
     def validate_budget(cls, v):

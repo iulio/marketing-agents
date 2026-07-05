@@ -1,11 +1,14 @@
 # app/main.py - MAIN APPLICATION
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request , Query, Response
+from fastapi import FastAPI, HTTPException, Request , Query, Response, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
 from typing import Dict, Any
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from .models import OnboardRequest, CampaignResponse
 from .agents import graph, AgencyState
@@ -14,12 +17,24 @@ from .analytics import generate_daily_metrics, aggregate_metrics
 from .scheduler import CampaignScheduler
 from .analyst import PerformanceMonitor, run_immediate_optimization, fetch_real_kpis, refresh_kpis
 from .auth import create_default_admin, generate_token, verify_user, get_user_by_email
-from .middleware import require_role
+from .middleware import require_role, get_current_user
+from .email import send_welcome_email, send_audit_report_email, send_proposal_email, send_follow_up_email
+from .audit import perform_audit
+from .competitor import get_competitor_data
+from .proposal import generate_proposal
+from .reporting import generate_audit_pdf, generate_proposal_pdf
 
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
+from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record
 
 from .kpi_fetcher import KPIFetcher
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+
+security = HTTPBearer(auto_error=False)
+
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(dsn=sentry_dsn, integrations=[FastApiIntegration()])
 
 # ================================================================
 # IN-MEMORY STORAGE
@@ -84,7 +99,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static UI
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    tutorials_dir = os.path.join(static_dir, "tutorials")
+    if os.path.exists(tutorials_dir):
+        app.mount("/tutorials", StaticFiles(directory=tutorials_dir), name="tutorials")
 
 # ================================================================
 # ROOT ENDPOINT
@@ -101,6 +121,111 @@ def healthz():
 def api_healthz():
     return {"status": "online", "service": "Agentic Marketing Agency"}
 
+
+@app.post("/api/audit")
+async def run_audit(url_data: UrlRequest):
+    if not url_data.url:
+        raise HTTPException(status_code=400, detail="URL required")
+    result = await perform_audit(url_data.url)
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+    audit_id = save_audit_report(result)
+    result["audit_id"] = audit_id
+    return result
+
+
+@app.post("/api/audit/pdf")
+async def download_audit_pdf(url_data: UrlRequest):
+    if not url_data.url:
+        raise HTTPException(status_code=400, detail="URL required")
+    result = await perform_audit(url_data.url)
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+    pdf_bytes = generate_audit_pdf(result)
+    return Response(
+        pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=audit.pdf"},
+    )
+
+
+@app.post("/api/competitor/heatmap")
+async def competitor_heatmap(data: CompetitorHeatmapRequest):
+    if not data.domain or not data.competitors:
+        raise HTTPException(status_code=400, detail="Domain and at least one competitor required")
+    return await get_competitor_data(data.domain, data.competitors)
+
+
+@app.post("/api/proposal/generate")
+async def create_proposal(data: ProposalRequest):
+    proposal = await generate_proposal(data.client or {}, data.audit or {})
+    proposal_id = save_proposal_record(proposal, website=(data.client or {}).get("website", ""))
+    return {"proposal_id": proposal_id, "proposal": proposal}
+
+
+@app.post("/api/proposal/pdf")
+async def download_proposal_pdf(data: ProposalRequest):
+    proposal = await generate_proposal(data.client or {}, data.audit or {})
+    pdf_bytes = generate_proposal_pdf(proposal, data.client or {})
+    return Response(
+        pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=proposal.pdf"},
+    )
+
+
+@app.post("/api/leads")
+async def create_lead_endpoint(data: LeadRequest):
+    lead_id = create_lead(data.model_dump())
+    return {"lead_id": lead_id, "message": "Lead created"}
+
+
+@app.get("/api/leads")
+async def list_leads_endpoint():
+    return {"leads": get_all_leads()}
+
+
+@app.patch("/api/leads/{lead_id}")
+async def update_lead_endpoint(lead_id: str, updates: dict):
+    success = update_lead(lead_id, updates)
+    if not success:
+        raise HTTPException(status_code=400, detail="No valid lead fields to update")
+    return {"message": "Lead updated", "lead_id": lead_id}
+
+
+@app.get("/api/audit/{audit_id}")
+async def get_saved_audit(audit_id: str):
+    audit = get_audit_report(audit_id)
+    if not audit:
+        raise HTTPException(status_code=404, detail="Audit not found")
+    return audit
+
+
+@app.get("/api/proposal/{proposal_id}")
+async def get_saved_proposal(proposal_id: str):
+    proposal = get_proposal_record(proposal_id)
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    return proposal
+
+
+@app.post("/api/outreach/audit")
+async def send_audit_outreach_email(data: OutreachRequest):
+    send_audit_report_email(data.email, data.website, data.summary or "Your audit is ready.")
+    return {"message": "Audit email queued"}
+
+
+@app.post("/api/outreach/proposal")
+async def send_proposal_outreach_email(data: OutreachRequest):
+    send_proposal_email(data.email, data.website, data.summary or "Your proposal is ready.")
+    return {"message": "Proposal email queued"}
+
+
+@app.post("/api/outreach/follow-up")
+async def send_follow_up_outreach_email(data: OutreachRequest):
+    send_follow_up_email(data.email, data.website)
+    return {"message": "Follow-up email queued"}
+
 # ================================================================
 # AUTHENTICATION ENDPOINTS
 # ================================================================
@@ -108,6 +233,41 @@ def api_healthz():
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+
+
+class UrlRequest(BaseModel):
+    url: str
+
+
+class CompetitorHeatmapRequest(BaseModel):
+    domain: str
+    competitors: list[str]
+
+
+class ProposalRequest(BaseModel):
+    client: dict
+    audit: dict
+
+
+class LeadRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    website: str
+    company: str | None = None
+    notes: str | None = None
+    follow_up_at: str | None = None
+
+
+class OutreachRequest(BaseModel):
+    email: EmailStr
+    website: str
+    summary: str | None = None
 
 @app.post("/api/auth/login")
 async def login(
@@ -144,8 +304,6 @@ VALID_CLIENT_STATUSES = {"active", "inactive", "pending", "suspended", "archived
 # ================================================================
 # CLIENT MANAGEMENT ENDPOINTS
 # ================================================================
-from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client
-
 @app.post("/api/clients")
 @require_role(["admin"])
 async def create_new_client(request: Request, client_data: dict):
@@ -155,6 +313,33 @@ async def create_new_client(request: Request, client_data: dict):
         raise HTTPException(status_code=400, detail="Invalid platform_status")
     client_id = create_client(client_data)
     return {"client_id": client_id, "message": "Client created"}
+
+
+@app.post("/api/auth/signup")
+async def signup(signup_data: SignupRequest):
+    existing_user = get_user_by_email(signup_data.email)
+    if existing_user:
+        raise HTTPException(status_code=409, detail="User already exists")
+    user_id = create_user({
+        "email": signup_data.email,
+        "password": signup_data.password,
+        "full_name": signup_data.full_name,
+        "role": "client_viewer",
+        "client_id": None,
+        "subscription_status": "trial",
+    })
+    send_welcome_email(signup_data.email, signup_data.full_name)
+    return {"user_id": user_id, "message": "Signup successful"}
+
+
+@app.get("/api/admin/analytics")
+@require_role(["admin"])
+async def admin_analytics(request: Request):
+    return {
+        "total_clients": get_total_clients_sync(),
+        "active_campaigns": get_active_campaigns_sync(),
+        "new_signups": get_new_signups_sync(),
+    }
 
 @app.get("/api/clients")
 @require_role(["admin"])
@@ -175,23 +360,87 @@ async def get_client_details(request: Request, client_id: str):
 @app.get("/api/clients/{client_id}/campaigns")
 @require_role(["admin", "client_manager", "client_viewer"])
 async def list_client_campaigns(request: Request, client_id: str):
-    user = request.state.user
-    if user['role'] != 'admin' and user.get('client_id') != client_id:
-        raise HTTPException(status_code=403, detail="Access denied")
     campaigns_data = get_client_campaigns(client_id)
     result = []
     for c in campaigns_data:
         state = c['state']
         client_profile = state.get('client_profile', {})
+        deployment = state.get('deployment_status', {})
         result.append({
             "campaign_id": c['campaign_id'],
             "campaign_name": client_profile.get('client_name', 'Unnamed'),
             "status": c['status'],
             "budget": client_profile.get('daily_budget', 0),
             "language": client_profile.get('language', 'en-US'),
+            "start_date": client_profile.get('start_date'),
+            "end_date": client_profile.get('end_date'),
+            "duration_days": client_profile.get('duration_days'),
+            "google_campaign_verified": deployment.get('google_campaign_verified', False),
+            "meta_campaign_verified": deployment.get('meta_campaign_verified', False),
+            "google_push_attempted": deployment.get('google_push_attempted', False),
+            "meta_push_attempted": deployment.get('meta_push_attempted', False),
+            "google_push_succeeded": deployment.get('google_push_succeeded', False),
+            "meta_push_succeeded": deployment.get('meta_push_succeeded', False),
+            "google_platform_response_id": deployment.get('google_platform_response_id'),
+            "meta_platform_response_id": deployment.get('meta_platform_response_id'),
+            "google_platform_error_message": deployment.get('google_platform_error_message'),
+            "meta_platform_error_message": deployment.get('meta_platform_error_message'),
+            "verification_message": deployment.get('verification_message', ''),
             "created_at": c['created_at']
         })
     return {"campaigns": result}
+
+
+@app.get("/api/settings/credentials")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def get_settings_credentials(request: Request, masked: bool = Query(True)):
+    return load_global_ad_credentials(mask_secrets=masked)
+
+
+@app.post("/api/settings/credentials")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def save_settings_credentials(request: Request, credentials: dict):
+    return {
+        "message": "Global credentials saved successfully",
+        "credentials": save_global_ad_credentials(credentials),
+    }
+
+
+@app.get("/api/clients/{client_id}/credentials/status")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def get_client_credentials_status(request: Request, client_id: str):
+    user = request.state.user
+    if user["role"] != "admin" and user.get("client_id") != client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    client = get_client(client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return await get_credential_status(client_id)
+
+
+@app.get("/api/clients/{client_id}/credentials")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def get_client_credentials_endpoint(request: Request, client_id: str):
+    user = request.state.user
+    if user["role"] != "admin" and user.get("client_id") != client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    client = get_client(client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return await get_client_credentials(client_id)
+
+
+@app.post("/api/clients/{client_id}/credentials")
+@require_role(["admin", "client_manager"])
+async def save_client_credentials_endpoint(request: Request, client_id: str, credentials: dict):
+    user = request.state.user
+    if user["role"] != "admin" and user.get("client_id") != client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    client = get_client(client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    await update_client_credentials(client_id, credentials)
+    return {"message": "Client credentials saved successfully", "client_id": client_id}
 
 
 @app.patch("/api/clients/{client_id}")
@@ -285,8 +534,11 @@ async def onboard_campaign(
                 detail=f"Client platform status is {client.get('platform_status')}; campaign orchestration is disabled",
             )
         campaign_id = str(uuid.uuid4())[:8]
+        creds = load_global_ad_credentials(mask_secrets=False)
         initial_state = {
             "client_profile": campaign_data.model_dump(mode="json"),
+            "client_credentials": creds,
+            "global_credentials": creds,
             "market_intelligence": {},
             "creative_assets": {},
             "deployment_status": {},
@@ -316,6 +568,12 @@ async def onboard_campaign(
             "campaign_id": campaign_id,
             "status": status,
             "message": "Campaign created and ready for review",
+            "duration": {
+                "start_date": final_state.get("client_profile", {}).get("start_date"),
+                "end_date": final_state.get("client_profile", {}).get("end_date"),
+                "duration_days": final_state.get("client_profile", {}).get("duration_days"),
+            },
+            "deployment_status": final_state.get("deployment_status", {}),
         }
 
     except HTTPException:
@@ -330,6 +588,7 @@ def list_campaigns():
     for cid, data in campaigns.items():
         state = data.get("state", {})
         client = state.get("client_profile", {})
+        deployment = state.get("deployment_status", {})
         result.append({
             "campaign_id": cid,
             "campaign_name": client.get("client_name", "Unnamed"),
@@ -337,7 +596,21 @@ def list_campaigns():
             "language": client.get("language", "en-US"),
             "budget": float(client.get("daily_budget", 0) or 0),
             "ctr": "4.2%",
-            "status": data.get("status", "unknown")
+            "status": data.get("status", "unknown"),
+            "start_date": client.get("start_date"),
+            "end_date": client.get("end_date"),
+            "duration_days": client.get("duration_days"),
+            "google_campaign_verified": deployment.get("google_campaign_verified", False),
+            "meta_campaign_verified": deployment.get("meta_campaign_verified", False),
+            "google_push_attempted": deployment.get("google_push_attempted", False),
+            "meta_push_attempted": deployment.get("meta_push_attempted", False),
+            "google_push_succeeded": deployment.get("google_push_succeeded", False),
+            "meta_push_succeeded": deployment.get("meta_push_succeeded", False),
+            "google_platform_response_id": deployment.get("google_platform_response_id"),
+            "meta_platform_response_id": deployment.get("meta_platform_response_id"),
+            "google_platform_error_message": deployment.get("google_platform_error_message"),
+            "meta_platform_error_message": deployment.get("meta_platform_error_message"),
+            "verification_message": deployment.get("verification_message", ""),
         })
     return result
 
@@ -538,14 +811,8 @@ async def get_platform_status():
 async def get_client_dashboard(request: Request):
     user = request.state.user
     client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client dashboard is only available for users linked to a client")
-
-    client = get_client(client_id)
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-
-    campaigns_data = get_client_campaigns(client_id)
+    client = get_client(client_id) if client_id else None
+    campaigns_data = get_all_campaigns()
     campaign_rows = []
     total_spend = 0.0
     active_campaigns = 0
@@ -577,7 +844,7 @@ async def get_client_dashboard(request: Request):
         })
 
     return {
-        "client_info": client,
+        "client_info": client or {"name": "Solo Agency"},
         "summary": {
             "total_campaigns": len(campaign_rows),
             "active_campaigns": active_campaigns,
@@ -704,6 +971,5 @@ async def get_campaign_schedule_endpoint(request: Request, campaign_id: str):
 
 # ================================================================
 
-static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")

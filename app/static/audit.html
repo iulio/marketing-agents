@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Marketing Audit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-3xl mx-auto mt-16 p-6 bg-gray-800 rounded-xl shadow-xl">
+        <h1 class="text-3xl font-bold">Free Marketing Audit</h1>
+        <p class="text-gray-400 text-sm mt-2">Enter a website URL and get a free report with actionable recommendations.</p>
+
+        <form id="auditForm" class="mt-6 space-y-4">
+            <div>
+                <label class="block text-sm mb-2">Website URL</label>
+                <input type="url" id="websiteUrl" placeholder="https://example.com" class="w-full p-3 rounded bg-gray-700 border border-gray-600" required>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm mb-2">Lead Name</label>
+                    <input type="text" id="leadName" placeholder="Jane Doe" class="w-full p-3 rounded bg-gray-700 border border-gray-600">
+                </div>
+                <div>
+                    <label class="block text-sm mb-2">Lead Email</label>
+                    <input type="email" id="leadEmail" placeholder="jane@example.com" class="w-full p-3 rounded bg-gray-700 border border-gray-600">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm mb-2">Company</label>
+                <input type="text" id="leadCompany" placeholder="Acme Ltd" class="w-full p-3 rounded bg-gray-700 border border-gray-600">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded font-medium">Run Audit</button>
+            <div id="auditStatus" class="text-sm"></div>
+        </form>
+
+        <div id="auditResults" class="mt-6 hidden">
+            <h2 class="text-xl font-semibold mb-3">Results</h2>
+            <div id="resultContent" class="space-y-2 text-sm text-gray-200"></div>
+            <div class="mt-4 flex gap-3">
+                <button onclick="downloadPDF()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Download PDF Report</button>
+                <button onclick="generateProposal()" class="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded">Generate Proposal</button>
+                <button onclick="downloadProposalPDF()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded">Proposal PDF</button>
+            </div>
+            <div class="mt-4 flex gap-3">
+                <button onclick="saveLead()" class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded">Save Lead</button>
+                <button onclick="sendAuditEmail()" class="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded">Email Audit</button>
+                <button onclick="sendProposalEmail()" class="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded">Email Proposal</button>
+            </div>
+            <div id="savedIds" class="mt-4 text-xs text-gray-400"></div>
+            <div id="proposalOutput" class="mt-6 hidden rounded-lg bg-gray-900 p-4 border border-gray-700"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentAuditData = null;
+        let currentProposalData = null;
+        let currentProposalId = null;
+        let currentLeadId = null;
+
+        document.getElementById('auditForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('websiteUrl').value.trim();
+            const status = document.getElementById('auditStatus');
+            status.textContent = '⏳ Analyzing...';
+            try {
+                const res = await fetch('/api/audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Unknown error');
+                currentAuditData = data;
+                currentLeadId = null;
+                status.textContent = '✅ Audit complete!';
+                document.getElementById('resultContent').innerHTML = `
+                    <p><strong>SEO Score:</strong> ${data.audit.seo_score}/100</p>
+                    <p><strong>Ads Opportunity:</strong> ${data.audit.ads_opportunity}</p>
+                    <p><strong>Social Presence:</strong> ${data.audit.social_presence}</p>
+                    <p><strong>Content Quality:</strong> ${data.audit.content_quality}</p>
+                    <p><strong>Summary:</strong> ${data.audit.summary}</p>
+                    <ul class="list-disc pl-5">${(data.audit.recommendations || []).map(r => `<li>[${r.priority}] ${r.text}</li>`).join('')}</ul>
+                `;
+                document.getElementById('auditResults').classList.remove('hidden');
+                updateSavedIds();
+            } catch (err) {
+                status.textContent = `❌ Error: ${err.message}`;
+            }
+        });
+
+        function getLeadPayload() {
+            return {
+                name: document.getElementById('leadName').value.trim(),
+                email: document.getElementById('leadEmail').value.trim(),
+                company: document.getElementById('leadCompany').value.trim(),
+                website: document.getElementById('websiteUrl').value.trim(),
+                notes: currentAuditData?.audit?.summary || ''
+            };
+        }
+
+        function updateSavedIds() {
+            document.getElementById('savedIds').textContent = `Audit ID: ${currentAuditData?.audit_id || '-'} | Proposal ID: ${currentProposalId || '-'} | Lead ID: ${currentLeadId || '-'}`;
+        }
+
+        async function downloadPDF() {
+            if (!currentAuditData) return;
+            const res = await fetch('/api/audit/pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: currentAuditData.url })
+            });
+            if (!res.ok) return;
+            const blob = await res.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'audit.pdf';
+            link.click();
+        }
+
+        async function generateProposal() {
+            if (!currentAuditData) return;
+            const proposalBox = document.getElementById('proposalOutput');
+            proposalBox.classList.remove('hidden');
+            proposalBox.innerHTML = '⏳ Generating proposal...';
+            const payload = {
+                client: {
+                    name: currentAuditData.data.title || currentAuditData.url,
+                    website: currentAuditData.url,
+                    industry: currentAuditData.data.keywords?.[0] || 'General'
+                },
+                audit: currentAuditData.audit
+            };
+            try {
+                const res = await fetch('/api/proposal/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to generate proposal');
+                currentProposalId = data.proposal_id;
+                currentProposalData = data.proposal;
+                proposalBox.innerHTML = `
+                    <h3 class="text-lg font-semibold mb-2">Proposal</h3>
+                    <p><strong>Summary:</strong> ${data.proposal.summary}</p>
+                    <p class="mt-2"><strong>Current Situation:</strong> ${data.proposal.current_situation}</p>
+                    <p class="mt-2"><strong>Strategy:</strong> ${data.proposal.strategy}</p>
+                    <p class="mt-2"><strong>Timeline:</strong> ${data.proposal.timeline}</p>
+                    <p class="mt-2"><strong>Expected Results:</strong> ${data.proposal.expected_results}</p>
+                    <div class="mt-3">
+                        <strong>Packages:</strong>
+                        <ul class="list-disc pl-5 mt-2">${(data.proposal.packages || []).map(pkg => `<li>${pkg.name} - €${pkg.price}: ${(pkg.features || []).join(', ')}</li>`).join('')}</ul>
+                    </div>
+                `;
+                updateSavedIds();
+            } catch (err) {
+                proposalBox.innerHTML = `❌ ${err.message}`;
+            }
+        }
+
+        async function downloadProposalPDF() {
+            if (!currentAuditData) return;
+            const payload = {
+                client: {
+                    name: document.getElementById('leadName').value.trim() || currentAuditData.data.title || currentAuditData.url,
+                    website: currentAuditData.url,
+                    industry: currentAuditData.data.keywords?.[0] || 'General'
+                },
+                audit: currentAuditData.audit
+            };
+            const res = await fetch('/api/proposal/pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) return;
+            const blob = await res.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'proposal.pdf';
+            link.click();
+        }
+
+        async function saveLead() {
+            const payload = getLeadPayload();
+            const res = await fetch('/api/leads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                currentLeadId = data.lead_id;
+                updateSavedIds();
+                alert('Lead saved');
+            }
+        }
+
+        async function sendAuditEmail() {
+            const email = document.getElementById('leadEmail').value.trim();
+            if (!email || !currentAuditData) return;
+            await fetch('/api/outreach/audit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, website: currentAuditData.url, summary: currentAuditData.audit.summary })
+            });
+            alert('Audit email queued');
+        }
+
+        async function sendProposalEmail() {
+            const email = document.getElementById('leadEmail').value.trim();
+            if (!email || !currentProposalData || !currentAuditData) return;
+            await fetch('/api/outreach/proposal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, website: currentAuditData.url, summary: currentProposalData.summary })
+            });
+            alert('Proposal email queued');
+        }
+    </script>
+</body>
+</html>

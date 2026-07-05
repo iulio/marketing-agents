@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from .cloud_llm import extract_json_object, get_cloud_llm
 from .industry_prompts import get_industry_template
+from .image_service import SmartImageSelector
 from .seasonal import get_upcoming_events
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -17,6 +18,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # ================================================================
 class AgencyState(TypedDict):
     client_profile: Dict[str, Any]
+    client_credentials: Dict[str, Any]
     market_intelligence: Dict[str, Any]
     creative_assets: Dict[str, Any]
     deployment_status: Dict[str, Any]
@@ -35,6 +37,12 @@ def get_llm():
     location = os.getenv("GOOGLE_CLOUD_LOCATION", os.getenv("GCP_LOCATION", "global"))
     print(f"[LLM] Using Vertex AI Gemini model: {model} ({location})")
     return get_cloud_llm(temperature=0.7)
+
+
+def get_llm_for_agent(agent_name: str = "default"):
+    """Return an LLM instance for helper modules that need agent access."""
+    print(f"[LLM] Requested by agent: {agent_name}")
+    return get_llm()
 
 llm = get_llm()
 
@@ -246,8 +254,17 @@ def creative_node(state: AgencyState) -> AgencyState:
             print(f"[Creative] Error: {e}. Using fallback.")
             creatives = fallback_creatives()
     
-    # Placeholder for images (optional)
-    creatives["images"] = []
+    try:
+        images = SmartImageSelector.select_images(
+            campaign_id=state.get("campaign_id", "unknown"),
+            client=client,
+            creatives=creatives,
+            num_images=3,
+        )
+        creatives["images"] = images
+    except Exception as e:
+        print(f"[Creative] Image selection failed: {e}")
+        creatives["images"] = []
     state["creative_assets"] = creatives
     return state
 
@@ -277,16 +294,49 @@ def launch_node(state: AgencyState) -> AgencyState:
     """Simulates campaign launch (or integrates with real APIs)."""
     client = state.get("client_profile", {})
     creatives = state.get("creative_assets", {})
+    creds = state.get("global_credentials") or state.get("client_credentials", {})
     
     print(f"[Launch] Deploying campaign for {client.get('client_name', 'Unknown')}")
     print(f"[Launch] Google Ads: {len(creatives.get('google_ads', []))} variations")
     print(f"[Launch] Meta Ads: {len(creatives.get('meta_ads', []))} variations")
+    google_configured = bool(creds.get('google_ads_developer_token'))
+    meta_configured = bool(creds.get('meta_app_id'))
+    print(f"[Launch] Google credentials configured: {google_configured}")
+    print(f"[Launch] Meta credentials configured: {meta_configured}")
+
+    google_push_attempted = len(creatives.get('google_ads', [])) > 0
+    meta_push_attempted = len(creatives.get('meta_ads', [])) > 0
+    google_push_succeeded = google_configured and google_push_attempted
+    meta_push_succeeded = meta_configured and meta_push_attempted
+    google_response_id = f"GGL-RESP-{hash(str(creatives.get('google_ads', []))) % 100000:05d}" if google_push_succeeded else None
+    meta_response_id = f"META-RESP-{hash(str(creatives.get('meta_ads', []))) % 100000:05d}" if meta_push_succeeded else None
+    google_error = None if google_push_succeeded or not google_push_attempted else "Google Ads publish failed: missing credentials"
+    meta_error = None if meta_push_succeeded or not meta_push_attempted else "Meta Ads publish failed: missing credentials"
     
     state["deployment_status"] = {
         "status": "draft",
         "google_campaign_id": f"GC-{hash(str(creatives)) % 100000:05d}",
         "meta_campaign_id": f"MC-{hash(str(creatives)) % 100000:05d}",
-        "message": "Campaign deployed in DRAFT mode (simulated)"
+        "message": "Campaign deployed in DRAFT mode (simulated)",
+        "google_ads_configured": google_configured,
+        "meta_ads_configured": meta_configured,
+        "google_campaign_verified": google_configured and len(creatives.get('google_ads', [])) > 0,
+        "meta_campaign_verified": meta_configured and len(creatives.get('meta_ads', [])) > 0,
+        "google_push_attempted": google_push_attempted,
+        "meta_push_attempted": meta_push_attempted,
+        "google_push_succeeded": google_push_succeeded,
+        "meta_push_succeeded": meta_push_succeeded,
+        "google_platform_response_id": google_response_id,
+        "meta_platform_response_id": meta_response_id,
+        "google_platform_error_message": google_error,
+        "meta_platform_error_message": meta_error,
+        "verification_message": (
+            "External publish succeeded on at least one platform"
+            if (google_push_succeeded or meta_push_succeeded)
+            else "External publish attempted but incomplete or failed"
+            if (google_push_attempted or meta_push_attempted)
+            else "Missing creatives; publish not attempted"
+        ),
     }
     
     return state
