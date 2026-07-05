@@ -170,6 +170,22 @@ def _ensure_proposals_table(conn):
     """))
 
 
+def _ensure_publish_events_table(conn):
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS publish_events (
+            id TEXT PRIMARY KEY,
+            campaign_id TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            attempted INTEGER DEFAULT 0,
+            succeeded INTEGER DEFAULT 0,
+            response_id TEXT,
+            error_message TEXT,
+            payload_summary TEXT,
+            created_at TEXT NOT NULL
+        )
+    """))
+
+
 def init_db():
     """Create all tables if they do not exist."""
     optimization_id = "INTEGER PRIMARY KEY AUTOINCREMENT" if IS_SQLITE else "SERIAL PRIMARY KEY"
@@ -257,6 +273,7 @@ def init_db():
         _ensure_leads_table(conn)
         _ensure_audit_reports_table(conn)
         _ensure_proposals_table(conn)
+        _ensure_publish_events_table(conn)
 
 
 def set_setting(key: str, value: Any, encrypt_value: bool = False) -> None:
@@ -943,6 +960,45 @@ def get_proposal_record(proposal_id: str) -> Optional[Dict[str, Any]]:
     item = dict(row._mapping)
     item["proposal_json"] = _json_load(item.get("proposal_json"), {})
     return item
+
+
+def log_publish_event(campaign_id: str, platform: str, attempted: bool, succeeded: bool, response_id: Optional[str] = None, error_message: Optional[str] = None, payload_summary: Optional[Dict[str, Any]] = None) -> str:
+    event_id = str(uuid.uuid4())[:8]
+    now = datetime.utcnow().isoformat()
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO publish_events (id, campaign_id, platform, attempted, succeeded, response_id, error_message, payload_summary, created_at)
+                VALUES (:id, :campaign_id, :platform, :attempted, :succeeded, :response_id, :error_message, :payload_summary, :created_at)
+            """),
+            {
+                "id": event_id,
+                "campaign_id": campaign_id,
+                "platform": platform,
+                "attempted": 1 if attempted else 0,
+                "succeeded": 1 if succeeded else 0,
+                "response_id": response_id,
+                "error_message": error_message,
+                "payload_summary": json.dumps(payload_summary or {}),
+                "created_at": now,
+            },
+        )
+    return event_id
+
+
+def get_publish_events(campaign_id: str) -> List[Dict[str, Any]]:
+    with engine.begin() as conn:
+        rows = _rows(
+            conn.execute(
+                text("SELECT * FROM publish_events WHERE campaign_id = :campaign_id ORDER BY created_at DESC"),
+                {"campaign_id": campaign_id},
+            )
+        )
+    for item in rows:
+        item["payload_summary"] = _json_load(item.get("payload_summary"), {})
+        item["attempted"] = bool(item.get("attempted"))
+        item["succeeded"] = bool(item.get("succeeded"))
+    return rows
 
 
 init_db()

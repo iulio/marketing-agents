@@ -467,6 +467,8 @@
                         <td class="py-3">
                             <div class="flex gap-2">
                                 <button onclick="viewCampaign('${escapeHtml(c.campaign_id)}')" class="text-blue-400 hover:text-blue-300"><i class="fa-regular fa-eye"></i></button>
+                                <button onclick="retryPublish('${escapeHtml(c.campaign_id)}')" class="text-amber-400 hover:text-amber-300" title="Retry publish"><i class="fa-solid fa-rotate-right"></i></button>
+                                <button onclick="viewPublishEvents('${escapeHtml(c.campaign_id)}')" class="text-violet-400 hover:text-violet-300" title="View publish events"><i class="fa-regular fa-rectangle-list"></i></button>
                                 <button onclick="deleteCampaign('${escapeHtml(c.campaign_id)}')" class="text-red-400 hover:text-red-300"><i class="fa-regular fa-trash-can"></i></button>
                             </div>
                         </td>
@@ -768,6 +770,37 @@
                 const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}`, { method: 'DELETE', headers: getHeaders() });
                 if (!res.ok) throw new Error('Failed to delete campaign');
                 await loadCampaigns();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function retryPublish(campaignId) {
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/retry-publish`, {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Retry publish failed');
+                await loadCampaigns();
+                alert(data.deployment_status?.verification_message || 'Retry publish completed');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function viewPublishEvents(campaignId) {
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/publish-events`, {
+                    headers: getHeaders()
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to load publish events');
+                const lines = (data.events || []).map(event => {
+                    return `${event.created_at} | ${event.platform} | attempted=${event.attempted} | succeeded=${event.succeeded} | response=${event.response_id || '-'} | error=${event.error_message || '-'}`;
+                });
+                alert(lines.length ? lines.join('\n') : 'No publish events recorded.');
             } catch (error) {
                 alert(error.message);
             }

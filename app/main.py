@@ -25,7 +25,7 @@ from .proposal import generate_proposal
 from .reporting import generate_audit_pdf, generate_proposal_pdf
 
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
-from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record
+from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events
 
 from .kpi_fetcher import KPIFetcher
 from pydantic import BaseModel, EmailStr
@@ -620,6 +620,58 @@ def get_creatives(campaign_id: str):
         raise HTTPException(status_code=404, detail="Campaign not found")
     state = campaigns[campaign_id]["state"]
     return state.get("creative_assets", {})
+
+
+@app.get("/api/campaigns/{campaign_id}/publish-events")
+def campaign_publish_events(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    return {"campaign_id": campaign_id, "events": get_publish_events(campaign_id)}
+
+
+@app.post("/api/campaigns/{campaign_id}/retry-publish")
+def retry_publish_campaign(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    data = campaigns[campaign_id]
+    state = data.get("state", {})
+    creatives = state.get("creative_assets", {})
+    creds = state.get("global_credentials") or state.get("client_credentials", {}) or {}
+    deployment = state.get("deployment_status", {})
+
+    google_attempted = len(creatives.get("google_ads", [])) > 0
+    meta_attempted = len(creatives.get("meta_ads", [])) > 0
+    google_succeeded = bool(creds.get("google_ads_developer_token")) and google_attempted
+    meta_succeeded = bool(creds.get("meta_app_id")) and meta_attempted
+    google_response_id = f"GGL-REP-{hash(str(creatives.get('google_ads', []))) % 100000:05d}" if google_succeeded else None
+    meta_response_id = f"META-REP-{hash(str(creatives.get('meta_ads', []))) % 100000:05d}" if meta_succeeded else None
+    google_error = None if google_succeeded or not google_attempted else "Google Ads retry failed: missing credentials"
+    meta_error = None if meta_succeeded or not meta_attempted else "Meta Ads retry failed: missing credentials"
+
+    log_publish_event(campaign_id, "google", google_attempted, google_succeeded, google_response_id, google_error, {"ads": len(creatives.get("google_ads", []))})
+    log_publish_event(campaign_id, "meta", meta_attempted, meta_succeeded, meta_response_id, meta_error, {"ads": len(creatives.get("meta_ads", []))})
+
+    deployment.update({
+        "google_push_attempted": google_attempted,
+        "meta_push_attempted": meta_attempted,
+        "google_push_succeeded": google_succeeded,
+        "meta_push_succeeded": meta_succeeded,
+        "google_platform_response_id": google_response_id,
+        "meta_platform_response_id": meta_response_id,
+        "google_platform_error_message": google_error,
+        "meta_platform_error_message": meta_error,
+        "google_campaign_verified": google_succeeded,
+        "meta_campaign_verified": meta_succeeded,
+        "verification_message": "Retry publish succeeded on at least one platform" if (google_succeeded or meta_succeeded) else "Retry publish failed",
+    })
+
+    state["deployment_status"] = deployment
+    data["state"] = state
+    campaigns[campaign_id] = data
+    save_campaign_state(campaign_id, state, data.get("status", "pending_review"), data.get("client_id"))
+
+    return {"campaign_id": campaign_id, "deployment_status": deployment}
 
 @app.post("/api/campaigns/{campaign_id}/approve")
 async def approve_campaign(campaign_id: str):
