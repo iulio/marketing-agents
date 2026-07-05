@@ -39,7 +39,7 @@
             </div>
             <div class="glass-card rounded-lg p-4">
                 <p class="text-gray-400 text-xs uppercase tracking-wider">Total Spend</p>
-                <p class="text-2xl font-bold" id="totalSpend">$0</p>
+                <p class="text-2xl font-bold" id="totalSpend">€0.00</p>
             </div>
             <div class="glass-card rounded-lg p-4">
                 <p class="text-gray-400 text-xs uppercase tracking-wider">Campaigns Pending</p>
@@ -81,6 +81,13 @@
             };
         }
 
+        function formatEuroAmount(value) {
+            const numeric = typeof value === 'number' ? value : Number(String(value ?? 0).replace(/[^0-9.-]/g, ''));
+            if (!Number.isFinite(numeric)) return '€0.00';
+            return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numeric);
+        }
+
+
         async function loadDashboard() {
             try {
                 const res = await fetch(`${API_BASE}/api/client-dashboard`, { headers: getHeaders() });
@@ -90,7 +97,7 @@
                 const summary = data.summary || {};
                 document.getElementById('totalCampaigns').textContent = summary.total_campaigns || 0;
                 document.getElementById('activeCampaigns').textContent = summary.active_campaigns || 0;
-                document.getElementById('totalSpend').textContent = `$${summary.total_spend || 0}`;
+                document.getElementById('totalSpend').textContent = formatEuroAmount(summary.total_spend);
                 document.getElementById('pendingCampaigns').textContent = data.campaigns?.filter(c => c.status === 'pending_review').length || 0;
 
                 const tbody = document.getElementById('campaignTableBody');
@@ -113,7 +120,7 @@
                     tr.innerHTML = `
                         <td class="py-3 font-medium">${c.name || 'Unnamed'}</td>
                         <td><span class="${statusClass} px-2 py-0.5 rounded-full text-xs capitalize">${c.status || 'unknown'}</span></td>
-                        <td>$${c.budget || 0} / day</td>
+                        <td>${formatEuroAmount(c.budget)} / day</td>
                         <td>
                             Google: ${c.creatives?.google_ads || 0} |
                             Meta: ${c.creatives?.meta_ads || 0} |

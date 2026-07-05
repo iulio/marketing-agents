@@ -335,7 +335,7 @@ def list_campaigns():
             "campaign_name": client.get("client_name", "Unnamed"),
             "platform": "Google & Meta",
             "language": client.get("language", "en-US"),
-            "budget": f"${client.get('daily_budget', 0)} / day",
+            "budget": float(client.get("daily_budget", 0) or 0),
             "ctr": "4.2%",
             "status": data.get("status", "unknown")
         })
@@ -533,9 +533,60 @@ async def get_platform_status():
         }
     }
 
-# ================================================================
-# AGENT STATUS
-# ================================================================
+@app.get("/api/client-dashboard")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def get_client_dashboard(request: Request):
+    user = request.state.user
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=403, detail="Client dashboard is only available for users linked to a client")
+
+    client = get_client(client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    campaigns_data = get_client_campaigns(client_id)
+    campaign_rows = []
+    total_spend = 0.0
+    active_campaigns = 0
+    pending_campaigns = 0
+
+    for campaign in campaigns_data:
+        state = campaign.get("state", {}) or {}
+        profile = state.get("client_profile", {}) or {}
+        creatives = state.get("creative_assets", {}) or {}
+        kpis = kpi_store.get(campaign["campaign_id"], {})
+        spend = float(kpis.get("cost") or kpis.get("total_spend") or 0)
+        total_spend += spend
+
+        if campaign.get("status") == "active":
+            active_campaigns += 1
+        if campaign.get("status") == "pending_review":
+            pending_campaigns += 1
+
+        campaign_rows.append({
+            "campaign_id": campaign["campaign_id"],
+            "name": profile.get("client_name") or campaign.get("campaign_id", "Unnamed"),
+            "status": campaign.get("status", "unknown"),
+            "budget": float(profile.get("daily_budget", 0) or 0),
+            "creatives": {
+                "google_ads": len(creatives.get("google_ads", [])),
+                "meta_ads": len(creatives.get("meta_ads", [])),
+                "images": len(creatives.get("images", [])),
+            },
+        })
+
+    return {
+        "client_info": client,
+        "summary": {
+            "total_campaigns": len(campaign_rows),
+            "active_campaigns": active_campaigns,
+            "pending_campaigns": pending_campaigns,
+            "total_spend": round(total_spend, 2),
+        },
+        "campaigns": campaign_rows,
+    }
+
 @app.get("/api/status/agents")
 def get_agent_status():
     return {
