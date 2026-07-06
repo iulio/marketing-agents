@@ -88,6 +88,13 @@ def orchestrator_node(state: AgencyState) -> AgencyState:
     client = state.get("client_profile", {})
     industry = client.get("industry", "Unknown")
     
+    # Get client-specific LLM or fallback to default
+    client_id = state.get("client_id")
+    if client_id:
+        llm = get_llm_for_client_agent(client_id, "orchestrator")
+    else:
+        llm = get_llm()
+    
     if llm is None:
         print("[Orchestrator] Using fallback strategy (LLM unavailable).")
         plan = fallback_strategy()
@@ -147,6 +154,13 @@ def researcher_node(state: AgencyState) -> AgencyState:
     plan = state.get("market_intelligence", {})
     strategy = plan.get("strategy_summary", "Unknown")
     
+    # Get client-specific LLM or fallback to default
+    client_id = state.get("client_id")
+    if client_id:
+        llm = get_llm_for_client_agent(client_id, "researcher")
+    else:
+        llm = get_llm()
+    
     if llm is None:
         print("[Researcher] Using fallback research (LLM unavailable).")
         research = fallback_research()
@@ -198,6 +212,13 @@ def creative_node(state: AgencyState) -> AgencyState:
     market = state.get("market_intelligence", {})
     plan = market.get("strategy_summary", "")
     personas = market.get("research", {}).get("buyer_personas", [])
+    
+    # Get client-specific LLM or fallback to default
+    client_id = state.get("client_id")
+    if client_id:
+        llm = get_llm_for_client_agent(client_id, "creative")
+    else:
+        llm = get_llm()
     
     if llm is None:
         print("[Creative] Using fallback creatives (LLM unavailable).")
@@ -374,3 +395,39 @@ workflow.add_edge("launch", END)
 # Add checkpointing for human-in-the-loop
 memory = MemorySaver()
 graph = workflow.compile(interrupt_before=["human_review"], checkpointer=memory)
+
+# ================================================================
+# LLM BY BACKEND
+# ================================================================
+def get_llm_by_backend(backend: str):
+    """Return an LLM instance based on the backend name."""
+    if backend == "vertex":
+        return get_llm()  # Vertex AI is the default
+    elif backend == "claude":
+        # Placeholder for Claude implementation
+        return get_llm()  # For now, fallback to Vertex AI
+    elif backend == "local":
+        # Placeholder for local Ollama implementation
+        return get_llm()  # For now, fallback to Vertex AI
+    else:
+        return get_llm()  # Default to Vertex AI
+
+def get_global_agent_llm_config():
+    """Return global LLM configuration for agents."""
+    return {
+        "orchestrator": "vertex",
+        "researcher": "vertex",
+        "creative": "vertex",
+        "analyst": "vertex"
+    }
+
+async def get_llm_for_client_agent(client_id: str, agent_name: str):
+    """Return an LLM instance based on client-specific settings or global defaults."""
+    from .storage import get_client
+    
+    client = get_client(client_id)
+    if client and client.get("agent_llm_settings"):
+        backend = client["agent_llm_settings"].get(agent_name, "vertex")
+    else:
+        backend = get_global_agent_llm_config().get(agent_name, "vertex")
+    return get_llm_by_backend(backend)

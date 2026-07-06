@@ -49,6 +49,16 @@ class Client(Base):
     meta_app_secret = Column(String, nullable=True)
     meta_access_token = Column(String, nullable=True)
     meta_ad_account_id = Column(String, nullable=True)
+    google_ads_configured = Column(Boolean, default=False)
+    meta_ads_configured = Column(Boolean, default=False)
+    
+    # Per-Agent LLM Settings (JSON)
+    agent_llm_settings = Column(JSON, nullable=True)  # e.g., {"orchestrator": "vertex", "creative": "claude"}
+    
+    # Additional "other" fields
+    image_generation_preferences = Column(JSON, nullable=True)  # e.g., {"provider": "pollinations", "style": "professional"}
+    default_budget = Column(Float, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     users = relationship("User", backref="client")
