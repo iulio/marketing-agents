@@ -523,8 +523,16 @@ def create_client(client_data: Dict) -> str:
         conn.execute(
             text("""
                 INSERT INTO clients
-                (id, name, industry, website, logo_url, billing_email, billing_info, settings, platform_status, created_at, updated_at)
-                VALUES (:id, :name, :industry, :website, :logo_url, :billing_email, :billing_info, :settings, :platform_status, :created_at, :updated_at)
+                (id, name, industry, website, logo_url, billing_email, billing_info, settings, platform_status, 
+                google_ads_developer_token, google_ads_client_id, google_ads_client_secret, google_ads_refresh_token, 
+                google_ads_customer_id, meta_app_id, meta_app_secret, meta_access_token, meta_ad_account_id,
+                google_ads_configured, meta_ads_configured, agent_llm_settings, image_generation_preferences, default_budget,
+                created_at, updated_at)
+                VALUES (:id, :name, :industry, :website, :logo_url, :billing_email, :billing_info, :settings, :platform_status,
+                :google_ads_developer_token, :google_ads_client_id, :google_ads_client_secret, :google_ads_refresh_token,
+                :google_ads_customer_id, :meta_app_id, :meta_app_secret, :meta_access_token, :meta_ad_account_id,
+                :google_ads_configured, :meta_ads_configured, :agent_llm_settings, :image_generation_preferences, :default_budget,
+                :created_at, :updated_at)
             """),
             {
                 "id": client_id,
@@ -536,6 +544,23 @@ def create_client(client_data: Dict) -> str:
                 "billing_info": json.dumps(client_data.get("billing_info", {})),
                 "settings": json.dumps(client_data.get("settings", {})),
                 "platform_status": client_data.get("platform_status", "inactive"),
+                # Ad credentials (encrypted)
+                "google_ads_developer_token": encrypt(client_data.get("google_ads_developer_token", "")),
+                "google_ads_client_id": encrypt(client_data.get("google_ads_client_id", "")),
+                "google_ads_client_secret": encrypt(client_data.get("google_ads_client_secret", "")),
+                "google_ads_refresh_token": encrypt(client_data.get("google_ads_refresh_token", "")),
+                "google_ads_customer_id": encrypt(client_data.get("google_ads_customer_id", "")),
+                "meta_app_id": encrypt(client_data.get("meta_app_id", "")),
+                "meta_app_secret": encrypt(client_data.get("meta_app_secret", "")),
+                "meta_access_token": encrypt(client_data.get("meta_access_token", "")),
+                "meta_ad_account_id": encrypt(client_data.get("meta_ad_account_id", "")),
+                "google_ads_configured": client_data.get("google_ads_configured", False),
+                "meta_ads_configured": client_data.get("meta_ads_configured", False),
+                # Per-Agent LLM Settings
+                "agent_llm_settings": json.dumps(client_data.get("agent_llm_settings", {})),
+                # Additional fields
+                "image_generation_preferences": json.dumps(client_data.get("image_generation_preferences", {})),
+                "default_budget": client_data.get("default_budget"),
                 "created_at": now,
                 "updated_at": now,
             },
@@ -587,6 +612,20 @@ def update_client(client_id: str, updates: Dict) -> bool:
         "billing_info",
         "settings",
         "platform_status",
+        "google_ads_developer_token",
+        "google_ads_client_id",
+        "google_ads_client_secret",
+        "google_ads_refresh_token",
+        "google_ads_customer_id",
+        "meta_app_id",
+        "meta_app_secret",
+        "meta_access_token",
+        "meta_ad_account_id",
+        "google_ads_configured",
+        "meta_ads_configured",
+        "agent_llm_settings",
+        "image_generation_preferences",
+        "default_budget",
     }
     values: Dict[str, Any] = {"client_id": client_id, "updated_at": datetime.utcnow().isoformat()}
     assignments = []
@@ -594,8 +633,12 @@ def update_client(client_id: str, updates: Dict) -> bool:
         if field not in updates:
             continue
         value = updates[field]
-        if field in {"billing_info", "settings"}:
+        if field in {"billing_info", "settings", "agent_llm_settings", "image_generation_preferences"}:
             value = json.dumps(value or {})
+        elif field in {"google_ads_developer_token", "google_ads_client_id", "google_ads_client_secret", 
+                      "google_ads_refresh_token", "google_ads_customer_id", "meta_app_id", "meta_app_secret", 
+                      "meta_access_token", "meta_ad_account_id"}:
+            value = encrypt(value) if value else ""
         values[field] = value
         assignments.append(f"{field} = :{field}")
     if not assignments:
@@ -788,27 +831,24 @@ async def update_client_credentials(client_id: str, creds: dict):
         )
 
 
-async def get_client_credentials(client_id: str) -> dict:
-    with engine.begin() as conn:
-        row = conn.execute(
-            text("SELECT * FROM clients WHERE id = :client_id"),
-            {"client_id": client_id},
-        ).first()
-    if not row:
-        return {}
-    client = dict(row._mapping)
+async def get_client_credentials(client_id: str) -> Optional[Dict]:
+    """Return decrypted client credentials."""
+    client = get_client(client_id)
+    if not client:
+        return None
+    
     return {
-        "google_ads_developer_token": decrypt(client.get("google_ads_developer_token")),
-        "google_ads_client_id": decrypt(client.get("google_ads_client_id")),
-        "google_ads_client_secret": decrypt(client.get("google_ads_client_secret")),
-        "google_ads_refresh_token": decrypt(client.get("google_ads_refresh_token")),
-        "google_ads_customer_id": decrypt(client.get("google_ads_customer_id")),
-        "meta_app_id": decrypt(client.get("meta_app_id")),
-        "meta_app_secret": decrypt(client.get("meta_app_secret")),
-        "meta_access_token": decrypt(client.get("meta_access_token")),
-        "meta_ad_account_id": decrypt(client.get("meta_ad_account_id")),
-        "google_ads_configured": bool(client.get("google_ads_configured")),
-        "meta_ads_configured": bool(client.get("meta_ads_configured")),
+        "google_ads_developer_token": decrypt(client.get("google_ads_developer_token", "")),
+        "google_ads_client_id": decrypt(client.get("google_ads_client_id", "")),
+        "google_ads_client_secret": decrypt(client.get("google_ads_client_secret", "")),
+        "google_ads_refresh_token": decrypt(client.get("google_ads_refresh_token", "")),
+        "google_ads_customer_id": decrypt(client.get("google_ads_customer_id", "")),
+        "meta_app_id": decrypt(client.get("meta_app_id", "")),
+        "meta_app_secret": decrypt(client.get("meta_app_secret", "")),
+        "meta_access_token": decrypt(client.get("meta_access_token", "")),
+        "meta_ad_account_id": decrypt(client.get("meta_ad_account_id", "")),
+        "google_ads_configured": client.get("google_ads_configured", False),
+        "meta_ads_configured": client.get("meta_ads_configured", False),
     }
 
 

@@ -6,7 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
@@ -106,7 +106,7 @@ app.add_middleware(
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
     tutorials_dir = os.path.join(static_dir, "tutorials")
     if os.path.exists(tutorials_dir):
         app.mount("/tutorials", StaticFiles(directory=tutorials_dir), name="tutorials")
@@ -314,12 +314,13 @@ VALID_CLIENT_STATUSES = {"active", "inactive", "pending", "suspended", "archived
 # ================================================================
 @app.post("/api/clients")
 @require_role(["admin"])
-async def create_new_client(request: Request, client_data: dict):
-    if not str(client_data.get("name", "")).strip():
+async def create_new_client(request: Request, client_data: ClientCreate):
+    client_data_dict = client_data.model_dump()
+    if not str(client_data_dict.get("name", "")).strip():
         raise HTTPException(status_code=422, detail="Client name is required")
-    if client_data.get("platform_status", "inactive") not in VALID_CLIENT_STATUSES:
+    if client_data_dict.get("platform_status", "inactive") not in VALID_CLIENT_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid platform_status")
-    client_id = create_client(client_data)
+    client_id = create_client(client_data_dict)
     return {"client_id": client_id, "message": "Client created"}
 
 
