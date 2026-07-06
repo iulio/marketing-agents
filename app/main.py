@@ -26,6 +26,7 @@ from .reporting import generate_audit_pdf, generate_proposal_pdf
 
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
 from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events
+from .ab_testing import ABTestingEngine
 
 from .kpi_fetcher import KPIFetcher
 from pydantic import BaseModel, EmailStr
@@ -43,6 +44,7 @@ campaigns: Dict[str, Any] = {}
 kpi_store: Dict[str, Any] = {}
 monitor = PerformanceMonitor(campaigns, kpi_store)
 scheduler = CampaignScheduler()
+ab_testing_engine = ABTestingEngine()
 
 # ================================================================
 # LIFESPAN MANAGER
@@ -120,6 +122,46 @@ def healthz():
 @app.get("/api/healthz")
 def api_healthz():
     return {"status": "online", "service": "Agentic Marketing Agency"}
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+
+
+class UrlRequest(BaseModel):
+    url: str
+
+
+class CompetitorHeatmapRequest(BaseModel):
+    domain: str
+    competitors: list[str]
+
+
+class ProposalRequest(BaseModel):
+    client: dict
+    audit: dict
+
+
+class LeadRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    website: str
+    company: str | None = None
+    notes: str | None = None
+    follow_up_at: str | None = None
+
+
+class OutreachRequest(BaseModel):
+    email: EmailStr
+    website: str
+    summary: str | None = None
 
 
 @app.post("/api/audit")
@@ -230,44 +272,7 @@ async def send_follow_up_outreach_email(data: OutreachRequest):
 # AUTHENTICATION ENDPOINTS
 # ================================================================
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
 
-
-class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str
-
-
-class UrlRequest(BaseModel):
-    url: str
-
-
-class CompetitorHeatmapRequest(BaseModel):
-    domain: str
-    competitors: list[str]
-
-
-class ProposalRequest(BaseModel):
-    client: dict
-    audit: dict
-
-
-class LeadRequest(BaseModel):
-    name: str | None = None
-    email: str | None = None
-    website: str
-    company: str | None = None
-    notes: str | None = None
-    follow_up_at: str | None = None
-
-
-class OutreachRequest(BaseModel):
-    email: EmailStr
-    website: str
-    summary: str | None = None
 
 @app.post("/api/auth/login")
 async def login(
@@ -1020,6 +1025,20 @@ async def unschedule_campaign_endpoint(request: Request, campaign_id: str):
 async def get_campaign_schedule_endpoint(request: Request, campaign_id: str):
     """Get schedule for a campaign."""
     return scheduler.get_schedule(campaign_id)
+
+# ================================================================
+# A/B TESTING ENDPOINTS
+# ================================================================
+
+@app.post("/api/campaigns/{campaign_id}/ab-test")
+async def create_ab_test_endpoint(campaign_id: str, request: Request):
+    variants = await request.json()
+    test_data = ab_testing_engine.create_test(campaign_id, variants)
+    return test_data
+
+@app.get("/api/campaigns/{campaign_id}/ab-test/results")
+async def get_ab_test_results_endpoint(campaign_id: str):
+    return ab_testing_engine.evaluate_test(campaign_id)
 
 # ================================================================
 
