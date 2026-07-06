@@ -35,7 +35,10 @@ def require_role(allowed_roles: list):
             user = await get_current_user(token)
             if not user:
                 raise HTTPException(status_code=401, detail="Invalid or expired token")
-            
+
+            if user.get('role') not in allowed_roles:
+                raise HTTPException(status_code=403, detail="Insufficient permissions")
+
             request.state.user = user
             return await func(*args, **kwargs)
         return wrapper

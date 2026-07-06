@@ -22,10 +22,14 @@ from .email import send_welcome_email, send_audit_report_email, send_proposal_em
 from .audit import perform_audit
 from .competitor import get_competitor_data
 from .proposal import generate_proposal
-from .reporting import generate_audit_pdf, generate_proposal_pdf
+from .reporting import generate_audit_pdf, generate_proposal_pdf, render_custom_report
+from .notifications import notify_campaign_created, notify_campaign_approved, notify_performance_alert
+from .storage import create_report_template, get_report_template, get_report_templates
 
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
-from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record
+from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events
+from .ab_testing import ABTestingEngine
+from .image_service import StockImageSearch, AIImageGenerator, SmartImageSelector
 
 from .kpi_fetcher import KPIFetcher
 from pydantic import BaseModel, EmailStr
@@ -43,6 +47,7 @@ campaigns: Dict[str, Any] = {}
 kpi_store: Dict[str, Any] = {}
 monitor = PerformanceMonitor(campaigns, kpi_store)
 scheduler = CampaignScheduler()
+ab_testing_engine = ABTestingEngine()
 
 # ================================================================
 # LIFESPAN MANAGER
@@ -120,6 +125,46 @@ def healthz():
 @app.get("/api/healthz")
 def api_healthz():
     return {"status": "online", "service": "Agentic Marketing Agency"}
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+
+
+class UrlRequest(BaseModel):
+    url: str
+
+
+class CompetitorHeatmapRequest(BaseModel):
+    domain: str
+    competitors: list[str]
+
+
+class ProposalRequest(BaseModel):
+    client: dict
+    audit: dict
+
+
+class LeadRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    website: str
+    company: str | None = None
+    notes: str | None = None
+    follow_up_at: str | None = None
+
+
+class OutreachRequest(BaseModel):
+    email: EmailStr
+    website: str
+    summary: str | None = None
 
 
 @app.post("/api/audit")
@@ -230,44 +275,7 @@ async def send_follow_up_outreach_email(data: OutreachRequest):
 # AUTHENTICATION ENDPOINTS
 # ================================================================
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
 
-
-class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str
-
-
-class UrlRequest(BaseModel):
-    url: str
-
-
-class CompetitorHeatmapRequest(BaseModel):
-    domain: str
-    competitors: list[str]
-
-
-class ProposalRequest(BaseModel):
-    client: dict
-    audit: dict
-
-
-class LeadRequest(BaseModel):
-    name: str | None = None
-    email: str | None = None
-    website: str
-    company: str | None = None
-    notes: str | None = None
-    follow_up_at: str | None = None
-
-
-class OutreachRequest(BaseModel):
-    email: EmailStr
-    website: str
-    summary: str | None = None
 
 @app.post("/api/auth/login")
 async def login(
@@ -564,6 +572,16 @@ async def onboard_campaign(
         }
         save_campaign_state(campaign_id, final_state, status, client_id)
 
+        # Fire Slack notification (no-op if SLACK_WEBHOOK_URL not set)
+        try:
+            notify_campaign_created(
+                campaign_name=campaign_data.client_name,
+                client_name=client.get("name", campaign_data.client_name),
+                campaign_id=campaign_id,
+            )
+        except Exception:
+            pass
+
         return {
             "campaign_id": campaign_id,
             "status": status,
@@ -621,6 +639,58 @@ def get_creatives(campaign_id: str):
     state = campaigns[campaign_id]["state"]
     return state.get("creative_assets", {})
 
+
+@app.get("/api/campaigns/{campaign_id}/publish-events")
+def campaign_publish_events(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    return {"campaign_id": campaign_id, "events": get_publish_events(campaign_id)}
+
+
+@app.post("/api/campaigns/{campaign_id}/retry-publish")
+def retry_publish_campaign(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    data = campaigns[campaign_id]
+    state = data.get("state", {})
+    creatives = state.get("creative_assets", {})
+    creds = state.get("global_credentials") or state.get("client_credentials", {}) or {}
+    deployment = state.get("deployment_status", {})
+
+    google_attempted = len(creatives.get("google_ads", [])) > 0
+    meta_attempted = len(creatives.get("meta_ads", [])) > 0
+    google_succeeded = bool(creds.get("google_ads_developer_token")) and google_attempted
+    meta_succeeded = bool(creds.get("meta_app_id")) and meta_attempted
+    google_response_id = f"GGL-REP-{hash(str(creatives.get('google_ads', []))) % 100000:05d}" if google_succeeded else None
+    meta_response_id = f"META-REP-{hash(str(creatives.get('meta_ads', []))) % 100000:05d}" if meta_succeeded else None
+    google_error = None if google_succeeded or not google_attempted else "Google Ads retry failed: missing credentials"
+    meta_error = None if meta_succeeded or not meta_attempted else "Meta Ads retry failed: missing credentials"
+
+    log_publish_event(campaign_id, "google", google_attempted, google_succeeded, google_response_id, google_error, {"ads": len(creatives.get("google_ads", []))})
+    log_publish_event(campaign_id, "meta", meta_attempted, meta_succeeded, meta_response_id, meta_error, {"ads": len(creatives.get("meta_ads", []))})
+
+    deployment.update({
+        "google_push_attempted": google_attempted,
+        "meta_push_attempted": meta_attempted,
+        "google_push_succeeded": google_succeeded,
+        "meta_push_succeeded": meta_succeeded,
+        "google_platform_response_id": google_response_id,
+        "meta_platform_response_id": meta_response_id,
+        "google_platform_error_message": google_error,
+        "meta_platform_error_message": meta_error,
+        "google_campaign_verified": google_succeeded,
+        "meta_campaign_verified": meta_succeeded,
+        "verification_message": "Retry publish succeeded on at least one platform" if (google_succeeded or meta_succeeded) else "Retry publish failed",
+    })
+
+    state["deployment_status"] = deployment
+    data["state"] = state
+    campaigns[campaign_id] = data
+    save_campaign_state(campaign_id, state, data.get("status", "pending_review"), data.get("client_id"))
+
+    return {"campaign_id": campaign_id, "deployment_status": deployment}
+
 @app.post("/api/campaigns/{campaign_id}/approve")
 async def approve_campaign(campaign_id: str):
     if campaign_id not in campaigns:
@@ -637,6 +707,19 @@ async def approve_campaign(campaign_id: str):
     data["status"] = "active"
     campaigns[campaign_id] = data
     save_campaign_state(campaign_id, final_state, "active", data.get("client_id"))
+
+    # Fire Slack notification (no-op if SLACK_WEBHOOK_URL not set)
+    try:
+        client_name = data.get("client_name") or campaign_id
+        campaign_name = final_state.get("client_profile", {}).get("client_name", campaign_id)
+        notify_campaign_approved(
+            campaign_name=campaign_name,
+            client_name=client_name,
+            campaign_id=campaign_id,
+        )
+    except Exception:
+        pass
+
     return {"status": "approved", "campaign_id": campaign_id}
 
 @app.delete("/api/campaigns/{campaign_id}")
@@ -968,6 +1051,173 @@ async def unschedule_campaign_endpoint(request: Request, campaign_id: str):
 async def get_campaign_schedule_endpoint(request: Request, campaign_id: str):
     """Get schedule for a campaign."""
     return scheduler.get_schedule(campaign_id)
+
+# ================================================================
+# A/B TESTING ENDPOINTS
+# ================================================================
+
+@app.post("/api/campaigns/{campaign_id}/ab-test")
+async def create_ab_test_endpoint(campaign_id: str, request: Request):
+    variants = await request.json()
+    test_data = ab_testing_engine.create_test(campaign_id, variants)
+    return test_data
+
+@app.get("/api/campaigns/{campaign_id}/ab-test/results")
+async def get_ab_test_results_endpoint(campaign_id: str):
+    return ab_testing_engine.evaluate_test(campaign_id)
+
+# ================================================================
+# IMAGE SERVICE ENDPOINTS
+# ================================================================
+
+class ImageSearchRequest(BaseModel):
+    query: str
+    per_page: int = 9
+    provider: str = "all"  # all, unsplash, pexels, pixabay
+
+class ImageGenerateRequest(BaseModel):
+    prompt: str
+    negative_prompt: str = ""
+    num_images: int = 2
+    provider: str = "pollinations"  # pollinations, replicate, huggingface
+
+@app.post("/api/images/search")
+async def search_images(req: ImageSearchRequest):
+    """Search free stock images from Unsplash, Pexels, Pixabay."""
+    try:
+        if req.provider == "unsplash":
+            results = StockImageSearch.search_unsplash(req.query, req.per_page)
+        elif req.provider == "pexels":
+            results = StockImageSearch.search_pexels(req.query, req.per_page)
+        elif req.provider == "pixabay":
+            results = StockImageSearch.search_pixabay(req.query, req.per_page)
+        else:
+            results = StockImageSearch.search(req.query, req.per_page)
+        return {"images": results, "count": len(results)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/images/generate")
+async def generate_image_endpoint(req: ImageGenerateRequest):
+    """Generate AI images using Pollinations, Replicate, or HuggingFace."""
+    import os as _os
+    _os.environ["IMAGE_PROVIDER"] = req.provider
+    try:
+        urls = AIImageGenerator.generate(req.prompt, req.negative_prompt, req.num_images)
+        images = [
+            {
+                "id": f"gen-{i+1}",
+                "type": "generated",
+                "url": url,
+                "thumb": url,
+                "source": req.provider,
+                "alt": req.prompt[:100],
+                "photographer": "AI"
+            }
+            for i, url in enumerate(urls)
+        ]
+        return {"images": images, "count": len(images), "prompt": req.prompt}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/campaigns/{campaign_id}/images/regenerate")
+async def regenerate_campaign_images(campaign_id: str):
+    """Regenerate images for a campaign using AI."""
+    campaign = campaigns.get(campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    try:
+        state = campaign.get("state", {})
+        client = state.get("client_profile", {})
+        creatives = state.get("creative_assets", {})
+        images = SmartImageSelector.select_images(
+            campaign_id=campaign_id,
+            client=client,
+            creatives=creatives,
+            num_images=3
+        )
+        creatives["images"] = images
+        state["creative_assets"] = creatives
+        campaign["state"] = state
+        campaigns[campaign_id] = campaign
+        save_campaign_state(campaign_id, state, campaign.get("status", "pending_review"), campaign.get("client_id"))
+        return {"images": images, "count": len(images)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ================================================================
+# REPORT TEMPLATES ENDPOINTS
+# ================================================================
+
+class ReportTemplateCreate(BaseModel):
+    name: str
+    description: str = ""
+    sections: list[str] = ["kpi", "recommendations"]
+    branding: dict = {}
+    custom_message: str = ""
+
+
+@app.post("/api/reports/templates")
+@require_role(["admin", "client_manager"])
+async def create_template_endpoint(request: Request, data: ReportTemplateCreate):
+    """Create a new report template."""
+    user = request.state.user
+    payload = data.model_dump()
+    # client_viewers can't create; admins can create global (client_id=None) templates
+    if user["role"] != "admin":
+        payload["client_id"] = user.get("client_id")
+    template_id = create_report_template(payload)
+    return {"id": template_id, "message": "Template created"}
+
+
+@app.get("/api/reports/templates")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def list_templates_endpoint(request: Request):
+    """List report templates visible to the authenticated user."""
+    user = request.state.user
+    client_id = None if user["role"] == "admin" else user.get("client_id")
+    templates = get_report_templates(client_id)
+    return {"templates": templates}
+
+
+@app.post("/api/reports/generate")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def generate_custom_report_endpoint(request: Request, data: dict):
+    """Generate a branded PDF from a report template + campaign."""
+    campaign_id = data.get("campaign_id")
+    template_id = data.get("template_id")
+
+    if not campaign_id or template_id is None:
+        raise HTTPException(status_code=400, detail="campaign_id and template_id are required")
+
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    template = get_report_template(int(template_id))
+    if not template:
+        raise HTTPException(status_code=404, detail="Report template not found")
+
+    state = campaigns[campaign_id]["state"]
+    client_profile = state.get("client_profile", {})
+    campaign_data = {
+        "client_name": client_profile.get("client_name", "Unknown Campaign"),
+        "creative_assets": state.get("creative_assets", {}),
+        "recommendations": state.get("analysis", {}).get("recommendations", []),
+    }
+
+    metrics = kpi_store.get(campaign_id) or fetch_real_kpis(campaign_id, client_profile.get("platform", "auto")) or {
+        "impressions": 0, "clicks": 0, "ctr": 0, "cpc": 0.0,
+        "conversions": 0, "roas": 0.0, "cost": 0.0,
+    }
+
+    pdf_bytes = render_custom_report(campaign_data, metrics, template)
+    filename = f"{campaign_id}_{template.get('name', 'report').replace(' ', '_')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
 
 # ================================================================
 

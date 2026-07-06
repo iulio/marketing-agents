@@ -151,6 +151,49 @@
             window.location.href = '/login.html';
         }
 
+        async function viewCampaign(campaignId) {
+            try {
+                // Fetch the client's campaigns list and find this one
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const clientId = user.client_id;
+                const res = await fetch(`${API_BASE}/api/clients/${clientId}/campaigns`, { headers: getHeaders() });
+                if (!res.ok) throw new Error('Failed to load campaign details');
+                const data = await res.json();
+                const campaign = (data.campaigns || []).find(c => c.campaign_id === campaignId);
+                if (!campaign) { alert('Campaign details not found.'); return; }
+                alert([
+                    `Campaign: ${campaign.campaign_name || campaignId}`,
+                    `Status: ${campaign.status}`,
+                    `Budget: €${campaign.budget} / day`,
+                    `Language: ${campaign.language}`,
+                    `Start: ${campaign.start_date || 'N/A'}  End: ${campaign.end_date || 'N/A'}`,
+                    `Google verified: ${campaign.google_campaign_verified ? 'Yes' : 'No'}`,
+                    `Meta verified: ${campaign.meta_campaign_verified ? 'Yes' : 'No'}`,
+                ].join('\n'));
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function downloadReport(campaignId) {
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/report`, { headers: getHeaders() });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to download report');
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${campaignId}_report.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             if (!getToken()) {
                 window.location.href = '/login.html';

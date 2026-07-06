@@ -170,6 +170,22 @@ def _ensure_proposals_table(conn):
     """))
 
 
+def _ensure_publish_events_table(conn):
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS publish_events (
+            id TEXT PRIMARY KEY,
+            campaign_id TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            attempted INTEGER DEFAULT 0,
+            succeeded INTEGER DEFAULT 0,
+            response_id TEXT,
+            error_message TEXT,
+            payload_summary TEXT,
+            created_at TEXT NOT NULL
+        )
+    """))
+
+
 def init_db():
     """Create all tables if they do not exist."""
     optimization_id = "INTEGER PRIMARY KEY AUTOINCREMENT" if IS_SQLITE else "SERIAL PRIMARY KEY"
@@ -257,6 +273,8 @@ def init_db():
         _ensure_leads_table(conn)
         _ensure_audit_reports_table(conn)
         _ensure_proposals_table(conn)
+        _ensure_publish_events_table(conn)
+        _ensure_report_templates_table(conn)
 
 
 def set_setting(key: str, value: Any, encrypt_value: bool = False) -> None:
@@ -943,6 +961,122 @@ def get_proposal_record(proposal_id: str) -> Optional[Dict[str, Any]]:
     item = dict(row._mapping)
     item["proposal_json"] = _json_load(item.get("proposal_json"), {})
     return item
+
+
+def log_publish_event(campaign_id: str, platform: str, attempted: bool, succeeded: bool, response_id: Optional[str] = None, error_message: Optional[str] = None, payload_summary: Optional[Dict[str, Any]] = None) -> str:
+    event_id = str(uuid.uuid4())[:8]
+    now = datetime.utcnow().isoformat()
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO publish_events (id, campaign_id, platform, attempted, succeeded, response_id, error_message, payload_summary, created_at)
+                VALUES (:id, :campaign_id, :platform, :attempted, :succeeded, :response_id, :error_message, :payload_summary, :created_at)
+            """),
+            {
+                "id": event_id,
+                "campaign_id": campaign_id,
+                "platform": platform,
+                "attempted": 1 if attempted else 0,
+                "succeeded": 1 if succeeded else 0,
+                "response_id": response_id,
+                "error_message": error_message,
+                "payload_summary": json.dumps(payload_summary or {}),
+                "created_at": now,
+            },
+        )
+    return event_id
+
+
+def get_publish_events(campaign_id: str) -> List[Dict[str, Any]]:
+    with engine.begin() as conn:
+        rows = _rows(
+            conn.execute(
+                text("SELECT * FROM publish_events WHERE campaign_id = :campaign_id ORDER BY created_at DESC"),
+                {"campaign_id": campaign_id},
+            )
+        )
+    for item in rows:
+        item["payload_summary"] = _json_load(item.get("payload_summary"), {})
+        item["attempted"] = bool(item.get("attempted"))
+        item["succeeded"] = bool(item.get("succeeded"))
+    return rows
+
+
+def _ensure_report_templates_table(conn) -> None:
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS report_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            sections TEXT NOT NULL DEFAULT '["kpi","recommendations"]',
+            branding TEXT,
+            custom_message TEXT,
+            client_id TEXT,
+            created_at TEXT NOT NULL
+        )
+    """))
+
+
+def create_report_template(data: Dict[str, Any]) -> int:
+    """Insert a new report template and return its auto-generated id."""
+    now = datetime.utcnow().isoformat()
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""
+                INSERT INTO report_templates
+                (name, description, sections, branding, custom_message, client_id, created_at)
+                VALUES (:name, :description, :sections, :branding, :custom_message, :client_id, :created_at)
+            """),
+            {
+                "name": data.get("name", "Unnamed Template"),
+                "description": data.get("description", ""),
+                "sections": json.dumps(data.get("sections", ["kpi", "recommendations"])),
+                "branding": json.dumps(data.get("branding", {})),
+                "custom_message": data.get("custom_message", ""),
+                "client_id": data.get("client_id"),
+                "created_at": now,
+            },
+        )
+    return result.lastrowid
+
+
+def get_report_template(template_id: int) -> Optional[Dict[str, Any]]:
+    """Return a single report template by id, or None if not found."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT * FROM report_templates WHERE id = :id"),
+            {"id": template_id},
+        ).first()
+    if not row:
+        return None
+    item = dict(row._mapping)
+    item["sections"] = _json_load(item.get("sections"), ["kpi", "recommendations"])
+    item["branding"] = _json_load(item.get("branding"), {})
+    return item
+
+
+def get_report_templates(client_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return all report templates; filter by client_id when provided."""
+    with engine.begin() as conn:
+        if client_id:
+            rows = _rows(
+                conn.execute(
+                    text("""
+                        SELECT * FROM report_templates
+                        WHERE client_id = :client_id OR client_id IS NULL
+                        ORDER BY created_at DESC
+                    """),
+                    {"client_id": client_id},
+                )
+            )
+        else:
+            rows = _rows(
+                conn.execute(text("SELECT * FROM report_templates ORDER BY created_at DESC"))
+            )
+    for item in rows:
+        item["sections"] = _json_load(item.get("sections"), ["kpi", "recommendations"])
+        item["branding"] = _json_load(item.get("branding"), {})
+    return rows
 
 
 init_db()

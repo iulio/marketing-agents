@@ -338,3 +338,151 @@ def generate_proposal_pdf(proposal_data: dict, client_info: dict | None = None) 
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def render_custom_report(campaign_data: dict, metrics: dict, template: dict) -> bytes:
+    """Generate a PDF report driven by a saved template configuration.
+
+    Args:
+        campaign_data: Dict with at least 'client_name'.
+        metrics: KPI dict (impressions, clicks, ctr, cpc, conversions, roas, cost).
+        template: ReportTemplate dict with 'sections', 'branding', 'custom_message'.
+
+    Returns:
+        PDF bytes, or UTF-8 text bytes when ReportLab is unavailable.
+    """
+    sections: list = template.get("sections") or ["kpi", "recommendations"]
+    branding: dict = template.get("branding") or {}
+    custom_message: str = template.get("custom_message") or ""
+    primary_color_hex: str = branding.get("primary_color", "#238636").lstrip("#")
+
+    if not REPORTLAB_AVAILABLE:
+        lines = [
+            f"=== {template.get('name', 'Custom Report')} ===",
+            f"Campaign: {campaign_data.get('client_name', 'Unknown')}",
+            f"Date: {datetime.now().strftime('%B %d, %Y')}",
+            "",
+        ]
+        if "kpi" in sections:
+            lines += [
+                "KEY PERFORMANCE INDICATORS",
+                f"  Impressions : {int(metrics.get('impressions', 0)):,}",
+                f"  Clicks      : {int(metrics.get('clicks', 0)):,}",
+                f"  CTR         : {float(metrics.get('ctr', 0)):.2f}%",
+                f"  CPC         : ${float(metrics.get('cpc', 0)):.2f}",
+                f"  Conversions : {int(metrics.get('conversions', 0))}",
+                f"  ROAS        : {float(metrics.get('roas', 0)):.2f}x",
+                f"  Spend       : ${float(metrics.get('cost', 0)):.2f}",
+                "",
+            ]
+        if "recommendations" in sections:
+            lines += ["RECOMMENDATIONS", "  No specific recommendations at this time.", ""]
+        if custom_message:
+            lines += ["NOTE", f"  {custom_message}", ""]
+        return "\n".join(lines).encode("utf-8")
+
+    try:
+        r = int(primary_color_hex[0:2], 16) / 255
+        g = int(primary_color_hex[2:4], 16) / 255
+        b = int(primary_color_hex[4:6], 16) / 255
+        accent = colors.Color(r, g, b)
+    except Exception:
+        accent = colors.HexColor("#238636")
+
+    font_name = setup_font() or "Helvetica"
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "CRTitle",
+        parent=styles["Heading1"],
+        fontSize=22,
+        fontName=font_name,
+        textColor=accent,
+        spaceAfter=20,
+    )
+    heading_style = ParagraphStyle(
+        "CRHeading",
+        parent=styles["Heading2"],
+        fontSize=14,
+        fontName=font_name,
+        textColor=accent,
+        spaceAfter=10,
+    )
+    normal_style = ParagraphStyle(
+        "CRNormal",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=10,
+        textColor=colors.HexColor("#24292f"),
+    )
+
+    story = []
+
+    # Header
+    story.append(Paragraph(template.get("name", "Custom Marketing Report"), title_style))
+    story.append(Paragraph(f"Campaign: {campaign_data.get('client_name', 'Unknown')}", normal_style))
+    story.append(Paragraph(f"Date: {datetime.now().strftime('%B %d, %Y')}", normal_style))
+    story.append(Spacer(1, 0.2 * inch))
+
+    if "kpi" in sections:
+        story.append(Paragraph("Key Performance Indicators", heading_style))
+        kpi_data = [
+            ["Metric", "Value"],
+            ["Impressions", f"{int(metrics.get('impressions', 0)):,}"],
+            ["Clicks", f"{int(metrics.get('clicks', 0)):,}"],
+            ["CTR", f"{float(metrics.get('ctr', 0)):.2f}%"],
+            ["CPC", f"${float(metrics.get('cpc', 0)):.2f}"],
+            ["Conversions", f"{int(metrics.get('conversions', 0))}"],
+            ["ROAS", f"{float(metrics.get('roas', 0)):.2f}x"],
+            ["Total Spend", f"${float(metrics.get('cost', 0)):.2f}"],
+        ]
+        kpi_table = Table(kpi_data, colWidths=[2.5 * inch, 2 * inch])
+        kpi_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (1, 0), accent),
+            ("TEXTCOLOR", (0, 0), (1, 0), colors.whitesmoke),
+            ("ALIGN", (0, 0), (1, -1), "LEFT"),
+            ("FONTNAME", (0, 0), (1, -1), font_name),
+            ("FONTSIZE", (0, 0), (1, 0), 11),
+            ("FONTSIZE", (0, 1), (1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (1, 0), 10),
+            ("BACKGROUND", (0, 1), (1, -1), colors.HexColor("#f6f8fa")),
+            ("GRID", (0, 0), (1, -1), 0.5, colors.HexColor("#d0d7de")),
+            ("ROWBACKGROUNDS", (0, 1), (1, -1), [colors.white, colors.HexColor("#f6f8fa")]),
+        ]))
+        story.append(kpi_table)
+        story.append(Spacer(1, 0.2 * inch))
+
+    if "creatives" in sections:
+        story.append(Paragraph("Creative Assets", heading_style))
+        creatives = campaign_data.get("creative_assets", {})
+        google_count = len(creatives.get("google_ads", []))
+        meta_count = len(creatives.get("meta_ads", []))
+        images_count = len(creatives.get("images", []))
+        story.append(Paragraph(
+            f"Google Ads: {google_count} &nbsp;&nbsp; Meta Ads: {meta_count} &nbsp;&nbsp; Images: {images_count}",
+            normal_style,
+        ))
+        story.append(Spacer(1, 0.15 * inch))
+
+    if "recommendations" in sections:
+        story.append(Paragraph("Recommendations", heading_style))
+        recs = campaign_data.get("recommendations", [])
+        if recs:
+            for rec in recs:
+                action = rec.get("action") or rec.get("text") or str(rec)
+                priority = rec.get("priority", "medium")
+                story.append(Paragraph(f"• [{priority.upper()}] {action}", normal_style))
+        else:
+            story.append(Paragraph("No specific recommendations at this time.", normal_style))
+        story.append(Spacer(1, 0.15 * inch))
+
+    if custom_message:
+        story.append(Paragraph("Note", heading_style))
+        story.append(Paragraph(custom_message, normal_style))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
