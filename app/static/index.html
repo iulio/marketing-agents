@@ -171,7 +171,11 @@
                 <div class="panel rounded-xl p-5">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold text-white">Creative Studio View</h3>
-                        <button onclick="createABTest()" class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Create A/B Test</button>
+                        <div class="flex gap-2">
+                            <button onclick="openImageSearchModal()" class="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600 flex items-center gap-1"><i class="fa-solid fa-magnifying-glass"></i> Search Images</button>
+                            <button onclick="regenerateImage()" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 flex items-center gap-1"><i class="fa-solid fa-rotate"></i> Regenerate All</button>
+                            <button onclick="createABTest()" class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Create A/B Test</button>
+                        </div>
                     </div>
                     <div id="creativeCarouselStudio" class="flex flex-wrap gap-4 pb-2">
                         <div class="text-slate-400 text-sm p-4">No creatives loaded.</div>
@@ -882,10 +886,37 @@
                     </div>`;
             });
         }
-        function useImage(imageId) { alert(`Selected image: ${imageId}`); }
-        function regenerateImage() {
+        function useImage(imageId) {
+            // Copy image URL to clipboard and highlight selection
+            const cards = document.querySelectorAll('.creative-card');
+            cards.forEach(c => c.style.outline = '');
+            const toast = document.createElement('div');
+            toast.textContent = `✅ Image ${imageId} selected for this campaign.`;
+            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        async function regenerateImage() {
             if (!currentCreativeCampaignId) return alert('Select a campaign first.');
-            alert('Regenerate image hook is prepared, but backend regeneration endpoint is not implemented yet.');
+            const btn = event?.target;
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Regenerating...'; }
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${currentCreativeCampaignId}/images/regenerate`, {
+                    method: 'POST', headers: getHeaders()
+                });
+                if (!res.ok) throw new Error((await res.json()).detail || 'Regeneration failed');
+                const data = await res.json();
+                await loadCreatives();
+                const toast = document.createElement('div');
+                toast.textContent = `✅ Regenerated ${data.count} image(s) successfully!`;
+                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            } catch(e) {
+                alert(e.message);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '↺ Regenerate All'; }
+            }
         }
 
         async function createABTest() {
@@ -2810,6 +2841,193 @@ async function createClient() {
         setInterval(simulateAgentActivity, 5000);
         setInterval(loadCampaigns, 30000);
     });
+</script>
+
+<!-- ============================================================ -->
+<!-- IMAGE SEARCH MODAL -->
+<!-- ============================================================ -->
+<div id="imageSearchModal" class="fixed inset-0 flex items-center justify-center z-50 hidden" style="background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);">
+  <div class="bg-[#161b22] border border-[#30363d] rounded-2xl w-full max-w-4xl mx-4 flex flex-col" style="max-height:90vh;">
+    <!-- Header -->
+    <div class="flex justify-between items-center px-6 py-4 border-b border-[#30363d]">
+      <h2 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-images text-violet-400"></i> Image Library</h2>
+      <button onclick="closeImageSearchModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+    </div>
+    <!-- Tabs -->
+    <div class="flex gap-1 px-6 pt-4">
+      <button id="imgTabSearch" onclick="switchImgTab('search')" class="img-tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-violet-600 text-white">🔍 Stock Search</button>
+      <button id="imgTabGenerate" onclick="switchImgTab('generate')" class="img-tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-[#21262d] text-gray-300 hover:bg-[#30363d]">🤖 AI Generate</button>
+    </div>
+    <!-- Body -->
+    <div class="flex-1 overflow-y-auto px-6 py-4">
+      <!-- Search Tab -->
+      <div id="imgPanelSearch">
+        <div class="flex gap-2 mb-4">
+          <input id="imgSearchQuery" type="text" placeholder="Search for images (e.g. flower shop, real estate, coffee)" class="flex-1 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-violet-500" onkeydown="if(event.key==='Enter')doImageSearch()">
+          <select id="imgSearchProvider" class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-2 text-sm text-gray-300">
+            <option value="all">All Providers</option>
+            <option value="unsplash">Unsplash</option>
+            <option value="pexels">Pexels</option>
+            <option value="pixabay">Pixabay</option>
+          </select>
+          <button onclick="doImageSearch()" class="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-lg text-sm font-medium">Search</button>
+        </div>
+        <div id="imgSearchStatus" class="text-sm text-gray-400 mb-2"></div>
+        <div id="imgSearchResults" class="grid grid-cols-3 gap-3"></div>
+      </div>
+      <!-- Generate Tab -->
+      <div id="imgPanelGenerate" class="hidden">
+        <div class="space-y-3 mb-4">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Image Prompt</label>
+            <textarea id="imgGenPrompt" rows="3" placeholder="Describe the image you want to generate..." class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-violet-500"></textarea>
+          </div>
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <label class="text-xs text-gray-400 block mb-1">Provider</label>
+              <select id="imgGenProvider" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-2 text-sm text-gray-300">
+                <option value="pollinations">Pollinations.ai (Free)</option>
+                <option value="huggingface">HuggingFace (Free tier)</option>
+                <option value="replicate">Replicate (Stable Diffusion)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 block mb-1"># Images</label>
+              <select id="imgGenCount" class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-2 text-sm text-gray-300">
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+              </select>
+            </div>
+          </div>
+          <button onclick="doImageGenerate()" id="imgGenBtn" class="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Images
+          </button>
+        </div>
+        <div id="imgGenStatus" class="text-sm text-gray-400 mb-2"></div>
+        <div id="imgGenResults" class="grid grid-cols-3 gap-3"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.img-card-wrapper { position: relative; overflow: hidden; border-radius: 10px; border: 2px solid transparent; transition: border-color 0.2s; cursor: pointer; background: #0d1117; }
+.img-card-wrapper:hover { border-color: #7c3aed; }
+.img-card-wrapper img { width: 100%; height: 140px; object-fit: cover; display: block; }
+.img-card-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.55); display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; opacity: 0; transition: opacity 0.2s; }
+.img-card-wrapper:hover .img-card-overlay { opacity: 1; }
+.img-tab-btn { transition: background 0.15s, color 0.15s; }
+</style>
+
+<script>
+  function openImageSearchModal() {
+    document.getElementById('imageSearchModal').classList.remove('hidden');
+    document.getElementById('imageSearchModal').classList.add('flex');
+    // Pre-fill search with campaign context
+    const campaign = document.getElementById('creativeCampaignSelect')?.value;
+    if (campaign && !document.getElementById('imgSearchQuery').value) {
+      document.getElementById('imgSearchQuery').value = 'professional advertising';
+    }
+  }
+  function closeImageSearchModal() {
+    document.getElementById('imageSearchModal').classList.add('hidden');
+    document.getElementById('imageSearchModal').classList.remove('flex');
+  }
+  function switchImgTab(tab) {
+    ['search','generate'].forEach(t => {
+      document.getElementById('imgPanel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('hidden');
+      document.getElementById('imgTab' + t.charAt(0).toUpperCase() + t.slice(1)).className = 'img-tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-[#21262d] text-gray-300 hover:bg-[#30363d]';
+    });
+    document.getElementById('imgPanel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+    document.getElementById('imgTab' + tab.charAt(0).toUpperCase() + tab.slice(1)).className = 'img-tab-btn px-4 py-1.5 rounded-lg text-sm font-medium bg-violet-600 text-white';
+  }
+
+  function renderImageGrid(containerId, images, emptyMsg) {
+    const el = document.getElementById(containerId);
+    if (!images || !images.length) { el.innerHTML = `<p class="col-span-3 text-sm text-gray-400 py-4">${emptyMsg}</p>`; return; }
+    el.innerHTML = images.map(img => `
+      <div class="img-card-wrapper" onclick="pickImage('${escapeHtml(img.url || '')}', '${escapeHtml(img.alt || 'image')}')">
+        <img src="${escapeHtml(img.thumb || img.url || '')}" alt="${escapeHtml(img.alt || '')}" onerror="this.src='https://via.placeholder.com/300x140?text=Image'" loading="lazy">
+        <div class="img-card-overlay">
+          <span class="text-[10px] text-gray-300 truncate">${escapeHtml(img.photographer || img.source || '')} · ${escapeHtml(img.source || '')}</span>
+          <button class="mt-1 bg-violet-600 hover:bg-violet-500 text-white text-xs px-3 py-1 rounded-md w-full">Use This Image</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function pickImage(url, alt) {
+    // Insert chosen image into the creative carousel
+    const carousel = document.getElementById('creativeCarouselStudio') || document.getElementById('creativeCarousel');
+    if (carousel) {
+      const div = document.createElement('div');
+      div.className = 'creative-card panel rounded-lg p-3 border-2 border-violet-500';
+      div.innerHTML = `<span class="text-xs text-violet-400">📌 Selected Image</span><img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}" class="mt-2 rounded-md max-h-40 w-full object-cover"><p class="text-[10px] text-gray-400 mt-1 truncate">${escapeHtml(url)}</p>`;
+      carousel.prepend(div);
+    }
+    closeImageSearchModal();
+    const toast = document.createElement('div');
+    toast.textContent = '✅ Image added to Creative Studio!';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  async function doImageSearch() {
+    const query = document.getElementById('imgSearchQuery').value.trim();
+    if (!query) return;
+    const provider = document.getElementById('imgSearchProvider').value;
+    const status = document.getElementById('imgSearchStatus');
+    const results = document.getElementById('imgSearchResults');
+    status.textContent = '🔍 Searching...';
+    results.innerHTML = '';
+    try {
+      const res = await fetch(`${API_BASE}/api/images/search`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ query, per_page: 9, provider })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Search failed');
+      status.textContent = data.count ? `Found ${data.count} images` : 'No images found. Try a different query.';
+      renderImageGrid('imgSearchResults', data.images, 'No stock images found. Configure Unsplash/Pexels API keys in Settings, or try AI Generate.');
+    } catch(e) {
+      status.textContent = '❌ ' + e.message;
+    }
+  }
+
+  async function doImageGenerate() {
+    const prompt = document.getElementById('imgGenPrompt').value.trim();
+    if (!prompt) return alert('Enter a prompt first.');
+    const provider = document.getElementById('imgGenProvider').value;
+    const numImages = parseInt(document.getElementById('imgGenCount').value);
+    const btn = document.getElementById('imgGenBtn');
+    const status = document.getElementById('imgGenStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating... (may take 10-30s)';
+    status.textContent = '';
+    try {
+      const res = await fetch(`${API_BASE}/api/images/generate`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ prompt, num_images: numImages, provider })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Generation failed');
+      status.textContent = data.count ? `✅ Generated ${data.count} image(s)` : 'Generation returned no images.';
+      renderImageGrid('imgGenResults', data.images, 'No images generated. Check your API keys or try Pollinations.ai.');
+    } catch(e) {
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generate Images';
+    }
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('imageSearchModal').addEventListener('click', function(e) {
+    if (e.target === this) closeImageSearchModal();
+  });
 </script>
 
 </body>

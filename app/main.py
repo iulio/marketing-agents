@@ -27,6 +27,7 @@ from .reporting import generate_audit_pdf, generate_proposal_pdf
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
 from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events
 from .ab_testing import ABTestingEngine
+from .image_service import StockImageSearch, AIImageGenerator, SmartImageSelector
 
 from .kpi_fetcher import KPIFetcher
 from pydantic import BaseModel, EmailStr
@@ -1039,6 +1040,83 @@ async def create_ab_test_endpoint(campaign_id: str, request: Request):
 @app.get("/api/campaigns/{campaign_id}/ab-test/results")
 async def get_ab_test_results_endpoint(campaign_id: str):
     return ab_testing_engine.evaluate_test(campaign_id)
+
+# ================================================================
+# IMAGE SERVICE ENDPOINTS
+# ================================================================
+
+class ImageSearchRequest(BaseModel):
+    query: str
+    per_page: int = 9
+    provider: str = "all"  # all, unsplash, pexels, pixabay
+
+class ImageGenerateRequest(BaseModel):
+    prompt: str
+    negative_prompt: str = ""
+    num_images: int = 2
+    provider: str = "pollinations"  # pollinations, replicate, huggingface
+
+@app.post("/api/images/search")
+async def search_images(req: ImageSearchRequest):
+    """Search free stock images from Unsplash, Pexels, Pixabay."""
+    try:
+        if req.provider == "unsplash":
+            results = StockImageSearch.search_unsplash(req.query, req.per_page)
+        elif req.provider == "pexels":
+            results = StockImageSearch.search_pexels(req.query, req.per_page)
+        elif req.provider == "pixabay":
+            results = StockImageSearch.search_pixabay(req.query, req.per_page)
+        else:
+            results = StockImageSearch.search(req.query, req.per_page)
+        return {"images": results, "count": len(results)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/images/generate")
+async def generate_image_endpoint(req: ImageGenerateRequest):
+    """Generate AI images using Pollinations, Replicate, or HuggingFace."""
+    import os as _os
+    _os.environ["IMAGE_PROVIDER"] = req.provider
+    try:
+        urls = AIImageGenerator.generate(req.prompt, req.negative_prompt, req.num_images)
+        images = [
+            {
+                "id": f"gen-{i+1}",
+                "type": "generated",
+                "url": url,
+                "thumb": url,
+                "source": req.provider,
+                "alt": req.prompt[:100],
+                "photographer": "AI"
+            }
+            for i, url in enumerate(urls)
+        ]
+        return {"images": images, "count": len(images), "prompt": req.prompt}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/campaigns/{campaign_id}/images/regenerate")
+async def regenerate_campaign_images(campaign_id: str):
+    """Regenerate images for a campaign using AI."""
+    campaign = campaigns.get(campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    try:
+        client = campaign.get("client_profile", {})
+        creatives = campaign.get("creative_assets", {})
+        images = SmartImageSelector.select_images(
+            campaign_id=campaign_id,
+            client=client,
+            creatives=creatives,
+            num_images=3
+        )
+        creatives["images"] = images
+        campaign["creative_assets"] = creatives
+        campaigns[campaign_id] = campaign
+        save_campaign_state(campaign_id, campaign)
+        return {"images": images, "count": len(images)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ================================================================
 
