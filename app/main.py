@@ -22,7 +22,9 @@ from .email import send_welcome_email, send_audit_report_email, send_proposal_em
 from .audit import perform_audit
 from .competitor import get_competitor_data
 from .proposal import generate_proposal
-from .reporting import generate_audit_pdf, generate_proposal_pdf
+from .reporting import generate_audit_pdf, generate_proposal_pdf, render_custom_report
+from .notifications import notify_campaign_created, notify_campaign_approved, notify_performance_alert
+from .storage import create_report_template, get_report_template, get_report_templates
 
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
 from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events
@@ -570,6 +572,16 @@ async def onboard_campaign(
         }
         save_campaign_state(campaign_id, final_state, status, client_id)
 
+        # Fire Slack notification (no-op if SLACK_WEBHOOK_URL not set)
+        try:
+            notify_campaign_created(
+                campaign_name=campaign_data.client_name,
+                client_name=client.get("name", campaign_data.client_name),
+                campaign_id=campaign_id,
+            )
+        except Exception:
+            pass
+
         return {
             "campaign_id": campaign_id,
             "status": status,
@@ -695,6 +707,19 @@ async def approve_campaign(campaign_id: str):
     data["status"] = "active"
     campaigns[campaign_id] = data
     save_campaign_state(campaign_id, final_state, "active", data.get("client_id"))
+
+    # Fire Slack notification (no-op if SLACK_WEBHOOK_URL not set)
+    try:
+        client_name = data.get("client_name") or campaign_id
+        campaign_name = final_state.get("client_profile", {}).get("client_name", campaign_id)
+        notify_campaign_approved(
+            campaign_name=campaign_name,
+            client_name=client_name,
+            campaign_id=campaign_id,
+        )
+    except Exception:
+        pass
+
     return {"status": "approved", "campaign_id": campaign_id}
 
 @app.delete("/api/campaigns/{campaign_id}")
@@ -1102,8 +1127,9 @@ async def regenerate_campaign_images(campaign_id: str):
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     try:
-        client = campaign.get("client_profile", {})
-        creatives = campaign.get("creative_assets", {})
+        state = campaign.get("state", {})
+        client = state.get("client_profile", {})
+        creatives = state.get("creative_assets", {})
         images = SmartImageSelector.select_images(
             campaign_id=campaign_id,
             client=client,
@@ -1111,12 +1137,87 @@ async def regenerate_campaign_images(campaign_id: str):
             num_images=3
         )
         creatives["images"] = images
-        campaign["creative_assets"] = creatives
+        state["creative_assets"] = creatives
+        campaign["state"] = state
         campaigns[campaign_id] = campaign
-        save_campaign_state(campaign_id, campaign)
+        save_campaign_state(campaign_id, state, campaign.get("status", "pending_review"), campaign.get("client_id"))
         return {"images": images, "count": len(images)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ================================================================
+# REPORT TEMPLATES ENDPOINTS
+# ================================================================
+
+class ReportTemplateCreate(BaseModel):
+    name: str
+    description: str = ""
+    sections: list[str] = ["kpi", "recommendations"]
+    branding: dict = {}
+    custom_message: str = ""
+
+
+@app.post("/api/reports/templates")
+@require_role(["admin", "client_manager"])
+async def create_template_endpoint(request: Request, data: ReportTemplateCreate):
+    """Create a new report template."""
+    user = request.state.user
+    payload = data.model_dump()
+    # client_viewers can't create; admins can create global (client_id=None) templates
+    if user["role"] != "admin":
+        payload["client_id"] = user.get("client_id")
+    template_id = create_report_template(payload)
+    return {"id": template_id, "message": "Template created"}
+
+
+@app.get("/api/reports/templates")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def list_templates_endpoint(request: Request):
+    """List report templates visible to the authenticated user."""
+    user = request.state.user
+    client_id = None if user["role"] == "admin" else user.get("client_id")
+    templates = get_report_templates(client_id)
+    return {"templates": templates}
+
+
+@app.post("/api/reports/generate")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def generate_custom_report_endpoint(request: Request, data: dict):
+    """Generate a branded PDF from a report template + campaign."""
+    campaign_id = data.get("campaign_id")
+    template_id = data.get("template_id")
+
+    if not campaign_id or template_id is None:
+        raise HTTPException(status_code=400, detail="campaign_id and template_id are required")
+
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    template = get_report_template(int(template_id))
+    if not template:
+        raise HTTPException(status_code=404, detail="Report template not found")
+
+    state = campaigns[campaign_id]["state"]
+    client_profile = state.get("client_profile", {})
+    campaign_data = {
+        "client_name": client_profile.get("client_name", "Unknown Campaign"),
+        "creative_assets": state.get("creative_assets", {}),
+        "recommendations": state.get("analysis", {}).get("recommendations", []),
+    }
+
+    metrics = kpi_store.get(campaign_id) or fetch_real_kpis(campaign_id, client_profile.get("platform", "auto")) or {
+        "impressions": 0, "clicks": 0, "ctr": 0, "cpc": 0.0,
+        "conversions": 0, "roas": 0.0, "cost": 0.0,
+    }
+
+    pdf_bytes = render_custom_report(campaign_data, metrics, template)
+    filename = f"{campaign_id}_{template.get('name', 'report').replace(' ', '_')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
 
 # ================================================================
 

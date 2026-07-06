@@ -103,6 +103,18 @@ class ABTest(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
 
+class ReportTemplate(Base):
+    __tablename__ = "report_templates"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    description = Column(String)
+    sections = Column(JSON, nullable=False, default=lambda: ["kpi", "recommendations"])
+    branding = Column(JSON)       # {"primary_color": "#238636", "logo_url": "..."}
+    custom_message = Column(String)
+    client_id = Column(String, ForeignKey("clients.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # ================================================================
 # PYDANTIC MODELS (API validation)
 # ================================================================

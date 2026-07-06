@@ -220,23 +220,39 @@
                 <form id="settingsForm" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <div class="panel rounded-xl p-4 space-y-3">
                         <h3 class="text-lg font-semibold text-white">Google Ads</h3>
-                        <div><label class="mb-1 block text-sm text-slate-300">Developer Token</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_google_ads_developer_token"></div>
-                        <div><label class="mb-1 block text-sm text-slate-300">Client ID</label><input class="input w-full rounded-lg px-3 py-2" type="text" id="settings_google_ads_client_id"></div>
-                        <div><label class="mb-1 block text-sm text-slate-300">Client Secret</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_google_ads_client_secret"></div>
-                        <div><label class="mb-1 block text-sm text-slate-300">Refresh Token</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_google_ads_refresh_token"></div>
-                        <div><label class="mb-1 block text-sm text-slate-300">Customer ID</label><input class="input w-full rounded-lg px-3 py-2" type="text" id="settings_google_ads_customer_id"></div>
+                        <div><label for="settings_google_ads_developer_token" class="mb-1 block text-sm text-slate-300">Developer Token</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_google_ads_developer_token"></div>
+                        <div><label for="settings_google_ads_client_id" class="mb-1 block text-sm text-slate-300">Client ID</label><input class="input w-full rounded-lg px-3 py-2" type="text" id="settings_google_ads_client_id"></div>
+                        <div><label for="settings_google_ads_client_secret" class="mb-1 block text-sm text-slate-300">Client Secret</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_google_ads_client_secret"></div>
+                        <div><label for="settings_google_ads_refresh_token" class="mb-1 block text-sm text-slate-300">Refresh Token</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_google_ads_refresh_token"></div>
+                        <div><label for="settings_google_ads_customer_id" class="mb-1 block text-sm text-slate-300">Customer ID</label><input class="input w-full rounded-lg px-3 py-2" type="text" id="settings_google_ads_customer_id"></div>
                     </div>
                     <div class="panel rounded-xl p-4 space-y-3">
                         <h3 class="text-lg font-semibold text-white">Meta Ads</h3>
-                        <div><label class="mb-1 block text-sm text-slate-300">App ID</label><input class="input w-full rounded-lg px-3 py-2" type="text" id="settings_meta_app_id"></div>
-                        <div><label class="mb-1 block text-sm text-slate-300">App Secret</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_meta_app_secret"></div>
-                        <div><label class="mb-1 block text-sm text-slate-300">Access Token</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_meta_access_token"></div>
-                        <div><label class="mb-1 block text-sm text-slate-300">Ad Account ID</label><input class="input w-full rounded-lg px-3 py-2" type="text" id="settings_meta_ad_account_id"></div>
+                        <div><label for="settings_meta_app_id" class="mb-1 block text-sm text-slate-300">App ID</label><input class="input w-full rounded-lg px-3 py-2" type="text" id="settings_meta_app_id"></div>
+                        <div><label for="settings_meta_app_secret" class="mb-1 block text-sm text-slate-300">App Secret</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_meta_app_secret"></div>
+                        <div><label for="settings_meta_access_token" class="mb-1 block text-sm text-slate-300">Access Token</label><input class="input w-full rounded-lg px-3 py-2" type="password" id="settings_meta_access_token"></div>
+                        <div><label for="settings_meta_ad_account_id" class="mb-1 block text-sm text-slate-300">Ad Account ID</label><input class="input w-full rounded-lg px-3 py-2" type="text" id="settings_meta_ad_account_id"></div>
                     </div>
                     <div class="lg:col-span-2 flex justify-end">
                         <button type="submit" class="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-500">Save Credentials</button>
                     </div>
                 </form>
+
+                <!-- Report Templates Card -->
+                <div class="panel rounded-xl p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                                <i class="fa-regular fa-file-pdf text-red-400"></i> Report Templates
+                            </h3>
+                            <p class="text-slate-400 text-sm">Pre-configure branded PDFs with selected sections.</p>
+                        </div>
+                        <button onclick="openReportTemplateModal()" class="rounded-lg bg-red-700 hover:bg-red-600 px-3 py-2 text-sm font-medium text-white flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> New Template
+                        </button>
+                    </div>
+                    <div id="reportTemplateList" class="text-sm text-slate-400">Loading templates&hellip;</div>
+                </div>
             </section>
         </main>
     </div>
@@ -343,20 +359,20 @@
                 <div class="border border-slate-800 rounded-lg p-4">
                     <h3 class="text-md font-semibold text-white mb-2">Google Ads</h3>
                     <div class="grid grid-cols-2 gap-3">
-                        <div><label class="text-xs text-slate-400 block">Developer Token</label><input type="password" id="google_ads_developer_token" class="input w-full rounded-md px-2 py-1 text-sm"></div>
-                        <div><label class="text-xs text-slate-400 block">Client ID</label><input type="text" id="google_ads_client_id" class="input w-full rounded-md px-2 py-1 text-sm"></div>
-                        <div><label class="text-xs text-slate-400 block">Client Secret</label><input type="password" id="google_ads_client_secret" class="input w-full rounded-md px-2 py-1 text-sm"></div>
-                        <div><label class="text-xs text-slate-400 block">Refresh Token</label><input type="password" id="google_ads_refresh_token" class="input w-full rounded-md px-2 py-1 text-sm"></div>
-                        <div><label class="text-xs text-slate-400 block">Customer ID</label><input type="text" id="google_ads_customer_id" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="google_ads_developer_token" class="text-xs text-slate-400 block">Developer Token</label><input type="password" id="google_ads_developer_token" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="google_ads_client_id" class="text-xs text-slate-400 block">Client ID</label><input type="text" id="google_ads_client_id" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="google_ads_client_secret" class="text-xs text-slate-400 block">Client Secret</label><input type="password" id="google_ads_client_secret" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="google_ads_refresh_token" class="text-xs text-slate-400 block">Refresh Token</label><input type="password" id="google_ads_refresh_token" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="google_ads_customer_id" class="text-xs text-slate-400 block">Customer ID</label><input type="text" id="google_ads_customer_id" class="input w-full rounded-md px-2 py-1 text-sm"></div>
                     </div>
                 </div>
                 <div class="border border-slate-800 rounded-lg p-4">
                     <h3 class="text-md font-semibold text-white mb-2">Meta Ads</h3>
                     <div class="grid grid-cols-2 gap-3">
-                        <div><label class="text-xs text-slate-400 block">App ID</label><input type="text" id="meta_app_id" class="input w-full rounded-md px-2 py-1 text-sm"></div>
-                        <div><label class="text-xs text-slate-400 block">App Secret</label><input type="password" id="meta_app_secret" class="input w-full rounded-md px-2 py-1 text-sm"></div>
-                        <div><label class="text-xs text-slate-400 block">Access Token</label><input type="password" id="meta_access_token" class="input w-full rounded-md px-2 py-1 text-sm"></div>
-                        <div><label class="text-xs text-slate-400 block">Ad Account ID</label><input type="text" id="meta_ad_account_id" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="meta_app_id" class="text-xs text-slate-400 block">App ID</label><input type="text" id="meta_app_id" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="meta_app_secret" class="text-xs text-slate-400 block">App Secret</label><input type="password" id="meta_app_secret" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="meta_access_token" class="text-xs text-slate-400 block">Access Token</label><input type="password" id="meta_access_token" class="input w-full rounded-md px-2 py-1 text-sm"></div>
+                        <div><label for="meta_ad_account_id" class="text-xs text-slate-400 block">Ad Account ID</label><input type="text" id="meta_ad_account_id" class="input w-full rounded-md px-2 py-1 text-sm"></div>
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -367,6 +383,55 @@
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" onclick="closeCredentialModal()" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Cancel</button>
                     <button type="submit" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-md text-sm font-medium text-white">Save Credentials</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Template Modal -->
+    <div id="reportTemplateModal" class="fixed inset-0 hidden items-center justify-center modal-backdrop z-50">
+        <div class="panel rounded-xl w-full max-w-xl p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white"><i class="fa-regular fa-file-pdf text-red-400"></i> Create Report Template</h2>
+                <button onclick="closeReportTemplateModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="reportTemplateForm" onsubmit="submitReportTemplate(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="rtName" class="text-xs text-slate-400 block mb-1">Template Name</label>
+                        <input type="text" id="rtName" class="input w-full rounded-md px-3 py-2 text-sm" placeholder="Monthly Summary" required>
+                    </div>
+                    <div>
+                        <label for="rtPrimaryColor" class="text-xs text-slate-400 block mb-1">Accent Color</label>
+                        <input type="color" id="rtPrimaryColor" class="w-full h-9 rounded-md cursor-pointer bg-transparent border border-slate-700" value="#238636">
+                    </div>
+                </div>
+                <div>
+                    <label for="rtDescription" class="text-xs text-slate-400 block mb-1">Description</label>
+                    <input type="text" id="rtDescription" class="input w-full rounded-md px-3 py-2 text-sm" placeholder="Used for monthly client review meetings">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 block mb-2">Sections to Include</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" id="rtSectionKpi" checked class="rounded"> KPIs
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" id="rtSectionCreatives" class="rounded"> Creatives
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" id="rtSectionRec" checked class="rounded"> Recommendations
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label for="rtCustomMessage" class="text-xs text-slate-400 block mb-1">Custom Footer Note</label>
+                    <textarea id="rtCustomMessage" rows="2" class="input w-full rounded-md px-3 py-2 text-sm" placeholder="Thank you for your continued partnership."></textarea>
+                </div>
+                <div id="rtError" class="text-sm text-red-400 hidden"></div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeReportTemplateModal()" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-red-700 hover:bg-red-600 rounded-md text-sm font-medium text-white">Save Template</button>
                 </div>
             </form>
         </div>
@@ -2879,12 +2944,12 @@ async function createClient() {
       <div id="imgPanelGenerate" class="hidden">
         <div class="space-y-3 mb-4">
           <div>
-            <label class="text-xs text-gray-400 block mb-1">Image Prompt</label>
+            <label for="imgGenPrompt" class="text-xs text-gray-400 block mb-1">Image Prompt</label>
             <textarea id="imgGenPrompt" rows="3" placeholder="Describe the image you want to generate..." class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-violet-500"></textarea>
           </div>
           <div class="flex gap-3">
             <div class="flex-1">
-              <label class="text-xs text-gray-400 block mb-1">Provider</label>
+              <label for="imgGenProvider" class="text-xs text-gray-400 block mb-1">Provider</label>
               <select id="imgGenProvider" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-2 text-sm text-gray-300">
                 <option value="pollinations">Pollinations.ai (Free)</option>
                 <option value="huggingface">HuggingFace (Free tier)</option>
@@ -2892,7 +2957,7 @@ async function createClient() {
               </select>
             </div>
             <div>
-              <label class="text-xs text-gray-400 block mb-1"># Images</label>
+              <label for="imgGenCount" class="text-xs text-gray-400 block mb-1"># Images</label>
               <select id="imgGenCount" class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-2 text-sm text-gray-300">
                 <option value="1">1</option>
                 <option value="2" selected>2</option>
@@ -3028,6 +3093,138 @@ async function createClient() {
   document.getElementById('imageSearchModal').addEventListener('click', function(e) {
     if (e.target === this) closeImageSearchModal();
   });
+
+  // ================================================================
+  // REPORT TEMPLATES
+  // ================================================================
+  function openReportTemplateModal() {
+    document.getElementById('reportTemplateModal').classList.replace('hidden', 'flex');
+    document.getElementById('rtError').classList.add('hidden');
+    document.getElementById('reportTemplateForm').reset();
+    document.getElementById('rtPrimaryColor').value = '#238636';
+  }
+  function closeReportTemplateModal() {
+    document.getElementById('reportTemplateModal').classList.replace('flex', 'hidden');
+  }
+
+  async function submitReportTemplate(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('rtError');
+    errEl.classList.add('hidden');
+    const sections = [];
+    if (document.getElementById('rtSectionKpi').checked) sections.push('kpi');
+    if (document.getElementById('rtSectionCreatives').checked) sections.push('creatives');
+    if (document.getElementById('rtSectionRec').checked) sections.push('recommendations');
+    const payload = {
+      name: document.getElementById('rtName').value.trim(),
+      description: document.getElementById('rtDescription').value.trim(),
+      sections,
+      branding: { primary_color: document.getElementById('rtPrimaryColor').value },
+      custom_message: document.getElementById('rtCustomMessage').value.trim(),
+    };
+    try {
+      const res = await fetch(`${API_BASE}/api/reports/templates`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed to create template');
+      closeReportTemplateModal();
+      loadReportTemplates();
+    } catch (err) {
+      errEl.textContent = '❌ ' + err.message;
+      errEl.classList.remove('hidden');
+    }
+  }
+
+  async function loadReportTemplates() {
+    const container = document.getElementById('reportTemplateList');
+    if (!container) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/reports/templates`, { headers: getHeaders() });
+      if (!res.ok) { container.textContent = 'Could not load templates.'; return; }
+      const data = await res.json();
+      const templates = data.templates || [];
+      if (!templates.length) {
+        container.innerHTML = '<p class="text-slate-500 text-sm italic">No templates yet. Click "New Template" to create one.</p>';
+        return;
+      }
+      // Fetch campaigns for the generate dropdown
+      const campRes = await fetch(`${API_BASE}/api/campaigns`, { headers: getHeaders() });
+      const campData = campRes.ok ? await campRes.json() : [];
+      const campList = campData.campaigns || campData || [];
+      const campOptions = campList.map(c => `<option value="${escapeHtml(c.campaign_id)}">${escapeHtml(c.campaign_name || c.campaign_id)}</option>`).join('');
+
+      container.innerHTML = `<table class="w-full text-sm">
+        <thead class="text-slate-400 border-b border-slate-700">
+          <tr>
+            <th class="text-left pb-2">Name</th>
+            <th class="text-left pb-2">Sections</th>
+            <th class="text-left pb-2">Created</th>
+            <th class="text-left pb-2">Generate PDF</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          ${templates.map(t => `
+            <tr class="hover:bg-slate-900/40">
+              <td class="py-2 font-medium text-white">${escapeHtml(t.name)}</td>
+              <td class="py-2 text-slate-400">${(t.sections || []).join(', ')}</td>
+              <td class="py-2 text-slate-400">${formatDate(t.created_at)}</td>
+              <td class="py-2">
+                <div class="flex items-center gap-2">
+                  <select id="rtCampSelect_${t.id}" class="input rounded px-2 py-1 text-xs">
+                    <option value="">— pick campaign —</option>
+                    ${campOptions}
+                  </select>
+                  <button onclick="generateTemplateReport(${t.id}, 'rtCampSelect_${t.id}')"
+                    class="bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
+                    <i class="fa-regular fa-file-pdf"></i> PDF
+                  </button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+    } catch (err) {
+      container.textContent = '⚠️ ' + err.message;
+    }
+  }
+
+  async function generateTemplateReport(templateId, selectId) {
+    const campaignId = document.getElementById(selectId)?.value;
+    if (!campaignId) return alert('Please select a campaign first.');
+    try {
+      const res = await fetch(`${API_BASE}/api/reports/generate`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ campaign_id: campaignId, template_id: templateId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Generation failed');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report_${campaignId}_template${templateId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('❌ ' + err.message);
+    }
+  }
+
+  // Load templates when settings section is activated
+  document.querySelector('[data-section="settings"]').addEventListener('click', () => {
+    setTimeout(loadReportTemplates, 100);
+  });
+
+  document.getElementById('reportTemplateModal').addEventListener('click', function(e) {
+    if (e.target === this) closeReportTemplateModal();
+  });
+
 </script>
 
 </body>
