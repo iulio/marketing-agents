@@ -1,402 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Onboarding Wizard - Agentic Marketing</title>
+    <title>Client Onboarding Wizard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body {
-            background: radial-gradient(circle at top right, #1e1b4b, #0f172a 60%);
-            font-family: 'Outfit', sans-serif;
-            color: #f8fafc;
+            background: #0f1117;
+            font-family: 'Inter', sans-serif;
         }
+
         .glass-card {
-            background: rgba(15, 23, 42, 0.65);
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            background: rgba(22, 27, 34, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d333b;
         }
-        .input-field {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #f8fafc;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        .step-indicator {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: #30363d;
+            transition: background 0.3s;
         }
-        .input-field:focus {
+
+        .step-indicator.active {
+            background: #3fb950;
+        }
+
+        .step-indicator.completed {
+            background: #238636;
+        }
+
+        input,
+        select {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #58a6ff;
             outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
-            background: rgba(15, 23, 42, 0.95);
         }
-        .step-node.active {
-            background: #6366f1;
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
-            border-color: #818cf8;
-        }
-        .step-node.completed {
-            background: #10b981;
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-            border-color: #34d399;
-        }
-        .step-line.completed {
-            background: #10b981;
-        }
-        .step-line.active {
-            background: #6366f1;
-        }
-        .shimmer-btn {
-            background: linear-gradient(90deg, #6366f1, #4f46e5, #6366f1);
-            background-size: 200% auto;
-            animation: shimmer 4s linear infinite;
-        }
-        @keyframes shimmer {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+
+        .hidden-step {
+            display: none;
         }
     </style>
 </head>
+
 <body class="min-h-screen flex items-center justify-center p-4">
+    <div class="glass-card rounded-xl w-full max-w-2xl p-6 border border-[#30363d] shadow-2xl">
 
-    <!-- Resume Session Modal Backdrop -->
-    <div id="resumeModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center z-50">
-        <div class="glass-card rounded-2xl p-6 w-full max-w-md border border-indigo-500/20 text-center">
-            <div class="h-16 w-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
-                <i class="fa-solid fa-clock-rotate-left text-2xl text-indigo-400"></i>
+        <!-- Progress Bar -->
+        <div class="flex gap-1 mb-6" id="progressBar">
+            <div class="step-indicator active" id="step1-indicator"></div>
+            <div class="step-indicator" id="step2-indicator"></div>
+            <div class="step-indicator" id="step3-indicator"></div>
+            <div class="step-indicator" id="step4-indicator"></div>
+        </div>
+
+        <div id="step-1" class="step-content">
+            <h2 class="text-xl font-bold mb-2">Step 1: Client Information</h2>
+            <p class="text-gray-400 text-sm mb-4">Tell us about the client.</p>
+            <div class="space-y-3">
+                <input type="text" id="clientName" placeholder="Client Name *" required
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="text" id="clientIndustry" placeholder="Industry (e.g., SaaS, E-commerce)"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="url" id="clientWebsite" placeholder="Website URL"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="number" id="dailyBudget" placeholder="Daily Budget (€)"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="text" id="targetGeo" placeholder="Target Locations (e.g., Bucharest, Cluj)"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <select id="toneOfVoice" class="w-full rounded-md px-3 py-2 text-sm">
+                    <option value="professional">Professional</option>
+                    <option value="friendly">Friendly</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="luxury">Luxury</option>
+                </select>
+                <input type="text" id="culturalTriggers" placeholder="Cultural Triggers (e.g., Black Friday, Christmas)"
+                    class="w-full rounded-md px-3 py-2 text-sm">
             </div>
-            <h3 class="text-xl font-bold text-white mb-2">Resume Session?</h3>
-            <p class="text-slate-400 text-sm mb-6">We found an in-progress onboarding session. Would you like to resume where you left off or start fresh?</p>
-            <div class="flex gap-4">
-                <button onclick="handleStartFresh()" class="flex-1 py-2.5 rounded-lg border border-slate-700 hover:bg-slate-800 font-medium text-slate-300 transition text-sm">
-                    Start Fresh
-                </button>
-                <button onclick="handleResume()" class="flex-1 py-2.5 rounded-lg shimmer-btn hover:opacity-95 font-medium text-white shadow-lg shadow-indigo-500/20 transition text-sm">
-                    Resume Draft
-                </button>
+            <div class="flex justify-end mt-4">
+                <button onclick="nextStep(2)"
+                    class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">Next →</button>
             </div>
+        </div>
+
+        <div id="step-2" class="step-content hidden-step">
+            <h2 class="text-xl font-bold mb-2">Step 2: Ad Credentials</h2>
+            <p class="text-gray-400 text-sm mb-4">Add Google Ads and Meta Ads credentials (optional – can be added
+                later).</p>
+            <div class="space-y-3">
+                <h3 class="text-sm font-semibold text-gray-300">Google Ads</h3>
+                <input type="password" id="google_ads_developer_token" placeholder="Developer Token"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="text" id="google_ads_client_id" placeholder="Client ID"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="password" id="google_ads_client_secret" placeholder="Client Secret"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="password" id="google_ads_refresh_token" placeholder="Refresh Token"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="text" id="google_ads_customer_id" placeholder="Customer ID"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+
+                <h3 class="text-sm font-semibold text-gray-300 mt-2">Meta Ads</h3>
+                <input type="text" id="meta_ad_account_id" placeholder="Ad Account ID (act_...)"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="text" id="meta_app_id" placeholder="App ID" class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="password" id="meta_app_secret" placeholder="App Secret"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <input type="password" id="meta_access_token" placeholder="Access Token"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+            </div>
+            <div class="flex justify-between mt-4">
+                <button onclick="prevStep(1)" class="text-gray-400 hover:text-white text-sm">← Back</button>
+                <button onclick="nextStep(3)"
+                    class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">Next →</button>
+            </div>
+        </div>
+
+        <div id="step-3" class="step-content hidden-step">
+            <h2 class="text-xl font-bold mb-2">Step 3: Campaign Preferences</h2>
+            <p class="text-gray-400 text-sm mb-4">Set up the first campaign for this client.</p>
+            <div class="space-y-3">
+                <input type="text" id="campaignName" placeholder="Campaign Name"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+                <select id="campaignObjective" class="w-full rounded-md px-3 py-2 text-sm">
+                    <option value="sales">Sales</option>
+                    <option value="awareness">Awareness</option>
+                    <option value="traffic">Traffic</option>
+                    <option value="engagement">Engagement</option>
+                </select>
+                <select id="campaignLanguage" class="w-full rounded-md px-3 py-2 text-sm">
+                    <option value="en-US">English (US)</option>
+                    <option value="ro-RO">Romanian</option>
+                    <option value="de-DE">German</option>
+                    <option value="fr-FR">French</option>
+                </select>
+                <input type="text" id="productKeywords" placeholder="Product Keywords (comma separated)"
+                    class="w-full rounded-md px-3 py-2 text-sm">
+            </div>
+            <div class="flex justify-between mt-4">
+                <button onclick="prevStep(2)" class="text-gray-400 hover:text-white text-sm">← Back</button>
+                <button onclick="nextStep(4)"
+                    class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">Next →</button>
+            </div>
+        </div>
+
+        <div id="step-4" class="step-content hidden-step">
+            <h2 class="text-xl font-bold mb-2">Step 4: Review & Launch</h2>
+            <p class="text-gray-400 text-sm mb-4">Review all information and create the client.</p>
+            <div id="reviewSummary" class="bg-[#0d1117] p-3 rounded-lg text-sm space-y-1">
+                <!-- Dynamically filled -->
+            </div>
+            <div class="flex justify-between mt-4">
+                <button onclick="prevStep(3)" class="text-gray-400 hover:text-white text-sm">← Back</button>
+                <button onclick="submitOnboarding()"
+                    class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">🚀 Launch
+                    Campaign</button>
+            </div>
+            <div id="submitStatus" class="mt-2 text-sm"></div>
         </div>
     </div>
 
-    <!-- Main Container -->
-    <div class="w-full max-w-4xl glass-card rounded-3xl overflow-hidden flex flex-col border border-white/5">
-        
-        <!-- Header & Progress Bar -->
-        <div class="p-6 md:p-8 border-b border-white/5 bg-slate-900/40">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i> Client Onboarding Wizard
-                    </h1>
-                    <p class="text-slate-400 text-sm mt-0.5">Deploy new clients and trigger campaigns seamlessly.</p>
-                </div>
-                <a href="/index.html" class="text-slate-400 hover:text-white transition text-sm flex items-center gap-1.5 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg">
-                    <i class="fa-solid fa-chevron-left text-xs"></i> Back to Dashboard
-                </a>
-            </div>
-
-            <!-- Progress Tracker -->
-            <div class="relative flex justify-between items-center max-w-2xl mx-auto mt-4 px-2">
-                <!-- Line background -->
-                <div class="absolute top-1/2 left-0 w-full h-[3px] bg-white/5 -translate-y-1/2 -z-10 rounded"></div>
-                <!-- Line fills -->
-                <div class="absolute top-1/2 left-0 h-[3px] bg-slate-700 -translate-y-1/2 -z-10 rounded transition-all duration-500" id="progressBarLine" style="width: 0%;"></div>
-
-                <!-- Step 1 -->
-                <div class="flex flex-col items-center">
-                    <div class="step-node active w-9 h-9 rounded-full flex items-center justify-center border-2 border-slate-700 bg-slate-900 text-xs font-semibold text-white transition-all duration-300" id="node-1">1</div>
-                    <span class="text-[10px] md:text-xs text-indigo-400 font-medium mt-2" id="text-1">Client Info</span>
-                </div>
-                <!-- Step 2 -->
-                <div class="flex flex-col items-center">
-                    <div class="step-node w-9 h-9 rounded-full flex items-center justify-center border-2 border-slate-700 bg-slate-900 text-xs font-semibold text-slate-400 transition-all duration-300" id="node-2">2</div>
-                    <span class="text-[10px] md:text-xs text-slate-500 font-medium mt-2" id="text-2">Ad Accounts</span>
-                </div>
-                <!-- Step 3 -->
-                <div class="flex flex-col items-center">
-                    <div class="step-node w-9 h-9 rounded-full flex items-center justify-center border-2 border-slate-700 bg-slate-900 text-xs font-semibold text-slate-400 transition-all duration-300" id="node-3">3</div>
-                    <span class="text-[10px] md:text-xs text-slate-500 font-medium mt-2" id="text-3">Campaign</span>
-                </div>
-                <!-- Step 4 -->
-                <div class="flex flex-col items-center">
-                    <div class="step-node w-9 h-9 rounded-full flex items-center justify-center border-2 border-slate-700 bg-slate-900 text-xs font-semibold text-slate-400 transition-all duration-300" id="node-4">4</div>
-                    <span class="text-[10px] md:text-xs text-slate-500 font-medium mt-2" id="text-4">Review</span>
-                </div>
-                <!-- Step 5 -->
-                <div class="flex flex-col items-center">
-                    <div class="step-node w-9 h-9 rounded-full flex items-center justify-center border-2 border-slate-700 bg-slate-900 text-xs font-semibold text-slate-400 transition-all duration-300" id="node-5">5</div>
-                    <span class="text-[10px] md:text-xs text-slate-500 font-medium mt-2" id="text-5">Launch</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Wizard Steps Content -->
-        <div class="flex-1 p-6 md:p-8 overflow-y-auto max-h-[60vh]">
-            <form id="onboardingForm" onsubmit="event.preventDefault();">
-                
-                <!-- STEP 1: CLIENT INFORMATION -->
-                <div id="step-content-1" class="space-y-6">
-                    <h2 class="text-lg font-semibold text-white border-b border-white/5 pb-2">Step 1: Client Profile Details</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Client / Agency Name <span class="text-rose-500">*</span></label>
-                            <input type="text" id="clientName" required class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="e.g. Acme Tech Solutions">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Industry Sector</label>
-                            <input type="text" id="clientIndustry" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="e.g. SaaS / FinTech">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Website URL</label>
-                            <input type="url" id="clientWebsite" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="https://example.com">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Billing & Invoicing Email</label>
-                            <input type="email" id="clientBillingEmail" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="billing@acme.com">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Client Platform Status</label>
-                            <select id="clientPlatformStatus" class="w-full input-field rounded-xl px-4 py-3 text-sm" title="Client Platform Status">
-                                <option value="active" selected>Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="pending">Pending Review</option>
-                                <option value="suspended">Suspended</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Default Budget Threshold (€)</label>
-                            <input type="number" id="clientDefaultBudget" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="e.g. 5000" title="Default Budget">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 2: AD CREDENTIALS -->
-                <div id="step-content-2" class="space-y-6 hidden">
-                    <div class="flex justify-between items-center border-b border-white/5 pb-2">
-                        <h2 class="text-lg font-semibold text-white">Step 2: Ad Accounts Credentials</h2>
-                        <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
-                            <input type="checkbox" id="skipCredentials" onchange="toggleCredentialsSection()" class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500">
-                            Skip credentials setup for now
-                        </label>
-                    </div>
-
-                    <div id="credentialsFields" class="space-y-8">
-                        <!-- Google Ads Segment -->
-                        <div class="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-4">
-                            <h3 class="text-sm font-semibold text-indigo-300 flex items-center gap-2">
-                                <i class="fa-brands fa-google text-rose-400"></i> Google Ads Integration
-                            </h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="md:col-span-2">
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Developer Token</label>
-                                    <input type="password" id="google_ads_developer_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Paste Dev Token" title="Google Ads Developer Token">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Client ID</label>
-                                    <input type="text" id="google_ads_client_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Client ID" title="Google Ads OAuth Client ID">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Client Secret</label>
-                                    <input type="password" id="google_ads_client_secret" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Client Secret" title="Google Ads OAuth Client Secret">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Refresh Token</label>
-                                    <input type="password" id="google_ads_refresh_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Refresh Token" title="Google Ads OAuth Refresh Token">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Customer ID</label>
-                                    <input type="text" id="google_ads_customer_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="xxx-xxx-xxxx" title="Google Ads Customer ID">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Meta Ads Segment -->
-                        <div class="p-5 rounded-2xl bg-sky-500/5 border border-sky-500/10 space-y-4">
-                            <h3 class="text-sm font-semibold text-sky-300 flex items-center gap-2">
-                                <i class="fa-brands fa-meta text-sky-400"></i> Meta Ads Integration
-                            </h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">App ID</label>
-                                    <input type="text" id="meta_app_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Meta App ID" title="Meta App ID">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">App Secret</label>
-                                    <input type="password" id="meta_app_secret" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Meta App Secret" title="Meta App Secret">
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Access Token</label>
-                                    <input type="password" id="meta_access_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Long-Lived Page/User Access Token" title="Meta Access Token">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Ad Account ID</label>
-                                    <input type="text" id="meta_ad_account_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="act_xxxxxxxxxxxx" title="Meta Ad Account ID">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 3: CAMPAIGN SETUP -->
-                <div id="step-content-3" class="space-y-6 hidden">
-                    <div class="flex justify-between items-center border-b border-white/5 pb-2">
-                        <h2 class="text-lg font-semibold text-white">Step 3: Initial Campaign Orchestration</h2>
-                        <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
-                            <input type="checkbox" id="launchCampaign" checked onchange="toggleCampaignSection()" class="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500">
-                            Launch first campaign immediately
-                        </label>
-                    </div>
-
-                    <div id="campaignFields" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Campaign Language</label>
-                            <select id="campaignLanguage" class="w-full input-field rounded-xl px-4 py-3 text-sm" title="Campaign Language">
-                                <option value="en-US" selected>English (US)</option>
-                                <option value="ro-RO">Romanian</option>
-                                <option value="de-DE">German</option>
-                                <option value="fr-FR">French</option>
-                                <option value="es-ES">Spanish</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Campaign Objective</label>
-                            <select id="campaignObjective" class="w-full input-field rounded-xl px-4 py-3 text-sm" title="Campaign Objective">
-                                <option value="traffic" selected>Traffic Generation</option>
-                                <option value="sales">Conversions & Sales</option>
-                                <option value="awareness">Brand Awareness</option>
-                                <option value="engagement">Audience Engagement</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Daily Budget (€) <span class="text-rose-500">*</span></label>
-                            <input type="number" id="campaignDailyBudget" class="w-full input-field rounded-xl px-4 py-3 text-sm" value="50" placeholder="e.g. 50" title="Daily Budget">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Target Location / Geo</label>
-                            <input type="text" id="campaignTargetGeo" class="w-full input-field rounded-xl px-4 py-3 text-sm" value="US, UK" placeholder="e.g. US, UK" title="Target Location">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone of Voice</label>
-                            <select id="campaignTone" class="w-full input-field rounded-xl px-4 py-3 text-sm" title="Tone of Voice">
-                                <option value="professional" selected>Professional</option>
-                                <option value="friendly">Friendly & Approachable</option>
-                                <option value="urgent">Urgent & Direct</option>
-                                <option value="luxury">Luxury & Premium</option>
-                                <option value="casual">Casual & Relaxed</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Product Keywords (comma-separated)</label>
-                            <input type="text" id="campaignKeywords" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="AI, SaaS, productivity" title="Product Keywords">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Start Date</label>
-                            <input type="date" id="campaignStartDate" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="YYYY-MM-DD" title="Start Date">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">End Date</label>
-                            <input type="date" id="campaignEndDate" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="YYYY-MM-DD" title="End Date">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 4: REVIEW & CONFIRM -->
-                <div id="step-content-4" class="space-y-6 hidden">
-                    <h2 class="text-lg font-semibold text-white border-b border-white/5 pb-2">Step 4: Review Configurations</h2>
-                    
-                    <div class="space-y-6 text-sm">
-                        <!-- Profile Review -->
-                        <div class="p-5 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-start">
-                            <div class="space-y-2">
-                                <h3 class="text-slate-300 font-bold text-xs uppercase tracking-wider">Client Profile</h3>
-                                <p class="text-white text-base font-semibold" id="reviewClientName">-</p>
-                                <p class="text-slate-400" id="reviewClientMeta">-</p>
-                            </div>
-                            <button type="button" onclick="jumpToStep(1)" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs">Edit</button>
-                        </div>
-
-                        <!-- Credentials Review -->
-                        <div class="p-5 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-start">
-                            <div class="space-y-2">
-                                <h3 class="text-slate-300 font-bold text-xs uppercase tracking-wider">Ad account integrations</h3>
-                                <p class="text-white font-medium" id="reviewCredentials">-</p>
-                            </div>
-                            <button type="button" onclick="jumpToStep(2)" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs">Edit</button>
-                        </div>
-
-                        <!-- Campaign Review -->
-                        <div class="p-5 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-start">
-                            <div class="space-y-2">
-                                <h3 class="text-slate-300 font-bold text-xs uppercase tracking-wider">Initial Campaign</h3>
-                                <p class="text-white font-semibold" id="reviewCampaign">-</p>
-                                <p class="text-slate-400" id="reviewCampaignMeta">-</p>
-                            </div>
-                            <button type="button" onclick="jumpToStep(3)" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs">Edit</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 5: LAUNCH STATUS -->
-                <div id="step-content-5" class="space-y-6 hidden text-center py-12">
-                    <div id="launchLoader" class="space-y-6">
-                        <div class="inline-block animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-indigo-500"></div>
-                        <h2 class="text-xl font-bold text-white">Deploying Marketing Agency...</h2>
-                        <div class="max-w-xs mx-auto space-y-3 text-sm text-slate-400" id="loadingSteps">
-                            <p class="flex items-center justify-between" id="l-step-1"><span>Creating client profile...</span><i class="fa-solid fa-circle-notch animate-spin text-indigo-400"></i></p>
-                            <p class="flex items-center justify-between text-slate-600" id="l-step-2"><span>Configuring credentials...</span><i class="fa-regular fa-circle"></i></p>
-                            <p class="flex items-center justify-between text-slate-600" id="l-step-3"><span>Launching orchestration agents...</span><i class="fa-regular fa-circle"></i></p>
-                        </div>
-                    </div>
-
-                    <div id="launchSuccess" class="space-y-6 hidden">
-                        <div class="h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30">
-                            <i class="fa-solid fa-check text-3xl text-emerald-400"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-white">Deployment Successful!</h2>
-                        <p class="text-slate-400 text-sm max-w-md mx-auto" id="successMessage">The client and campaign are initialized. Marketing agents are currently researching and drafting creatives.</p>
-                        
-                        <div class="flex gap-4 max-w-sm mx-auto pt-6">
-                            <a href="/index.html" class="flex-1 py-3 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300 text-sm font-semibold transition text-center">
-                                Close Wizard
-                            </a>
-                            <a id="dashboardLink" href="/index.html" class="flex-1 py-3 rounded-lg shimmer-btn text-white text-sm font-semibold shadow-lg shadow-indigo-500/20 text-center">
-                                View Campaigns
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-            </form>
-        </div>
-
-        <!-- Wizard Navigation Controls -->
-        <div class="p-6 md:p-8 border-t border-white/5 bg-slate-900/40 flex justify-between items-center" id="navigationControls">
-            <button type="button" onclick="handleCancel()" class="text-slate-500 hover:text-slate-300 text-sm transition font-medium">
-                Cancel
-            </button>
-            <div class="flex gap-4">
-                <button type="button" id="prevBtn" onclick="navigateStep(-1)" class="px-5 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 text-sm font-medium transition hidden">
-                    Back
-                </button>
-                <button type="button" id="nextBtn" onclick="navigateStep(1)" class="px-6 py-2.5 rounded-xl shimmer-btn text-white text-sm font-semibold transition shadow-lg shadow-indigo-500/20">
-                    Next Step
-                </button>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Script Logic -->
     <script>
         const API_BASE = window.location.origin;
-        let currentStep = 1;
-        let sessionId = null;
-        let onboardingData = {};
+        let collectedData = {};
 
-        function getToken() { return localStorage.getItem('token'); }
+        function updateProgress(step) {
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`step${i}-indicator`);
+                if (i < step) el.className = 'step-indicator completed';
+                else if (i === step) el.className = 'step-indicator active';
+                else el.className = 'step-indicator';
+            }
+        }
+
+        function showStep(step) {
+            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden-step'));
+            document.getElementById(`step-${step}`).classList.remove('hidden-step');
+            updateProgress(step);
+            if (step === 4) buildReview();
+        }
+
+        function nextStep(step) {
+            // Basic validation for Step 1
+            if (step === 2) {
+                const name = document.getElementById('clientName').value.trim();
+                if (!name) {
+                    alert('Client Name is required.');
+                    return;
+                }
+                // Save data from step 1
+                collectedData.client = {
+                    name: name,
+                    industry: document.getElementById('clientIndustry').value.trim(),
+                    website: document.getElementById('clientWebsite').value.trim(),
+                    daily_budget: parseFloat(document.getElementById('dailyBudget').value) || 50,
+                    target_geo: document.getElementById('targetGeo').value.split(',').map(s => s.trim()).filter(Boolean),
+                    tone_of_voice: document.getElementById('toneOfVoice').value,
+                    cultural_triggers: document.getElementById('culturalTriggers').value.split(',').map(s => s.trim()).filter(Boolean)
+                };
+            }
+            if (step === 3) {
+                // Save step 2 data
+                collectedData.credentials = {
+                    google_ads_developer_token: document.getElementById('google_ads_developer_token').value.trim(),
+                    google_ads_client_id: document.getElementById('google_ads_client_id').value.trim(),
+                    google_ads_client_secret: document.getElementById('google_ads_client_secret').value.trim(),
+                    google_ads_refresh_token: document.getElementById('google_ads_refresh_token').value.trim(),
+                    google_ads_customer_id: document.getElementById('google_ads_customer_id').value.trim(),
+                    meta_ad_account_id: document.getElementById('meta_ad_account_id').value.trim(),
+                    meta_app_id: document.getElementById('meta_app_id').value.trim(),
+                    meta_app_secret: document.getElementById('meta_app_secret').value.trim(),
+                    meta_access_token: document.getElementById('meta_access_token').value.trim()
+                };
+            }
+            if (step === 4) {
+                // Save step 3 data
+                collectedData.campaign = {
+                    name: document.getElementById('campaignName').value.trim() || 'First Campaign',
+                    objective: document.getElementById('campaignObjective').value,
+                    language: document.getElementById('campaignLanguage').value,
+                    product_keywords: document.getElementById('productKeywords').value.split(',').map(s => s.trim()).filter(Boolean)
+                };
+            }
+            showStep(step);
+        }
+
+        function prevStep(step) {
+            showStep(step);
+        }
+
+        function buildReview() {
+            const summary = document.getElementById('reviewSummary');
+            const c = collectedData.client || {};
+            const creds = collectedData.credentials || {};
+            const camp = collectedData.campaign || {};
+            summary.innerHTML = `
+                <p><strong>Client:</strong> ${c.name || 'N/A'}</p>
+                <p><strong>Industry:</strong> ${c.industry || 'N/A'}</p>
+                <p><strong>Website:</strong> ${c.website || 'N/A'}</p>
+                <p><strong>Budget:</strong> €${c.daily_budget || 0}/day</p>
+                <p><strong>Location:</strong> ${c.target_geo ? c.target_geo.join(', ') : 'N/A'}</p>
+                <p><strong>Tone:</strong> ${c.tone_of_voice || 'N/A'}</p>
+                <p><strong>Cultural Triggers:</strong> ${c.cultural_triggers ? c.cultural_triggers.join(', ') : 'None'}</p>
+                <hr class="border-[#30363d] my-2">
+                <p><strong>Campaign:</strong> ${camp.name || 'N/A'}</p>
+                <p><strong>Objective:</strong> ${camp.objective || 'N/A'}</p>
+                <p><strong>Language:</strong> ${camp.language || 'N/A'}</p>
+                <p><strong>Product Keywords:</strong> ${camp.product_keywords ? camp.product_keywords.join(', ') : 'None'}</p>
+                <hr class="border-[#30363d] my-2">
+                <p class="text-gray-400 text-xs">Credentials: ${creds.google_ads_developer_token ? 'Google Ads ✅' : 'Google Ads ❌'} | ${creds.meta_app_id ? 'Meta Ads ✅' : 'Meta Ads ❌'}</p>
+            `;
+        }
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
         function getHeaders() {
             return {
                 'Authorization': `Bearer ${getToken()}`,
@@ -404,385 +274,86 @@
             };
         }
 
-        // Show toast notifications
-        function showToast(message, type = 'error') {
-            alert(message); // Standard fallback for alert validation
-        }
-
-        // Toggle Credentials skip visibility
-        function toggleCredentialsSection() {
-            const skip = document.getElementById('skipCredentials').checked;
-            document.getElementById('credentialsFields').style.opacity = skip ? '0.3' : '1';
-            document.getElementById('credentialsFields').style.pointerEvents = skip ? 'none' : 'auto';
-        }
-
-        // Toggle Campaign launch skip visibility
-        function toggleCampaignSection() {
-            const launch = document.getElementById('launchCampaign').checked;
-            document.getElementById('campaignFields').style.opacity = launch ? '1' : '0.3';
-            document.getElementById('campaignFields').style.pointerEvents = launch ? 'auto' : 'none';
-        }
-
-        // Populate step contents
-        function updateStepView() {
-            // Hide all contents
-            for (let i = 1; i <= 5; i++) {
-                document.getElementById(`step-content-${i}`).classList.add('hidden');
-                const node = document.getElementById(`node-${i}`);
-                const text = document.getElementById(`text-${i}`);
-                
-                if (i < currentStep) {
-                    node.className = "step-node completed w-9 h-9 rounded-full flex items-center justify-center border-2 text-xs font-semibold text-white transition-all duration-300";
-                    node.innerHTML = '<i class="fa-solid fa-check text-xs"></i>';
-                    text.className = "text-[10px] md:text-xs text-emerald-400 font-medium mt-2";
-                } else if (i === currentStep) {
-                    node.className = "step-node active w-9 h-9 rounded-full flex items-center justify-center border-2 text-xs font-semibold text-white transition-all duration-300";
-                    node.innerHTML = i;
-                    text.className = "text-[10px] md:text-xs text-indigo-400 font-semibold mt-2";
-                } else {
-                    node.className = "step-node w-9 h-9 rounded-full flex items-center justify-center border-2 border-slate-700 bg-slate-900 text-xs font-semibold text-slate-400 transition-all duration-300";
-                    node.innerHTML = i;
-                    text.className = "text-[10px] md:text-xs text-slate-500 font-medium mt-2";
-                }
-            }
-
-            // Show current content
-            document.getElementById(`step-content-${currentStep}`).classList.remove('hidden');
-
-            // Progress bar filler
-            const percent = ((currentStep - 1) / 4) * 100;
-            document.getElementById('progressBarLine').style.width = `${percent}%`;
-
-            // Buttons controls
-            document.getElementById('prevBtn').classList.toggle('hidden', currentStep === 1 || currentStep === 5);
-            
-            const nextBtn = document.getElementById('nextBtn');
-            if (currentStep === 4) {
-                nextBtn.innerHTML = '<i class="fa-solid fa-rocket"></i> Launch & Deploy';
-                nextBtn.className = "px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition shadow-lg shadow-emerald-500/20";
-            } else if (currentStep === 5) {
-                document.getElementById('navigationControls').classList.add('hidden');
-            } else {
-                nextBtn.textContent = "Next Step";
-                nextBtn.className = "px-6 py-2.5 rounded-xl shimmer-btn text-white text-sm font-semibold transition shadow-lg shadow-indigo-500/20";
-            }
-        }
-
-        // Jump to step (allowed from review screen)
-        function jumpToStep(step) {
-            if (currentStep === 5) return;
-            currentStep = step;
-            updateStepView();
-        }
-
-        // Get Form input values
-        function collectStepData() {
-            if (currentStep === 1) {
-                return {
-                    name: document.getElementById('clientName').value.trim(),
-                    industry: document.getElementById('clientIndustry').value.trim(),
-                    website: document.getElementById('clientWebsite').value.trim(),
-                    billing_email: document.getElementById('clientBillingEmail').value.trim(),
-                    platform_status: document.getElementById('clientPlatformStatus').value,
-                    default_budget: parseFloat(document.getElementById('clientDefaultBudget').value) || null
-                };
-            }
-            if (currentStep === 2) {
-                const skip = document.getElementById('skipCredentials').checked;
-                if (skip) {
-                    return {
-                        skip_credentials: true,
-                        google_ads_developer_token: "", google_ads_client_id: "", google_ads_client_secret: "",
-                        google_ads_refresh_token: "", google_ads_customer_id: "",
-                        meta_app_id: "", meta_app_secret: "", meta_access_token: "", meta_ad_account_id: ""
-                    };
-                }
-                return {
-                    skip_credentials: false,
-                    google_ads_developer_token: document.getElementById('google_ads_developer_token').value,
-                    google_ads_client_id: document.getElementById('google_ads_client_id').value,
-                    google_ads_client_secret: document.getElementById('google_ads_client_secret').value,
-                    google_ads_refresh_token: document.getElementById('google_ads_refresh_token').value,
-                    google_ads_customer_id: document.getElementById('google_ads_customer_id').value,
-                    meta_app_id: document.getElementById('meta_app_id').value,
-                    meta_app_secret: document.getElementById('meta_app_secret').value,
-                    meta_access_token: document.getElementById('meta_access_token').value,
-                    meta_ad_account_id: document.getElementById('meta_ad_account_id').value
-                };
-            }
-            if (currentStep === 3) {
-                const launch = document.getElementById('launchCampaign').checked;
-                return {
-                    launch_campaign: launch,
-                    campaign_language: document.getElementById('campaignLanguage').value,
-                    campaign_objective: document.getElementById('campaignObjective').value,
-                    daily_budget: parseFloat(document.getElementById('campaignDailyBudget').value) || 100.0,
-                    target_geo: document.getElementById('campaignTargetGeo').value.trim(),
-                    tone_of_voice: document.getElementById('campaignTone').value,
-                    product_keywords: document.getElementById('campaignKeywords').value.trim(),
-                    start_date: document.getElementById('campaignStartDate').value,
-                    end_date: document.getElementById('campaignEndDate').value
-                };
-            }
-            return {};
-        }
-
-        // Navigate steps
-        async function navigateStep(dir) {
-            if (dir === 1) {
-                // Validate fields before proceeding
-                if (currentStep === 1) {
-                    const name = document.getElementById('clientName').value.trim();
-                    if (!name) {
-                        showToast("Client / Agency Name is required.");
-                        return;
-                    }
-                }
-                if (currentStep === 3) {
-                    const launch = document.getElementById('launchCampaign').checked;
-                    const budget = parseFloat(document.getElementById('campaignDailyBudget').value);
-                    if (launch && (!budget || budget <= 0)) {
-                        showToast("Daily Budget must be a positive number.");
-                        return;
-                    }
-                }
-
-                // Collect and Save
-                const stepData = collectStepData();
-                Object.assign(onboardingData, stepData);
-                
-                await saveProgress(currentStep, stepData);
-                
-                if (currentStep === 4) {
-                    currentStep = 5;
-                    updateStepView();
-                    await submitOnboarding();
-                    return;
-                }
-                
-                currentStep++;
-                if (currentStep === 4) populateReviewData();
-            } else {
-                currentStep--;
-            }
-            updateStepView();
-        }
-
-        // Populate Review Step
-        function populateReviewData() {
-            document.getElementById('reviewClientName').textContent = onboardingData.name || '-';
-            document.getElementById('reviewClientMeta').textContent = `Industry: ${onboardingData.industry || '-'} | Website: ${onboardingData.website || '-'} | Status: ${onboardingData.platform_status}`;
-            
-            const skipCreds = onboardingData.skip_credentials;
-            document.getElementById('reviewCredentials').textContent = skipCreds 
-                ? "Credentials configured: No (will setup later)" 
-                : `Credentials configured: Google Ads (${onboardingData.google_ads_developer_token ? 'Yes' : 'No'}), Meta Ads (${onboardingData.meta_app_id ? 'Yes' : 'No'})`;
-
-            const launch = onboardingData.launch_campaign;
-            if (launch) {
-                document.getElementById('reviewCampaign').textContent = `Objective: ${onboardingData.campaign_objective} (Language: ${onboardingData.campaign_language})`;
-                document.getElementById('reviewCampaignMeta').textContent = `Daily Budget: €${onboardingData.daily_budget} / day | Target Location: ${onboardingData.target_geo || 'US'}`;
-            } else {
-                document.getElementById('reviewCampaign').textContent = "Campaign setup skipped.";
-                document.getElementById('reviewCampaignMeta').textContent = "No initial campaign orchestration will be started.";
-            }
-        }
-
-        // Save progress to API
-        async function saveProgress(step, data) {
-            try {
-                if (!sessionId) return;
-                const res = await fetch(`${API_BASE}/api/onboarding/save`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        step: step,
-                        data: data
-                    })
-                });
-                if (!res.ok) throw new Error('Failed to save onboarding progress');
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        // Final submit API call
         async function submitOnboarding() {
+            const status = document.getElementById('submitStatus');
+            status.innerHTML = '<span class="text-yellow-400">⏳ Creating client...</span>';
+            const btn = document.querySelector('#step-4 button:last-child');
+            btn.disabled = true;
+
             try {
-                // Update loader UI
-                updateLoaderStep('l-step-1', 'active');
-                
-                const res = await fetch(`${API_BASE}/api/onboarding/submit`, {
+                // 1. Create client
+                const clientPayload = {
+                    name: collectedData.client.name,
+                    industry: collectedData.client.industry,
+                    website: collectedData.client.website,
+                };
+                const clientRes = await fetch(`${API_BASE}/api/clients`, {
                     method: 'POST',
                     headers: getHeaders(),
-                    body: JSON.stringify({ session_id: sessionId })
+                    body: JSON.stringify(clientPayload)
                 });
+                if (!clientRes.ok) throw new Error('Failed to create client');
+                const clientData = await clientRes.json();
+                const clientId = clientData.client_id;
 
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({ detail: 'Failed to complete onboarding' }));
-                    throw new Error(err.detail || 'Failed to complete onboarding');
-                }
-
-                const result = await res.json();
-                
-                updateLoaderStep('l-step-1', 'completed');
-                updateLoaderStep('l-step-2', 'completed');
-                updateLoaderStep('l-step-3', 'completed');
-
-                setTimeout(() => {
-                    document.getElementById('launchLoader').classList.add('hidden');
-                    document.getElementById('launchSuccess').classList.remove('hidden');
-                    
-                    if (result.campaign_id) {
-                        document.getElementById('successMessage').innerHTML = `Successfully onboarded client <strong>${onboardingData.name}</strong> and started campaign orchestration (ID: <strong>${result.campaign_id}</strong>).`;
-                        document.getElementById('dashboardLink').href = `/index.html`;
-                    } else {
-                        document.getElementById('successMessage').innerHTML = `Successfully onboarded client <strong>${onboardingData.name}</strong>. Ad credentials and billing thresholds are initialized.`;
-                        document.getElementById('dashboardLink').href = `/index.html`;
-                    }
-                }, 1000);
-
-            } catch (e) {
-                document.getElementById('launchLoader').innerHTML = `
-                    <div class="h-16 w-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto border border-rose-500/30">
-                        <i class="fa-solid fa-xmark text-3xl text-rose-400"></i>
-                    </div>
-                    <h2 class="text-2xl font-bold text-white mt-4">Deployment Failed</h2>
-                    <p class="text-slate-400 text-sm max-w-md mx-auto mt-2">${e.message}</p>
-                    <div class="pt-6">
-                        <button onclick="jumpToStep(4)" class="px-6 py-2.5 rounded-lg shimmer-btn text-white text-sm font-semibold transition shadow-lg shadow-indigo-500/20">
-                            Back to Review
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // Helper to update loader icons
-        function updateLoaderStep(elementId, state) {
-            const el = document.getElementById(elementId);
-            if (!el) return;
-            if (state === 'active') {
-                el.className = "flex items-center justify-between text-white font-medium";
-                el.querySelector('i').className = "fa-solid fa-circle-notch animate-spin text-indigo-400";
-            } else if (state === 'completed') {
-                el.className = "flex items-center justify-between text-emerald-400 font-medium";
-                el.querySelector('i').className = "fa-solid fa-circle-check text-emerald-400";
-            }
-        }
-
-        // Start a fresh onboarding session
-        async function handleStartFresh() {
-            document.getElementById('resumeModal').classList.remove('flex');
-            document.getElementById('resumeModal').classList.add('hidden');
-            
-            try {
-                const res = await fetch(`${API_BASE}/api/onboarding/start`, {
-                    method: 'POST',
-                    headers: getHeaders()
-                });
-                if (!res.ok) throw new Error('Failed to start session');
-                const data = await res.json();
-                sessionId = data.session_id;
-                currentStep = 1;
-                onboardingData = {};
-                updateStepView();
-            } catch (e) {
-                showToast("Error creating onboarding session. Please refresh.");
-            }
-        }
-
-        // Resume saved draft onboarding session
-        function handleResume() {
-            document.getElementById('resumeModal').classList.remove('flex');
-            document.getElementById('resumeModal').classList.add('hidden');
-            updateStepView();
-        }
-
-        // Cancel onboarding
-        async function handleCancel() {
-            if (!confirm('Are you sure you want to cancel client onboarding? This will delete all draft progress.')) return;
-            try {
-                if (sessionId) {
-                    await fetch(`${API_BASE}/api/onboarding/cancel`, {
-                        method: 'DELETE',
+                // 2. Save credentials (if any)
+                const creds = collectedData.credentials || {};
+                const hasCreds = Object.values(creds).some(v => v);
+                if (hasCreds) {
+                    const credRes = await fetch(`${API_BASE}/api/clients/${clientId}/credentials`, {
+                        method: 'POST',
                         headers: getHeaders(),
-                        body: JSON.stringify({ session_id: sessionId })
+                        body: JSON.stringify(creds)
                     });
+                    if (!credRes.ok) console.warn('Credentials not saved');
                 }
+
+                // 3. Create campaign
+                const campaignPayload = {
+                    client_name: collectedData.client.name,
+                    website_url: collectedData.client.website || 'https://example.com',
+                    language: collectedData.campaign.language || 'en-US',
+                    industry: collectedData.client.industry || 'General',
+                    daily_budget: collectedData.client.daily_budget || 50,
+                    target_geo: collectedData.client.target_geo || ['Worldwide'],
+                    tone_of_voice: collectedData.client.tone_of_voice || 'professional',
+                    cultural_triggers: collectedData.client.cultural_triggers || [],
+                    llm_backend: 'local',
+                    objective: collectedData.campaign.objective || 'sales',
+                    special_events: [],
+                    product_keywords: collectedData.campaign.product_keywords || []
+                };
+                const campRes = await fetch(`${API_BASE}/api/campaigns/onboard?client_id=${clientId}`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(campaignPayload)
+                });
+                if (!campRes.ok) throw new Error('Failed to create campaign');
+                const campData = await campRes.json();
+
+                status.innerHTML = `<span class="text-green-400">✅ Client created! Campaign ID: ${campData.campaign_id}</span>`;
+                btn.disabled = false;
+
+                // Redirect to dashboard after short delay
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 3000);
+
             } catch (e) {
-                console.error(e);
-            }
-            window.location.href = '/index.html';
-        }
-
-        // Check for resume draft on page load
-        async function checkResumeOnload() {
-            try {
-                const res = await fetch(`${API_BASE}/api/onboarding/resume`, { headers: getHeaders() });
-                if (!res.ok) throw new Error('Unauthenticated');
-                
-                const session = await res.json();
-                if (session.session_id) {
-                    sessionId = session.session_id;
-                    currentStep = session.step;
-                    onboardingData = session.data || {};
-                    
-                    // Populate Step 1 fields
-                    document.getElementById('clientName').value = onboardingData.name || '';
-                    document.getElementById('clientIndustry').value = onboardingData.industry || '';
-                    document.getElementById('clientWebsite').value = onboardingData.website || '';
-                    document.getElementById('clientBillingEmail').value = onboardingData.billing_email || '';
-                    document.getElementById('clientPlatformStatus').value = onboardingData.platform_status || 'active';
-                    document.getElementById('clientDefaultBudget').value = onboardingData.default_budget || '';
-
-                    // Populate Step 2 fields
-                    document.getElementById('skipCredentials').checked = onboardingData.skip_credentials || false;
-                    document.getElementById('google_ads_developer_token').value = onboardingData.google_ads_developer_token || '';
-                    document.getElementById('google_ads_client_id').value = onboardingData.google_ads_client_id || '';
-                    document.getElementById('google_ads_client_secret').value = onboardingData.google_ads_client_secret || '';
-                    document.getElementById('google_ads_refresh_token').value = onboardingData.google_ads_refresh_token || '';
-                    document.getElementById('google_ads_customer_id').value = onboardingData.google_ads_customer_id || '';
-                    document.getElementById('meta_app_id').value = onboardingData.meta_app_id || '';
-                    document.getElementById('meta_app_secret').value = onboardingData.meta_app_secret || '';
-                    document.getElementById('meta_access_token').value = onboardingData.meta_access_token || '';
-                    document.getElementById('meta_ad_account_id').value = onboardingData.meta_ad_account_id || '';
-                    toggleCredentialsSection();
-
-                    // Populate Step 3 fields
-                    document.getElementById('launchCampaign').checked = onboardingData.launch_campaign !== false;
-                    document.getElementById('campaignLanguage').value = onboardingData.campaign_language || 'en-US';
-                    document.getElementById('campaignObjective').value = onboardingData.campaign_objective || 'traffic';
-                    document.getElementById('campaignDailyBudget').value = onboardingData.daily_budget || '50';
-                    document.getElementById('campaignTargetGeo').value = onboardingData.target_geo || 'US, UK';
-                    document.getElementById('campaignTone').value = onboardingData.tone_of_voice || 'professional';
-                    document.getElementById('campaignKeywords').value = onboardingData.product_keywords || '';
-                    document.getElementById('campaignStartDate').value = onboardingData.start_date || '';
-                    document.getElementById('campaignEndDate').value = onboardingData.end_date || '';
-                    toggleCampaignSection();
-
-                    // Prompt to resume
-                    document.getElementById('resumeModal').classList.remove('hidden');
-                    document.getElementById('resumeModal').classList.add('flex');
-                } else {
-                    // Create new session directly
-                    await handleStartFresh();
-                }
-            } catch (e) {
-                // If unauthenticated or request fails, redirect to login
-                window.location.href = '/login.html';
+                status.innerHTML = `<span class="text-red-400">❌ Error: ${e.message}</span>`;
+                btn.disabled = false;
             }
         }
 
-        // Init on DOM load
-        document.addEventListener('DOMContentLoaded', () => {
+        // Auto-login check
+        document.addEventListener('DOMContentLoaded', function () {
             if (!getToken()) {
                 window.location.href = '/login.html';
                 return;
             }
-            checkResumeOnload();
+            showStep(1);
         });
     </script>
 </body>
+
 </html>
