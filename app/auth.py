@@ -47,12 +47,14 @@ def verify_password(password: str, hashed: str) -> bool:
     return hashlib.sha256(password.encode()).hexdigest() == hashed
 
 def create_default_admin():
-    """Create a default admin user if none exists."""
+    """Create or sync the default admin user from environment variables."""
     admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@agency.com")
     admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
-    users = get_all_users()
-    if not users:
-        print("[Auth] Creating default admin user...")
+
+    existing = get_user_by_email(admin_email)
+    if not existing:
+        # First boot — create the admin
+        print(f"[Auth] No admin found, creating: {admin_email}")
         create_user({
             "email": admin_email,
             "password": admin_password,
@@ -61,6 +63,9 @@ def create_default_admin():
             "client_id": None
         })
         print(f"[Auth] Default admin created: {admin_email}")
-    elif os.getenv("RESET_DEFAULT_ADMIN_PASSWORD", "false").lower() == "true":
+    else:
+        # Always sync password from env so Secret Manager rotations take effect
         if update_user_password(admin_email, admin_password):
-            print(f"[Auth] Default admin password reset: {admin_email}")
+            print(f"[Auth] Admin password synced from env: {admin_email}")
+        else:
+            print(f"[Auth] Admin already up-to-date: {admin_email}")
