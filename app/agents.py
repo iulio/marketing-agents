@@ -399,35 +399,53 @@ graph = workflow.compile(interrupt_before=["human_review"], checkpointer=memory)
 # ================================================================
 # LLM BY BACKEND
 # ================================================================
-def get_llm_by_backend(backend: str):
-    """Return an LLM instance based on the backend name."""
+def get_llm_by_backend(backend: str, model: str = None):
+    """Return an LLM instance based on the backend name and optional model override."""
     if backend == "vertex":
-        return get_llm()  # Vertex AI is the default
+        return get_cloud_llm(temperature=0.7, model=model)  # model=None falls back to env var
     elif backend == "claude":
         # Placeholder for Claude implementation
-        return get_llm()  # For now, fallback to Vertex AI
+        return get_cloud_llm(temperature=0.7, model=model)  # For now, fallback to Vertex AI
     elif backend == "local":
         # Placeholder for local Ollama implementation
-        return get_llm()  # For now, fallback to Vertex AI
+        return get_cloud_llm(temperature=0.7, model=model)  # For now, fallback to Vertex AI
     else:
-        return get_llm()  # Default to Vertex AI
+        return get_cloud_llm(temperature=0.7, model=model)  # Default to Vertex AI
 
-def get_global_agent_llm_config():
-    """Return global LLM configuration for agents."""
-    return {
-        "orchestrator": "vertex",
-        "researcher": "vertex",
-        "creative": "vertex",
-        "analyst": "vertex"
-    }
+def get_global_agent_llm_config() -> dict:
+    """Return global LLM configuration for agents (reads from DB)."""
+    from .storage import get_global_llm_config
+    return get_global_llm_config()
 
-async def get_llm_for_client_agent(client_id: str, agent_name: str):
+
+def get_llm_for_client_agent(client_id: str, agent_name: str):
     """Return an LLM instance based on client-specific settings or global defaults."""
     from .storage import get_client
-    
+
+    global_config = get_global_agent_llm_config()
+    agent_global = global_config.get(agent_name, {"backend": "vertex", "model": "gemini-2.5-flash"})
+
     client = get_client(client_id)
-    if client and client.get("agent_llm_settings"):
-        backend = client["agent_llm_settings"].get(agent_name, "vertex")
-    else:
-        backend = get_global_agent_llm_config().get(agent_name, "vertex")
-    return get_llm_by_backend(backend)
+    client_settings = client.get("agent_llm_settings") if client else None
+    if isinstance(client_settings, str):
+        import json as _json
+        try:
+            client_settings = _json.loads(client_settings)
+        except Exception:
+            client_settings = {}
+
+    agent_override = None
+    if client_settings and isinstance(client_settings, dict):
+        raw = client_settings.get(agent_name)
+        if isinstance(raw, dict):
+            agent_override = raw
+        elif isinstance(raw, str):
+            # backward-compat: plain backend string
+            agent_override = {"backend": raw, "model": agent_global.get("model", "gemini-2.5-flash")}
+
+    cfg = agent_override or agent_global
+    backend = cfg.get("backend", "vertex")
+    model = cfg.get("model") or None  # None falls back to env var inside CloudLLM
+
+    print(f"[LLM] Agent '{agent_name}' for client '{client_id}': backend={backend}, model={model}")
+    return get_llm_by_backend(backend, model=model)

@@ -14,6 +14,7 @@ from .encryption import encrypt, decrypt
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "marketing_agents.db")
 
 SETTINGS_KEY_GLOBAL_AD_CREDENTIALS = "global_ad_credentials"
+SETTINGS_KEY_GLOBAL_LLM_CONFIG = "global_llm_config"
 AUDIT_STATUS_NEW = "new"
 AUDIT_STATUS_CONTACTED = "contacted"
 AUDIT_STATUS_QUALIFIED = "qualified"
@@ -398,6 +399,38 @@ def load_global_ad_credentials(mask_secrets: bool = False) -> Dict[str, Any]:
     ]:
         masked[key] = _mask_secret(masked.get(key))
     return masked
+
+
+# ================================================================
+# GLOBAL AGENT LLM CONFIG
+# ================================================================
+DEFAULT_GLOBAL_LLM_CONFIG: Dict[str, Any] = {
+    "orchestrator": {"backend": "vertex", "model": "gemini-2.5-pro"},
+    "researcher":   {"backend": "vertex", "model": "gemini-2.5-flash"},
+    "creative":     {"backend": "vertex", "model": "gemini-2.5-flash"},
+    "analyst":      {"backend": "vertex", "model": "gemini-2.5-flash"},
+}
+
+
+def get_global_llm_config() -> Dict[str, Any]:
+    """Return the global per-agent LLM configuration, falling back to defaults."""
+    stored = get_setting(SETTINGS_KEY_GLOBAL_LLM_CONFIG, default=None)
+    if not stored or not isinstance(stored, dict):
+        return dict(DEFAULT_GLOBAL_LLM_CONFIG)
+    # Merge stored over defaults so missing agents always get a value
+    merged = dict(DEFAULT_GLOBAL_LLM_CONFIG)
+    for agent, cfg in stored.items():
+        if isinstance(cfg, dict):
+            merged[agent] = cfg
+        elif isinstance(cfg, str):
+            # backward-compat: plain backend string → normalise
+            merged[agent] = {"backend": cfg, "model": DEFAULT_GLOBAL_LLM_CONFIG.get(agent, {}).get("model", "gemini-2.5-flash")}
+    return merged
+
+
+def set_global_llm_config(config: Dict[str, Any]) -> None:
+    """Persist the global per-agent LLM configuration."""
+    set_setting(SETTINGS_KEY_GLOBAL_LLM_CONFIG, config)
 
 
 def save_campaign_state(

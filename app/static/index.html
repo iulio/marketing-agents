@@ -244,6 +244,98 @@
                     </div>
                 </form>
 
+                <!-- Agent LLM Configuration Card -->
+                <div class="panel rounded-xl p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-brain text-purple-400"></i> Agent LLM Configuration
+                            </h3>
+                            <p class="text-slate-400 text-sm">Set the Vertex AI model for each agent globally. Per-client overrides take precedence.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="loadLlmConfig()" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm font-medium text-white flex items-center gap-1">
+                                <i class="fa-solid fa-rotate"></i> Reload
+                            </button>
+                            <button onclick="saveLlmConfig()" class="rounded-lg bg-purple-600 hover:bg-purple-500 px-3 py-2 text-sm font-medium text-white flex items-center gap-1">
+                                <i class="fa-solid fa-floppy-disk"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                    <div id="llmConfigStatus" class="text-sm"></div>
+                    <table class="w-full text-sm">
+                        <thead class="text-slate-400 border-b border-slate-700">
+                            <tr>
+                                <th class="py-2 text-left font-medium">Agent</th>
+                                <th class="py-2 text-left font-medium pl-3">Backend</th>
+                                <th class="py-2 text-left font-medium pl-3">Model</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr>
+                                <td class="py-3 text-slate-200 flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs">O</span> Orchestrator</td>
+                                <td class="py-3 pl-3"><select id="global_llm_backend_orchestrator" class="input rounded-md px-2 py-1 text-sm w-full">
+                                    <option value="vertex">Vertex AI (GCP)</option>
+                                    <option value="claude">Claude (Anthropic)</option>
+                                    <option value="local">Local (Ollama)</option>
+                                </select></td>
+                                <td class="py-3 pl-3"><select id="global_llm_model_orchestrator" class="input rounded-md px-2 py-1 text-sm w-full">
+                                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                    <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                                </select></td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 text-slate-200 flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center text-xs">R</span> Researcher</td>
+                                <td class="py-3 pl-3"><select id="global_llm_backend_researcher" class="input rounded-md px-2 py-1 text-sm w-full">
+                                    <option value="vertex">Vertex AI (GCP)</option>
+                                    <option value="claude">Claude (Anthropic)</option>
+                                    <option value="local">Local (Ollama)</option>
+                                </select></td>
+                                <td class="py-3 pl-3"><select id="global_llm_model_researcher" class="input rounded-md px-2 py-1 text-sm w-full">
+                                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                    <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                                </select></td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 text-slate-200 flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-xs">C</span> Creative</td>
+                                <td class="py-3 pl-3"><select id="global_llm_backend_creative" class="input rounded-md px-2 py-1 text-sm w-full">
+                                    <option value="vertex">Vertex AI (GCP)</option>
+                                    <option value="claude">Claude (Anthropic)</option>
+                                    <option value="local">Local (Ollama)</option>
+                                </select></td>
+                                <td class="py-3 pl-3"><select id="global_llm_model_creative" class="input rounded-md px-2 py-1 text-sm w-full">
+                                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                    <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                                </select></td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 text-slate-200 flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-xs">A</span> Analyst</td>
+                                <td class="py-3 pl-3"><select id="global_llm_backend_analyst" class="input rounded-md px-2 py-1 text-sm w-full">
+                                    <option value="vertex">Vertex AI (GCP)</option>
+                                    <option value="claude">Claude (Anthropic)</option>
+                                    <option value="local">Local (Ollama)</option>
+                                </select></td>
+                                <td class="py-3 pl-3"><select id="global_llm_model_analyst" class="input rounded-md px-2 py-1 text-sm w-full">
+                                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                    <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                                </select></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
                 <!-- Report Templates Card -->
                 <div class="panel rounded-xl p-5 space-y-4">
                     <div class="flex items-center justify-between">
@@ -372,36 +464,85 @@
                 
                 <!-- Per-Agent LLM Selection -->
                 <div class="border border-[#30363d] rounded-lg p-4 mt-4">
-                    <button type="button" onclick="toggleSection('agentLlm')" class="text-sm font-medium">🧠 Per-Agent LLM</button>
-                    <div id="agentLlm" class="mt-2 hidden space-y-2">
-                        <div><label class="text-xs text-slate-400 block mb-1">Orchestrator</label>
-                            <select id="agent_llm_orchestrator" class="input w-full rounded-md px-3 py-2 text-sm">
-                                <option value="vertex">Vertex AI (GCP)</option>
-                                <option value="claude">Claude (Anthropic)</option>
-                                <option value="local">Local (Ollama)</option>
-                            </select>
-                        </div>
-                        <div><label class="text-xs text-slate-400 block mb-1">Researcher</label>
-                            <select id="agent_llm_researcher" class="input w-full rounded-md px-3 py-2 text-sm">
-                                <option value="vertex">Vertex AI (GCP)</option>
-                                <option value="claude">Claude (Anthropic)</option>
-                                <option value="local">Local (Ollama)</option>
-                            </select>
-                        </div>
-                        <div><label class="text-xs text-slate-400 block mb-1">Creative</label>
-                            <select id="agent_llm_creative" class="input w-full rounded-md px-3 py-2 text-sm">
-                                <option value="vertex">Vertex AI (GCP)</option>
-                                <option value="claude">Claude (Anthropic)</option>
-                                <option value="local">Local (Ollama)</option>
-                            </select>
-                        </div>
-                        <div><label class="text-xs text-slate-400 block mb-1">Analyst</label>
-                            <select id="agent_llm_analyst" class="input w-full rounded-md px-3 py-2 text-sm">
-                                <option value="vertex">Vertex AI (GCP)</option>
-                                <option value="claude">Claude (Anthropic)</option>
-                                <option value="local">Local (Ollama)</option>
-                            </select>
-                        </div>
+                    <button type="button" onclick="toggleSection('agentLlm')" class="text-sm font-medium">🧠 Per-Agent LLM Overrides</button>
+                    <div id="agentLlm" class="mt-3 hidden">
+                        <p class="text-xs text-slate-500 mb-3">Leave "Use Global" checked to inherit the global setting. Uncheck to override for this client.</p>
+                        <table class="w-full text-xs">
+                            <thead class="text-slate-400 border-b border-slate-700">
+                                <tr>
+                                    <th class="py-2 text-left">Agent</th>
+                                    <th class="py-2 text-left pl-2">Use Global</th>
+                                    <th class="py-2 text-left pl-2">Backend</th>
+                                    <th class="py-2 text-left pl-2">Model</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">
+                                <tr>
+                                    <td class="py-2 text-slate-300">Orchestrator</td>
+                                    <td class="py-2 pl-2"><input type="checkbox" id="llm_use_global_orchestrator" checked onchange="toggleLlmOverride('orchestrator',this.checked)"></td>
+                                    <td class="py-2 pl-2"><select id="client_llm_backend_orchestrator" class="input rounded px-2 py-1 text-xs w-28" disabled>
+                                        <option value="vertex">Vertex AI</option>
+                                        <option value="claude">Claude</option>
+                                        <option value="local">Local</option>
+                                    </select></td>
+                                    <td class="py-2 pl-2"><select id="client_llm_model_orchestrator" class="input rounded px-2 py-1 text-xs w-36" disabled>
+                                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                        <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                        <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                                    </select></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-slate-300">Researcher</td>
+                                    <td class="py-2 pl-2"><input type="checkbox" id="llm_use_global_researcher" checked onchange="toggleLlmOverride('researcher',this.checked)"></td>
+                                    <td class="py-2 pl-2"><select id="client_llm_backend_researcher" class="input rounded px-2 py-1 text-xs w-28" disabled>
+                                        <option value="vertex">Vertex AI</option>
+                                        <option value="claude">Claude</option>
+                                        <option value="local">Local</option>
+                                    </select></td>
+                                    <td class="py-2 pl-2"><select id="client_llm_model_researcher" class="input rounded px-2 py-1 text-xs w-36" disabled>
+                                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                        <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                        <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                                    </select></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-slate-300">Creative</td>
+                                    <td class="py-2 pl-2"><input type="checkbox" id="llm_use_global_creative" checked onchange="toggleLlmOverride('creative',this.checked)"></td>
+                                    <td class="py-2 pl-2"><select id="client_llm_backend_creative" class="input rounded px-2 py-1 text-xs w-28" disabled>
+                                        <option value="vertex">Vertex AI</option>
+                                        <option value="claude">Claude</option>
+                                        <option value="local">Local</option>
+                                    </select></td>
+                                    <td class="py-2 pl-2"><select id="client_llm_model_creative" class="input rounded px-2 py-1 text-xs w-36" disabled>
+                                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                        <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                        <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                                    </select></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-slate-300">Analyst</td>
+                                    <td class="py-2 pl-2"><input type="checkbox" id="llm_use_global_analyst" checked onchange="toggleLlmOverride('analyst',this.checked)"></td>
+                                    <td class="py-2 pl-2"><select id="client_llm_backend_analyst" class="input rounded px-2 py-1 text-xs w-28" disabled>
+                                        <option value="vertex">Vertex AI</option>
+                                        <option value="claude">Claude</option>
+                                        <option value="local">Local</option>
+                                    </select></td>
+                                    <td class="py-2 pl-2"><select id="client_llm_model_analyst" class="input rounded px-2 py-1 text-xs w-36" disabled>
+                                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                        <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                        <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                                    </select></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 
@@ -754,6 +895,10 @@
             document.getElementById('clientFormPlatformStatus').value = client?.platform_status || 'inactive';
             document.getElementById('clientFormBillingInfo').value = JSON.stringify(client?.billing_info || {}, null, 2);
             document.getElementById('clientFormSettings').value = JSON.stringify(client?.settings || {}, null, 2);
+            // Populate per-client LLM overrides
+            const llmSettings = client?.agent_llm_settings;
+            const parsed = typeof llmSettings === 'string' ? (() => { try { return JSON.parse(llmSettings); } catch { return {}; } })() : (llmSettings || {});
+            populateClientLlmSettings(parsed);
         }
         function closeClientModal() {
             document.getElementById('clientModal').classList.add('hidden');
@@ -773,7 +918,8 @@
                     billing_email: document.getElementById('clientFormBillingEmail').value.trim(),
                     platform_status: document.getElementById('clientFormPlatformStatus').value,
                     billing_info: parseJsonField('clientFormBillingInfo', 'Billing Info'),
-                    settings: parseJsonField('clientFormSettings', 'Settings')
+                    settings: parseJsonField('clientFormSettings', 'Settings'),
+                    agent_llm_settings: collectClientLlmSettings()
                 };
             } catch (error) {
                 showClientError(error.message);
@@ -1254,11 +1400,107 @@
         }
         document.getElementById('settingsForm').addEventListener('submit', saveSettings);
 
+        // ================================================================
+        // AGENT LLM CONFIG (Global)
+        // ================================================================
+        const AGENTS = ['orchestrator', 'researcher', 'creative', 'analyst'];
+
+        function setSelect(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const opt = Array.from(el.options).find(o => o.value === value);
+            if (opt) el.value = value;
+        }
+
+        async function loadLlmConfig() {
+            try {
+                const res = await fetch(`${API_BASE}/api/settings/llm-config`, { headers: getHeaders() });
+                if (!res.ok) return;
+                const data = await res.json();
+                const config = data.config || {};
+                AGENTS.forEach(agent => {
+                    const cfg = config[agent] || {};
+                    setSelect(`global_llm_backend_${agent}`, cfg.backend || 'vertex');
+                    setSelect(`global_llm_model_${agent}`, cfg.model || 'gemini-2.5-flash');
+                });
+                const status = document.getElementById('llmConfigStatus');
+                if (status) status.innerHTML = '<span class="text-emerald-400 text-xs">✓ Config loaded</span>';
+            } catch (error) {
+                console.error('Failed to load LLM config', error);
+            }
+        }
+
+        async function saveLlmConfig() {
+            const config = {};
+            AGENTS.forEach(agent => {
+                config[agent] = {
+                    backend: document.getElementById(`global_llm_backend_${agent}`)?.value || 'vertex',
+                    model: document.getElementById(`global_llm_model_${agent}`)?.value || 'gemini-2.5-flash'
+                };
+            });
+            try {
+                const res = await fetch(`${API_BASE}/api/settings/llm-config`, {
+                    method: 'POST', headers: getHeaders(), body: JSON.stringify(config)
+                });
+                if (!res.ok) throw new Error('Failed to save LLM config');
+                const status = document.getElementById('llmConfigStatus');
+                if (status) status.innerHTML = '<span class="text-emerald-400 text-xs">✓ Saved successfully</span>';
+                setTimeout(() => { if (status) status.innerHTML = ''; }, 3000);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // ================================================================
+        // PER-CLIENT LLM OVERRIDE HELPERS
+        // ================================================================
+        function toggleLlmOverride(agent, useGlobal) {
+            const backendEl = document.getElementById(`client_llm_backend_${agent}`);
+            const modelEl = document.getElementById(`client_llm_model_${agent}`);
+            if (backendEl) { backendEl.disabled = useGlobal; backendEl.style.opacity = useGlobal ? '0.4' : '1'; }
+            if (modelEl) { modelEl.disabled = useGlobal; modelEl.style.opacity = useGlobal ? '0.4' : '1'; }
+        }
+
+        function populateClientLlmSettings(agentLlmSettings) {
+            // Reset all to "Use Global"
+            AGENTS.forEach(agent => {
+                const cb = document.getElementById(`llm_use_global_${agent}`);
+                if (cb) { cb.checked = true; toggleLlmOverride(agent, true); }
+            });
+            if (!agentLlmSettings || typeof agentLlmSettings !== 'object') return;
+            AGENTS.forEach(agent => {
+                const cfg = agentLlmSettings[agent];
+                if (!cfg) return;
+                let backend, model;
+                if (typeof cfg === 'string') { backend = cfg; model = 'gemini-2.5-flash'; }
+                else { backend = cfg.backend || 'vertex'; model = cfg.model || 'gemini-2.5-flash'; }
+                const cb = document.getElementById(`llm_use_global_${agent}`);
+                if (cb) { cb.checked = false; toggleLlmOverride(agent, false); }
+                setSelect(`client_llm_backend_${agent}`, backend);
+                setSelect(`client_llm_model_${agent}`, model);
+            });
+        }
+
+        function collectClientLlmSettings() {
+            const result = {};
+            AGENTS.forEach(agent => {
+                const cb = document.getElementById(`llm_use_global_${agent}`);
+                if (cb && !cb.checked) {
+                    result[agent] = {
+                        backend: document.getElementById(`client_llm_backend_${agent}`)?.value || 'vertex',
+                        model: document.getElementById(`client_llm_model_${agent}`)?.value || 'gemini-2.5-flash'
+                    };
+                }
+            });
+            return result;
+        }
+
         showSection('dashboard');
         loadOverview();
         loadClients();
         loadCampaigns();
         loadSettings();
+        loadLlmConfig();
     </script>
 </body>
 </html>

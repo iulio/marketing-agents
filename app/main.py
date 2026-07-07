@@ -28,7 +28,7 @@ from .notifications import notify_campaign_created, notify_campaign_approved, no
 from .storage import create_report_template, get_report_template, get_report_templates
 
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
-from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events
+from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events, get_global_llm_config, set_global_llm_config
 from .ab_testing import ABTestingEngine
 from .storage import create_onboarding_session, save_onboarding_session, get_latest_onboarding_session, get_onboarding_session, update_onboarding_status, delete_onboarding_session
 from .image_service import StockImageSearch, AIImageGenerator, SmartImageSelector
@@ -408,6 +408,21 @@ async def save_settings_credentials(request: Request, credentials: dict):
         "message": "Global credentials saved successfully",
         "credentials": save_global_ad_credentials(credentials),
     }
+
+
+@app.get("/api/settings/llm-config")
+@require_role(["admin", "client_manager", "client_viewer"])
+async def get_llm_config_endpoint(request: Request):
+    """Return the global per-agent LLM configuration."""
+    return {"config": get_global_llm_config()}
+
+
+@app.post("/api/settings/llm-config")
+@require_role(["admin"])
+async def save_llm_config_endpoint(request: Request, config: dict):
+    """Persist the global per-agent LLM configuration."""
+    set_global_llm_config(config)
+    return {"message": "LLM config saved", "config": get_global_llm_config()}
 
 
 @app.get("/api/clients/{client_id}/credentials/status")
