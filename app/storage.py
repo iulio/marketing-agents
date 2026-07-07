@@ -1043,9 +1043,10 @@ def get_publish_events(campaign_id: str) -> List[Dict[str, Any]]:
 
 
 def _ensure_report_templates_table(conn) -> None:
-    conn.execute(text("""
+    template_id = "INTEGER PRIMARY KEY AUTOINCREMENT" if IS_SQLITE else "SERIAL PRIMARY KEY"
+    conn.execute(text(f"""
         CREATE TABLE IF NOT EXISTS report_templates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {template_id},
             name TEXT NOT NULL,
             description TEXT,
             sections TEXT NOT NULL DEFAULT '["kpi","recommendations"]',
