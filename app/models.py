@@ -125,6 +125,17 @@ class ReportTemplate(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class OnboardingProgress(Base):
+    __tablename__ = "onboarding_progress"
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    step = Column(Integer, default=1)  # 1-5
+    data = Column(JSON, nullable=False, default=dict)
+    status = Column(String, default="in_progress")  # in_progress, completed, abandoned
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 # ================================================================
 # PYDANTIC MODELS (API validation)
 # ================================================================

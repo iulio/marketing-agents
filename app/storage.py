@@ -275,6 +275,8 @@ def init_db():
         _ensure_proposals_table(conn)
         _ensure_publish_events_table(conn)
         _ensure_report_templates_table(conn)
+        _ensure_onboarding_progress_table(conn)
+
 
 
 def set_setting(key: str, value: Any, encrypt_value: bool = False) -> None:
@@ -1120,4 +1122,125 @@ def get_report_templates(client_id: Optional[str] = None) -> List[Dict[str, Any]
     return rows
 
 
+def _ensure_onboarding_progress_table(conn) -> None:
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS onboarding_progress (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            step INTEGER DEFAULT 1,
+            data TEXT NOT NULL,
+            status TEXT DEFAULT 'in_progress',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """))
+
+
+def create_onboarding_session(user_id: str) -> str:
+    session_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO onboarding_progress (id, user_id, step, data, status, created_at, updated_at)
+                VALUES (:id, :user_id, 1, '{}', 'in_progress', :created_at, :updated_at)
+            """),
+            {
+                "id": session_id,
+                "user_id": user_id,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
+    return session_id
+
+
+CREDENTIAL_KEYS = [
+    "google_ads_developer_token", "google_ads_client_id", "google_ads_client_secret",
+    "google_ads_refresh_token", "google_ads_customer_id", "meta_app_id",
+    "meta_app_secret", "meta_access_token", "meta_ad_account_id"
+]
+
+
+def save_onboarding_session(session_id: str, step: int, data: dict) -> bool:
+    now = datetime.utcnow().isoformat()
+    # Encrypt credentials in data before saving
+    data_to_save = data.copy()
+    for key in CREDENTIAL_KEYS:
+        if key in data_to_save and data_to_save[key]:
+            data_to_save[key] = encrypt(data_to_save[key])
+
+    with engine.begin() as conn:
+        res = conn.execute(
+            text("SELECT data FROM onboarding_progress WHERE id = :id"),
+            {"id": session_id}
+        ).first()
+        if not res:
+            return False
+        existing_data = _json_load(res[0], {})
+        existing_data.update(data_to_save)
+        
+        conn.execute(
+            text("""
+                UPDATE onboarding_progress
+                SET step = :step, data = :data, updated_at = :updated_at
+                WHERE id = :id
+            """),
+            {
+                "id": session_id,
+                "step": step,
+                "data": json.dumps(existing_data),
+                "updated_at": now,
+            }
+        )
+    return True
+
+
+def get_latest_onboarding_session(user_id: str) -> Optional[dict]:
+    with engine.begin() as conn:
+        res = conn.execute(
+            text("""
+                SELECT id, user_id, step, data, status, created_at, updated_at
+                FROM onboarding_progress
+                WHERE user_id = :user_id AND status = 'in_progress'
+                ORDER BY updated_at DESC LIMIT 1
+            """),
+            {"user_id": user_id}
+        ).first()
+        if not res:
+            return None
+        row = dict(res._mapping)
+        saved_data = _json_load(row.get("data"), {})
+        # Decrypt credentials on retrieval
+        for key in CREDENTIAL_KEYS:
+            if key in saved_data and saved_data[key]:
+                saved_data[key] = decrypt(saved_data[key])
+        row["data"] = saved_data
+        return row
+
+
+def update_onboarding_status(session_id: str, status: str) -> bool:
+    now = datetime.utcnow().isoformat()
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE onboarding_progress
+                SET status = :status, updated_at = :updated_at
+                WHERE id = :id
+            """),
+            {"id": session_id, "status": status, "updated_at": now}
+        )
+        return result.rowcount > 0
+
+
+def delete_onboarding_session(session_id: str) -> bool:
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("DELETE FROM onboarding_progress WHERE id = :id"),
+            {"id": session_id}
+        )
+        return result.rowcount > 0
+
+
 init_db()
+

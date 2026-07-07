@@ -123,9 +123,14 @@
                         <h2 class="text-2xl font-semibold text-white">Clients</h2>
                         <p class="text-slate-400">Manage clients and ad-account credentials.</p>
                     </div>
-                    <button onclick="openClientModal()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
-                        <i class="fa-solid fa-plus"></i> Add Client
-                    </button>
+                    <div class="flex gap-2">
+                        <a href="/onboarding.html" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Onboarding Wizard
+                        </a>
+                        <button onclick="openClientModal()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Add Client
+                        </button>
+                    </div>
                 </div>
                 <div class="panel rounded-xl p-5 overflow-x-auto">
                     <table class="min-w-full text-sm">

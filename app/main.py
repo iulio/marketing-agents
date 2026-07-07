@@ -30,6 +30,7 @@ from .storage import create_report_template, get_report_template, get_report_tem
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
 from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events
 from .ab_testing import ABTestingEngine
+from .storage import create_onboarding_session, save_onboarding_session, get_latest_onboarding_session, update_onboarding_status, delete_onboarding_session
 from .image_service import StockImageSearch, AIImageGenerator, SmartImageSelector
 
 from .kpi_fetcher import KPIFetcher
@@ -490,6 +491,216 @@ async def delete_client_endpoint(request: Request, client_id: str):
         return {"message": f"Client '{client_id}' deleted successfully", "client_id": client_id}
     else:
         raise HTTPException(status_code=500, detail="Failed to delete client")
+
+# ================================================================
+# ONBOARDING WIZARD ENDPOINTS
+# ================================================================
+
+@app.post("/api/onboarding/start")
+@require_role(["admin"])
+async def start_onboarding(request: Request):
+    user = request.state.user
+    session_id = create_onboarding_session(user["id"])
+    return {"session_id": session_id, "step": 1, "data": {}}
+
+
+@app.post("/api/onboarding/save")
+@require_role(["admin"])
+async def save_onboarding(request: Request, payload: dict):
+    session_id = payload.get("session_id")
+    step = payload.get("step")
+    step_data = payload.get("data", {})
+    if not session_id or not step:
+        raise HTTPException(status_code=400, detail="session_id and step are required")
+    success = save_onboarding_session(session_id, step, step_data)
+    if not success:
+        raise HTTPException(status_code=404, detail="Onboarding session not found")
+    return {"message": "Progress saved"}
+
+
+@app.get("/api/onboarding/resume")
+@require_role(["admin"])
+async def resume_onboarding(request: Request):
+    user = request.state.user
+    session_data = get_latest_onboarding_session(user["id"])
+    if not session_data:
+        return {"session_id": None, "step": 1, "data": {}}
+    return session_data
+
+
+@app.post("/api/onboarding/submit")
+@require_role(["admin"])
+async def submit_onboarding(request: Request, payload: dict):
+    session_id = payload.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+        
+    with engine.begin() as conn:
+        res = conn.execute(
+            text("SELECT user_id, step, data, status FROM onboarding_progress WHERE id = :id"),
+            {"id": session_id}
+        ).first()
+        
+    if not res:
+        raise HTTPException(status_code=404, detail="Onboarding session not found")
+        
+    user_id, step, data_str, status = res
+    if status != "in_progress":
+        raise HTTPException(status_code=400, detail="Onboarding session is already finished or cancelled")
+        
+    data = get_latest_onboarding_session(user_id)
+    if not data or data["id"] != session_id:
+        raise HTTPException(status_code=404, detail="Onboarding session data not found")
+        
+    session_data = data["data"]
+    
+    # 1. Create client
+    client_name = session_data.get("name", "New Client").strip()
+    if not client_name:
+        raise HTTPException(status_code=422, detail="Client name is required")
+        
+    client_id = str(uuid.uuid4())
+    client_payload = {
+        "id": client_id,
+        "name": client_name,
+        "industry": session_data.get("industry", ""),
+        "website": session_data.get("website", ""),
+        "logo_url": session_data.get("logo_url", ""),
+        "billing_email": session_data.get("billing_email", ""),
+        "billing_info": session_data.get("billing_info", {}),
+        "settings": session_data.get("settings", {}),
+        "platform_status": session_data.get("platform_status", "active"),
+        "google_ads_developer_token": session_data.get("google_ads_developer_token", ""),
+        "google_ads_client_id": session_data.get("google_ads_client_id", ""),
+        "google_ads_client_secret": session_data.get("google_ads_client_secret", ""),
+        "google_ads_refresh_token": session_data.get("google_ads_refresh_token", ""),
+        "google_ads_customer_id": session_data.get("google_ads_customer_id", ""),
+        "meta_app_id": session_data.get("meta_app_id", ""),
+        "meta_app_secret": session_data.get("meta_app_secret", ""),
+        "meta_access_token": session_data.get("meta_access_token", ""),
+        "meta_ad_account_id": session_data.get("meta_ad_account_id", ""),
+        "google_ads_configured": bool(session_data.get("google_ads_developer_token")),
+        "meta_ads_configured": bool(session_data.get("meta_app_id")),
+        "agent_llm_settings": session_data.get("agent_llm_settings", {}),
+        "image_generation_preferences": session_data.get("image_generation_preferences", {}),
+        "default_budget": float(session_data.get("default_budget")) if session_data.get("default_budget") else None
+    }
+    
+    # Store client to database
+    create_client(client_payload)
+    
+    # 2. Check if a campaign should be created
+    campaign_id = None
+    campaign_status = None
+    if session_data.get("launch_campaign", True):
+        try:
+            target_geo = session_data.get("target_geo", ["US"])
+            if isinstance(target_geo, str):
+                target_geo = [g.strip() for g in target_geo.split(",") if g.strip()]
+            
+            cultural_triggers = session_data.get("cultural_triggers", [])
+            if isinstance(cultural_triggers, str):
+                cultural_triggers = [t.strip() for t in cultural_triggers.split(",") if t.strip()]
+                
+            special_events = session_data.get("special_events", [])
+            if isinstance(special_events, str):
+                special_events = [e.strip() for e in special_events.split(",") if e.strip()]
+                
+            product_keywords = session_data.get("product_keywords", [])
+            if isinstance(product_keywords, str):
+                product_keywords = [k.strip() for k in product_keywords.split(",") if k.strip()]
+
+            campaign_req = OnboardRequest(
+                client_name=client_name,
+                website_url=session_data.get("website", "https://example.com"),
+                language=session_data.get("campaign_language", "en-US"),
+                tone_of_voice=session_data.get("tone_of_voice", "professional"),
+                objective=session_data.get("campaign_objective", "traffic"),
+                industry=session_data.get("industry", "General"),
+                daily_budget=float(session_data.get("daily_budget", 100.0)),
+                target_geo=target_geo,
+                cultural_triggers=cultural_triggers,
+                special_events=special_events,
+                product_keywords=product_keywords,
+                start_date=session_data.get("start_date"),
+                end_date=session_data.get("end_date"),
+                duration_days=int(session_data.get("duration_days", 30)) if session_data.get("duration_days") else 30
+            )
+            
+            campaign_id = str(uuid.uuid4())[:8]
+            # Load the credentials we just saved for this client
+            creds = {
+                "google_ads_developer_token": client_payload["google_ads_developer_token"],
+                "google_ads_client_id": client_payload["google_ads_client_id"],
+                "google_ads_client_secret": client_payload["google_ads_client_secret"],
+                "google_ads_refresh_token": client_payload["google_ads_refresh_token"],
+                "google_ads_customer_id": client_payload["google_ads_customer_id"],
+                "meta_app_id": client_payload["meta_app_id"],
+                "meta_app_secret": client_payload["meta_app_secret"],
+                "meta_access_token": client_payload["meta_access_token"],
+                "meta_ad_account_id": client_payload["meta_ad_account_id"]
+            }
+            initial_state = {
+                "client_profile": campaign_req.model_dump(mode="json"),
+                "client_credentials": creds,
+                "global_credentials": load_global_ad_credentials(mask_secrets=False),
+                "market_intelligence": {},
+                "creative_assets": {},
+                "deployment_status": {},
+                "human_feedback": {},
+                "validation_errors": [],
+                "analysis": {},
+                "last_optimization": "",
+                "optimization_actions": [],
+            }
+            config = {"configurable": {"thread_id": campaign_id}}
+            final_state = graph.invoke(initial_state, config=config)
+            campaign_status = "pending_review"
+            
+            campaigns[campaign_id] = {
+                "state": final_state,
+                "status": campaign_status,
+                "thread_id": campaign_id,
+                "client_id": client_id,
+                "client_name": campaign_req.client_name,
+                "language": campaign_req.language.value,
+                "created_at": None,
+            }
+            save_campaign_state(campaign_id, final_state, campaign_status, client_id)
+            
+            try:
+                notify_campaign_created(
+                    campaign_name=campaign_req.client_name,
+                    client_name=client_name,
+                    campaign_id=campaign_id,
+                )
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"[Onboarding Submit] Failed to create campaign: {e}")
+            
+    # 3. Mark onboarding session as completed
+    update_onboarding_status(session_id, "completed")
+    
+    return {
+        "message": "Onboarding completed successfully",
+        "client_id": client_id,
+        "campaign_id": campaign_id,
+        "campaign_status": campaign_status
+    }
+
+
+@app.delete("/api/onboarding/cancel")
+@require_role(["admin"])
+async def cancel_onboarding(request: Request, payload: dict):
+    session_id = payload.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+    success = update_onboarding_status(session_id, "abandoned")
+    if not success:
+        raise HTTPException(status_code=404, detail="Onboarding session not found")
+    return {"message": "Onboarding cancelled"}
+
 
 # ================================================================
 # CAMPAIGN ENDPOINTS
