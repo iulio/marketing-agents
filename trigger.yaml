@@ -1,0 +1,72 @@
+build:
+  images:
+  - $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+  options:
+    logging: CLOUD_LOGGING_ONLY
+    substitutionOption: ALLOW_LOOSE
+  steps:
+  - args:
+    - build
+    - --no-cache
+    - -t
+    - $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+    - .
+    - -f
+    - Dockerfile
+    id: Build
+    name: gcr.io/cloud-builders/docker
+  - args:
+    - push
+    - $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+    id: Push
+    name: gcr.io/cloud-builders/docker
+  - args:
+    - run
+    - services
+    - update
+    - $_SERVICE_NAME
+    - --platform=managed
+    - --image=$_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+    - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID,gcb-trigger-id=$_TRIGGER_ID
+    - --region=$_DEPLOY_REGION
+    - --set-secrets=DATABASE_URL=marketing-agents-database-url:latest
+    - --quiet
+    entrypoint: gcloud
+    id: Deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  substitutions:
+    _AR_HOSTNAME: europe-west1-docker.pkg.dev
+    _AR_PROJECT_ID: marketing-online-500822
+    _AR_REPOSITORY: cloud-run-source-deploy
+    _DEPLOY_REGION: europe-west1
+    _PLATFORM: managed
+    _SERVICE_NAME: marketing-agents
+    _TRIGGER_ID: 88979cd8-3a0d-4c01-86d4-64f7c88400c7
+  tags:
+  - gcp-cloud-build-deploy-cloud-run
+  - gcp-cloud-build-deploy-cloud-run-managed
+  - marketing-agents
+createTime: '2026-07-06T23:33:01.797488584Z'
+description: Build and deploy to Cloud Run service marketing-agents on push to "^main$"
+github:
+  name: marketing-agents
+  owner: iulio
+  push:
+    branch: ^main$
+id: 88979cd8-3a0d-4c01-86d4-64f7c88400c7
+includeBuildLogs: INCLUDE_BUILD_LOGS_WITH_STATUS
+name: rmgpgab-marketing-agents-europe-west1-iulio-marketing-agentsbhs
+resourceName: projects/marketing-online-500822/locations/global/triggers/88979cd8-3a0d-4c01-86d4-64f7c88400c7
+serviceAccount: projects/marketing-online-500822/serviceAccounts/940444161637-compute@developer.gserviceaccount.com
+substitutions:
+  _AR_HOSTNAME: europe-west1-docker.pkg.dev
+  _AR_PROJECT_ID: marketing-online-500822
+  _AR_REPOSITORY: cloud-run-source-deploy
+  _DEPLOY_REGION: europe-west1
+  _PLATFORM: managed
+  _SERVICE_NAME: marketing-agents
+  _TRIGGER_ID: 88979cd8-3a0d-4c01-86d4-64f7c88400c7
+tags:
+- gcp-cloud-build-deploy-cloud-run
+- gcp-cloud-build-deploy-cloud-run-managed
+- marketing-agents
