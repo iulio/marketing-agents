@@ -112,6 +112,18 @@ def _ensure_client_credential_columns(conn):
             conn.execute(text(f"ALTER TABLE clients ADD COLUMN {column_name} {column_type}"))
 
 
+def _ensure_client_new_columns(conn):
+    columns = _get_table_columns(conn, "clients")
+    new_columns = {
+        "agent_llm_settings": "TEXT",
+        "image_generation_preferences": "TEXT",
+        "default_budget": "DOUBLE PRECISION" if not IS_SQLITE else "REAL",
+    }
+    for column_name, column_type in new_columns.items():
+        if column_name not in columns:
+            conn.execute(text(f"ALTER TABLE clients ADD COLUMN {column_name} {column_type}"))
+
+
 def _ensure_settings_table(conn):
     conn.execute(text("""
         CREATE TABLE IF NOT EXISTS settings (
@@ -241,6 +253,7 @@ def init_db():
         """))
         _ensure_client_platform_status_column(conn)
         _ensure_client_credential_columns(conn)
+        _ensure_client_new_columns(conn)
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
