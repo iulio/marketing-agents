@@ -106,11 +106,6 @@ app.add_middleware(
 )
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
-if os.path.exists(static_dir):
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
-    tutorials_dir = os.path.join(static_dir, "tutorials")
-    if os.path.exists(tutorials_dir):
-        app.mount("/tutorials", StaticFiles(directory=tutorials_dir), name="tutorials")
 
 # ================================================================
 # ROOT ENDPOINT
@@ -1224,4 +1219,7 @@ async def generate_custom_report_endpoint(request: Request, data: dict):
 # ================================================================
 
 if os.path.exists(static_dir):
+    tutorials_dir = os.path.join(static_dir, "tutorials")
+    if os.path.exists(tutorials_dir):
+        app.mount("/tutorials", StaticFiles(directory=tutorials_dir), name="tutorials")
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
