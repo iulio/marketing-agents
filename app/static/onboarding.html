@@ -159,7 +159,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Client Platform Status</label>
-                            <select id="clientPlatformStatus" class="w-full input-field rounded-xl px-4 py-3 text-sm">
+                            <select id="clientPlatformStatus" class="w-full input-field rounded-xl px-4 py-3 text-sm" title="Client Platform Status">
                                 <option value="active" selected>Active</option>
                                 <option value="inactive">Inactive</option>
                                 <option value="pending">Pending Review</option>
@@ -168,7 +168,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Default Budget Threshold (€)</label>
-                            <input type="number" id="clientDefaultBudget" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="e.g. 5000">
+                            <input type="number" id="clientDefaultBudget" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="e.g. 5000" title="Default Budget">
                         </div>
                     </div>
                 </div>
@@ -192,23 +192,23 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="md:col-span-2">
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Developer Token</label>
-                                    <input type="password" id="google_ads_developer_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Paste Dev Token">
+                                    <input type="password" id="google_ads_developer_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Paste Dev Token" title="Google Ads Developer Token">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Client ID</label>
-                                    <input type="text" id="google_ads_client_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Client ID">
+                                    <input type="text" id="google_ads_client_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Client ID" title="Google Ads OAuth Client ID">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Client Secret</label>
-                                    <input type="password" id="google_ads_client_secret" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Client Secret">
+                                    <input type="password" id="google_ads_client_secret" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Client Secret" title="Google Ads OAuth Client Secret">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Refresh Token</label>
-                                    <input type="password" id="google_ads_refresh_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Refresh Token">
+                                    <input type="password" id="google_ads_refresh_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="OAuth Refresh Token" title="Google Ads OAuth Refresh Token">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Customer ID</label>
-                                    <input type="text" id="google_ads_customer_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="xxx-xxx-xxxx">
+                                    <input type="text" id="google_ads_customer_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="xxx-xxx-xxxx" title="Google Ads Customer ID">
                                 </div>
                             </div>
                         </div>
@@ -221,19 +221,19 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">App ID</label>
-                                    <input type="text" id="meta_app_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Meta App ID">
+                                    <input type="text" id="meta_app_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Meta App ID" title="Meta App ID">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">App Secret</label>
-                                    <input type="password" id="meta_app_secret" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Meta App Secret">
+                                    <input type="password" id="meta_app_secret" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Meta App Secret" title="Meta App Secret">
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Access Token</label>
-                                    <input type="password" id="meta_access_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Long-Lived Page/User Access Token">
+                                    <input type="password" id="meta_access_token" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="Long-Lived Page/User Access Token" title="Meta Access Token">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Ad Account ID</label>
-                                    <input type="text" id="meta_ad_account_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="act_xxxxxxxxxxxx">
+                                    <input type="text" id="meta_ad_account_id" class="w-full input-field rounded-xl px-4 py-2.5 text-sm" placeholder="act_xxxxxxxxxxxx" title="Meta Ad Account ID">
                                 </div>
                             </div>
                         </div>
@@ -253,7 +253,7 @@
                     <div id="campaignFields" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Campaign Language</label>
-                            <select id="campaignLanguage" class="w-full input-field rounded-xl px-4 py-3 text-sm">
+                            <select id="campaignLanguage" class="w-full input-field rounded-xl px-4 py-3 text-sm" title="Campaign Language">
                                 <option value="en-US" selected>English (US)</option>
                                 <option value="ro-RO">Romanian</option>
                                 <option value="de-DE">German</option>
@@ -263,7 +263,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Campaign Objective</label>
-                            <select id="campaignObjective" class="w-full input-field rounded-xl px-4 py-3 text-sm">
+                            <select id="campaignObjective" class="w-full input-field rounded-xl px-4 py-3 text-sm" title="Campaign Objective">
                                 <option value="traffic" selected>Traffic Generation</option>
                                 <option value="sales">Conversions & Sales</option>
                                 <option value="awareness">Brand Awareness</option>
@@ -272,15 +272,15 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Daily Budget (€) <span class="text-rose-500">*</span></label>
-                            <input type="number" id="campaignDailyBudget" class="w-full input-field rounded-xl px-4 py-3 text-sm" value="50">
+                            <input type="number" id="campaignDailyBudget" class="w-full input-field rounded-xl px-4 py-3 text-sm" value="50" placeholder="e.g. 50" title="Daily Budget">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Target Location / Geo</label>
-                            <input type="text" id="campaignTargetGeo" class="w-full input-field rounded-xl px-4 py-3 text-sm" value="US, UK">
+                            <input type="text" id="campaignTargetGeo" class="w-full input-field rounded-xl px-4 py-3 text-sm" value="US, UK" placeholder="e.g. US, UK" title="Target Location">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone of Voice</label>
-                            <select id="campaignTone" class="w-full input-field rounded-xl px-4 py-3 text-sm">
+                            <select id="campaignTone" class="w-full input-field rounded-xl px-4 py-3 text-sm" title="Tone of Voice">
                                 <option value="professional" selected>Professional</option>
                                 <option value="friendly">Friendly & Approachable</option>
                                 <option value="urgent">Urgent & Direct</option>
@@ -290,15 +290,15 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Product Keywords (comma-separated)</label>
-                            <input type="text" id="campaignKeywords" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="AI, SaaS, productivity">
+                            <input type="text" id="campaignKeywords" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="AI, SaaS, productivity" title="Product Keywords">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Start Date</label>
-                            <input type="date" id="campaignStartDate" class="w-full input-field rounded-xl px-4 py-3 text-sm">
+                            <input type="date" id="campaignStartDate" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="YYYY-MM-DD" title="Start Date">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">End Date</label>
-                            <input type="date" id="campaignEndDate" class="w-full input-field rounded-xl px-4 py-3 text-sm">
+                            <input type="date" id="campaignEndDate" class="w-full input-field rounded-xl px-4 py-3 text-sm" placeholder="YYYY-MM-DD" title="End Date">
                         </div>
                     </div>
                 </div>

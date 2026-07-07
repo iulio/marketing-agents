@@ -1232,6 +1232,29 @@ def get_latest_onboarding_session(user_id: str) -> Optional[dict]:
         return row
 
 
+def get_onboarding_session(session_id: str) -> Optional[dict]:
+    with engine.begin() as conn:
+        res = conn.execute(
+            text("""
+                SELECT id, user_id, step, data, status, created_at, updated_at
+                FROM onboarding_progress
+                WHERE id = :id
+            """),
+            {"id": session_id}
+        ).first()
+        if not res:
+            return None
+        row = dict(res._mapping)
+        saved_data = _json_load(row.get("data"), {})
+        # Decrypt credentials on retrieval
+        for key in CREDENTIAL_KEYS:
+            if key in saved_data and saved_data[key]:
+                saved_data[key] = decrypt(saved_data[key])
+        row["data"] = saved_data
+        return row
+
+
+
 def update_onboarding_status(session_id: str, status: str) -> bool:
     now = datetime.utcnow().isoformat()
     with engine.begin() as conn:

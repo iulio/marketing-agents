@@ -30,7 +30,7 @@ from .storage import create_report_template, get_report_template, get_report_tem
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
 from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events
 from .ab_testing import ABTestingEngine
-from .storage import create_onboarding_session, save_onboarding_session, get_latest_onboarding_session, update_onboarding_status, delete_onboarding_session
+from .storage import create_onboarding_session, save_onboarding_session, get_latest_onboarding_session, get_onboarding_session, update_onboarding_status, delete_onboarding_session
 from .image_service import StockImageSearch, AIImageGenerator, SmartImageSelector
 
 from .kpi_fetcher import KPIFetcher
@@ -534,25 +534,15 @@ async def submit_onboarding(request: Request, payload: dict):
     session_id = payload.get("session_id")
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id is required")
-        
-    with engine.begin() as conn:
-        res = conn.execute(
-            text("SELECT user_id, step, data, status FROM onboarding_progress WHERE id = :id"),
-            {"id": session_id}
-        ).first()
-        
-    if not res:
+    session_data_wrapper = get_onboarding_session(session_id)
+    if not session_data_wrapper:
         raise HTTPException(status_code=404, detail="Onboarding session not found")
         
-    user_id, step, data_str, status = res
-    if status != "in_progress":
+    if session_data_wrapper["status"] != "in_progress":
         raise HTTPException(status_code=400, detail="Onboarding session is already finished or cancelled")
         
-    data = get_latest_onboarding_session(user_id)
-    if not data or data["id"] != session_id:
-        raise HTTPException(status_code=404, detail="Onboarding session data not found")
-        
-    session_data = data["data"]
+    session_data = session_data_wrapper["data"]
+
     
     # 1. Create client
     client_name = session_data.get("name", "New Client").strip()
