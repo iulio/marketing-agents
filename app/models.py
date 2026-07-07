@@ -129,6 +129,14 @@ class ReportTemplate(Base):
 # PYDANTIC MODELS (API validation)
 # ================================================================
 
+class ClientStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    PENDING = "pending"
+    SUSPENDED = "suspended"
+    ARCHIVED = "archived"
+
+
 class Language(str, Enum):
     RO = "ro-RO"
     EN_US = "en-US"
@@ -200,7 +208,7 @@ class ClientCreate(BaseModel):
     billing_email: Optional[str] = ""
     billing_info: Optional[dict] = Field(default_factory=dict)
     settings: Optional[dict] = Field(default_factory=dict)
-    platform_status: Optional[str] = "inactive"
+    platform_status: Optional[ClientStatus] = ClientStatus.INACTIVE
     google_ads_developer_token: Optional[str] = ""
     google_ads_client_id: Optional[str] = ""
     google_ads_client_secret: Optional[str] = ""
@@ -215,5 +223,35 @@ class ClientCreate(BaseModel):
     agent_llm_settings: Optional[dict] = Field(default_factory=dict)
     image_generation_preferences: Optional[dict] = Field(default_factory=dict)
     default_budget: Optional[float] = None
+
+
+class ClientUpdate(BaseModel):
+    name: Optional[str] = None
+    industry: Optional[str] = None
+    website: Optional[str] = None
+    logo_url: Optional[str] = None
+    billing_email: Optional[str] = None
+    billing_info: Optional[dict] = None
+    settings: Optional[dict] = None
+    platform_status: Optional[ClientStatus] = None
+    google_ads_developer_token: Optional[str] = None
+    google_ads_client_id: Optional[str] = None
+    google_ads_client_secret: Optional[str] = None
+    google_ads_refresh_token: Optional[str] = None
+    google_ads_customer_id: Optional[str] = None
+    meta_app_id: Optional[str] = None
+    meta_app_secret: Optional[str] = None
+    meta_access_token: Optional[str] = None
+    meta_ad_account_id: Optional[str] = None
+    google_ads_configured: Optional[bool] = None
+    meta_ads_configured: Optional[bool] = None
+    agent_llm_settings: Optional[dict] = None
+    image_generation_preferences: Optional[dict] = None
+    default_budget: Optional[float] = None
+
+
+class ClientStatusUpdate(BaseModel):
+    platform_status: ClientStatus
+
 
 

@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
-from .models import OnboardRequest, CampaignResponse, ClientCreate
+from .models import OnboardRequest, CampaignResponse, ClientCreate, ClientStatus, ClientUpdate, ClientStatusUpdate
 from .agents import graph, AgencyState
 from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns, delete_client, delete_campaign
 from .analytics import generate_daily_metrics, aggregate_metrics
@@ -303,7 +303,7 @@ async def login(
 
 
 
-VALID_CLIENT_STATUSES = {"active", "inactive", "pending", "suspended", "archived"}
+VALID_CLIENT_STATUSES = {status.value for status in ClientStatus}
 
 # ================================================================
 # CLIENT MANAGEMENT ENDPOINTS
@@ -314,8 +314,6 @@ async def create_new_client(request: Request, client_data: ClientCreate):
     client_data_dict = client_data.model_dump()
     if not str(client_data_dict.get("name", "")).strip():
         raise HTTPException(status_code=422, detail="Client name is required")
-    if client_data_dict.get("platform_status", "inactive") not in VALID_CLIENT_STATUSES:
-        raise HTTPException(status_code=400, detail="Invalid platform_status")
     client_id = create_client(client_data_dict)
     return {"client_id": client_id, "message": "Client created"}
 
@@ -450,28 +448,25 @@ async def save_client_credentials_endpoint(request: Request, client_id: str, cre
 
 @app.patch("/api/clients/{client_id}")
 @require_role(["admin"])
-async def update_client_endpoint(request: Request, client_id: str, updates: dict):
+async def update_client_endpoint(request: Request, client_id: str, updates: ClientUpdate):
     client = get_client(client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    if "platform_status" in updates and updates["platform_status"] not in VALID_CLIENT_STATUSES:
-        raise HTTPException(status_code=400, detail="Invalid platform_status")
-    if "name" in updates and not str(updates["name"]).strip():
+    updates_dict = updates.model_dump(exclude_unset=True)
+    if "name" in updates_dict and not str(updates_dict["name"]).strip():
         raise HTTPException(status_code=422, detail="Client name is required")
-    success = update_client(client_id, updates)
+    success = update_client(client_id, updates_dict)
     if not success:
         raise HTTPException(status_code=400, detail="No valid fields to update")
     return {"message": "Client updated", "client": get_client(client_id)}
 
 @app.patch("/api/clients/{client_id}/status")
 @require_role(["admin", "client_manager"])
-async def update_client_status_endpoint(request: Request, client_id: str, status_data: dict):
+async def update_client_status_endpoint(request: Request, client_id: str, status_data: ClientStatusUpdate):
     user = request.state.user
     if user["role"] != "admin" and user.get("client_id") != client_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    new_status = status_data.get("platform_status")
-    if new_status not in VALID_CLIENT_STATUSES:
-        raise HTTPException(status_code=400, detail="Invalid status")
+    new_status = status_data.platform_status
     client = get_client(client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
