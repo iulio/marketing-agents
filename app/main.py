@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
-from .models import OnboardRequest, CampaignResponse
+from .models import OnboardRequest, CampaignResponse, ClientCreate
 from .agents import graph, AgencyState
 from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns, delete_client, delete_campaign
 from .analytics import generate_daily_metrics, aggregate_metrics

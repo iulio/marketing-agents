@@ -192,3 +192,28 @@ class CampaignResponse(BaseModel):
     message: str
 
 
+class ClientCreate(BaseModel):
+    name: str = Field(..., min_length=1)
+    industry: Optional[str] = ""
+    website: Optional[str] = ""
+    logo_url: Optional[str] = ""
+    billing_email: Optional[str] = ""
+    billing_info: Optional[dict] = Field(default_factory=dict)
+    settings: Optional[dict] = Field(default_factory=dict)
+    platform_status: Optional[str] = "inactive"
+    google_ads_developer_token: Optional[str] = ""
+    google_ads_client_id: Optional[str] = ""
+    google_ads_client_secret: Optional[str] = ""
+    google_ads_refresh_token: Optional[str] = ""
+    google_ads_customer_id: Optional[str] = ""
+    meta_app_id: Optional[str] = ""
+    meta_app_secret: Optional[str] = ""
+    meta_access_token: Optional[str] = ""
+    meta_ad_account_id: Optional[str] = ""
+    google_ads_configured: Optional[bool] = False
+    meta_ads_configured: Optional[bool] = False
+    agent_llm_settings: Optional[dict] = Field(default_factory=dict)
+    image_generation_preferences: Optional[dict] = Field(default_factory=dict)
+    default_budget: Optional[float] = None
+
+
