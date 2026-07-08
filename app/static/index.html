@@ -11,6 +11,9 @@
     <style>
         :root {
             --prussian: #1d3557;
+            --prussian-mid: #1d3557;
+            --prussian-light: #253e63;
+            --prussian-dark: #0f1d2e;
             --honeydew: #f1faee;
             --nonphoto: #a8dadc;
             --celadon: #457b9d;
@@ -25,13 +28,13 @@
 
         /* Panels and Cards */
         .panel, .glass-card, [class*="glass-card"], .bg-slate-900, [class*="bg-[#111827]"], [class*="bg-[#161b22]"] {
-            background: #15263f !important;
+            background: var(--prussian-mid) !important;
             border-color: var(--celadon) !important;
         }
 
         /* Inputs and Selects */
         .input, input, select, textarea, [class*="bg-[#0d1117]"], [class*="bg-[#0b1220]"] {
-            background-color: #101c2e !important;
+            background-color: var(--prussian-dark) !important;
             border-color: var(--celadon) !important;
             color: var(--honeydew) !important;
         }
@@ -78,11 +81,11 @@
             color: var(--honeydew) !important;
         }
         .nav-link:hover {
-            background-color: #253e63 !important;
+            background-color: var(--prussian-light) !important;
         }
 
         .modal-backdrop {
-            background: rgba(2, 6, 23, 0.75);
+            background: rgba(29, 53, 87, 0.85);
         }
 
         .badge-active {
@@ -103,7 +106,7 @@
 
         /* ===== MOCKUP PREVIEWER STYLES ===== */
         .mockup-google-ad {
-            background: #15263f;
+            background: var(--prussian-mid);
             border: 1px solid var(--celadon);
             border-radius: 12px;
             padding: 16px;
@@ -131,7 +134,7 @@
         .mockup-google-ad .ad-headline {
             font-size: 18px;
             font-weight: 600;
-            color: #58a6ff;
+            color: var(--celadon);
             cursor: text;
             border-bottom: 1px dashed transparent;
             transition: border-color 0.2s;
@@ -156,7 +159,7 @@
         }
 
         .mockup-meta-ad {
-            background: #15263f;
+            background: var(--prussian-mid);
             border: 1px solid var(--celadon);
             border-radius: 12px;
             overflow: hidden;
@@ -218,7 +221,7 @@
 
         /* ===== A/B TEST SIMULATOR ===== */
         .ab-variant-card {
-            background: #15263f;
+            background: var(--prussian-mid);
             border: 2px solid var(--celadon);
             border-radius: 12px;
             padding: 20px;
@@ -242,7 +245,7 @@
             border-radius: 20px;
         }
         .confidence-bar-track {
-            background: #101c2e;
+            background: var(--prussian-dark);
             border-radius: 8px;
             height: 10px;
             overflow: hidden;
@@ -272,7 +275,7 @@
             max-height: 300px;
         }
         .kpi-card-enhanced {
-            background: #15263f;
+            background: var(--prussian-mid);
             border: 1px solid var(--celadon);
             border-radius: 12px;
             padding: 16px;
@@ -287,7 +290,7 @@
 
         /* AI Advice Feed */
         .ai-tip-card {
-            background: #101c2e;
+            background: var(--prussian-dark);
             border-left: 3px solid var(--celadon);
             border-radius: 0 8px 8px 0;
             padding: 12px 16px;
@@ -299,12 +302,12 @@
             transition: background 0.2s;
         }
         .ai-tip-card:hover {
-            background: #15263f;
+            background: var(--prussian-mid);
         }
         .ai-tip-card.tip-warning { border-left-color: #fde68a; }
         .ai-tip-card.tip-success { border-left-color: #86efac; }
         .ai-tip-card.tip-danger  { border-left-color: var(--imperial); }
-        .ai-tip-card.tip-info    { border-left-color: #58a6ff; }
+        .ai-tip-card.tip-info    { border-left-color: var(--celadon); }
 
         /* ===== INTEGRATIONS / AUDITOR ===== */
         .status-dot {
@@ -316,7 +319,7 @@
             animation: pulse-dot 2s infinite;
         }
         .status-dot.connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-        .status-dot.disconnected { background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: none; }
+        .status-dot.disconnected { background: var(--imperial); box-shadow: 0 0 6px var(--imperial); animation: none; }
         .status-dot.warning      { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
         @keyframes pulse-dot {
             0%, 100% { opacity: 1; }
@@ -324,7 +327,7 @@
         }
 
         .integration-card {
-            background: #15263f;
+            background: var(--prussian-mid);
             border: 1px solid var(--celadon);
             border-radius: 12px;
             padding: 20px;
@@ -337,15 +340,15 @@
         .audit-log-row {
             font-size: 12px;
             padding: 8px 12px;
-            border-bottom: 1px solid #1e3a5f;
+            border-bottom: 1px solid var(--prussian-light);
             transition: background 0.15s;
         }
         .audit-log-row:hover {
-            background: #1e3a5f;
+            background: var(--prussian-light);
         }
         .audit-log-row.status-2xx { border-left: 3px solid #22c55e; }
-        .audit-log-row.status-4xx { border-left: 3px solid #ef4444; }
-        .audit-log-row.status-5xx { border-left: 3px solid #ef4444; }
+        .audit-log-row.status-4xx { border-left: 3px solid var(--imperial); }
+        .audit-log-row.status-5xx { border-left: 3px solid var(--imperial); }
         .audit-log-row.status-3xx { border-left: 3px solid #f59e0b; }
     </style>
 </head>
@@ -2614,7 +2617,7 @@
                             <div class="ab-variant-card ${isWinner ? 'winner' : ''}" style="flex:1;min-width:220px">
                                 ${isWinner ? '<div class="winner-badge"><i class="fa-solid fa-trophy mr-1"></i>WINNER</div>' : ''}
                                 <div class="text-sm font-semibold text-white mb-3">${variantName}</div>
-                                <div class="text-xs text-slate-400 mb-2 p-2 rounded" style="background:#101c2e">${escapeHtml(v.data?.content?.headline || v.data?.content?.primary_text || variantName)}</div>
+                                <div class="text-xs text-slate-400 mb-2 p-2 rounded" style="background:var(--prussian-dark)">${escapeHtml(v.data?.content?.headline || v.data?.content?.primary_text || variantName)}</div>
                                 <div class="grid grid-cols-2 gap-2 mb-3">
                                     <div class="ab-metric"><div class="value text-blue-400">${mockImps.toLocaleString()}</div><div class="label">Impressions</div></div>
                                     <div class="ab-metric"><div class="value text-amber-400">${mockClicks.toLocaleString()}</div><div class="label">Clicks</div></div>
@@ -2627,10 +2630,10 @@
                     if (winners.length) {
                         const topWinner = winners[0];
                         const confPct = Math.min(99, Math.round(Math.random() * 30 + 70));
-                        const confColor = confPct >= 95 ? '#22c55e' : confPct >= 80 ? '#f59e0b' : '#ef4444';
+                        const confColor = confPct >= 95 ? '#22c55e' : confPct >= 80 ? '#f59e0b' : '#e63946';
                         const confLabel = confPct >= 95 ? 'High confidence' : confPct >= 80 ? 'Medium confidence' : 'Low confidence';
                         html += `
-                            <div class="mt-5 p-4 rounded-lg" style="background:#101c2e">
+                            <div class="mt-5 p-4 rounded-lg" style="background:var(--prussian-dark)">
                                 <div class="flex justify-between items-center mb-2">
                                     <span class="text-sm font-semibold text-white">Statistical Significance</span>
                                     <span class="text-xs font-mono" style="color:${confColor}">${confPct}% confidence &mdash; ${confLabel}</span>
@@ -2664,7 +2667,7 @@
                                 datasets: allVariants.map((v, vi) => ({
                                     label: v.data?.name || v.variant_id || `Variant ${vi + 1}`,
                                     data: dailyData[vi].map(d => +d.ctr.toFixed(2)),
-                                    borderColor: ['#58a6ff', '#22c55e', '#f59e0b', '#ef4444'][vi % 4],
+                                    borderColor: ['#457b9d', '#22c55e', '#f59e0b', '#e63946'][vi % 4],
                                     backgroundColor: 'transparent',
                                     tension: 0.3,
                                     pointRadius: 3,
@@ -2676,8 +2679,8 @@
                                 maintainAspectRatio: false,
                                 plugins: { legend: { labels: { color: '#a8dadc', font: { size: 10 } } } },
                                 scales: {
-                                    x: { ticks: { color: '#a8dadc', font: { size: 10 } }, grid: { color: '#1e3a5f' } },
-                                    y: { ticks: { color: '#a8dadc', font: { size: 10 }, callback: v => v + '%' }, grid: { color: '#1e3a5f' } }
+                                    x: { ticks: { color: '#a8dadc', font: { size: 10 } }, grid: { color: '#253e63' } },
+                                    y: { ticks: { color: '#a8dadc', font: { size: 10 }, callback: v => v + '%' }, grid: { color: '#253e63' } }
                                 }
                             }
                         });
@@ -2779,13 +2782,13 @@
                                 {
                                     label: 'CTR %',
                                     data: ctrData,
-                                    borderColor: '#58a6ff',
+                                    borderColor: '#457b9d',
                                     backgroundColor: 'transparent',
                                     type: 'line',
                                     borderWidth: 2,
                                     tension: 0.3,
                                     pointRadius: 3,
-                                    pointBackgroundColor: '#58a6ff',
+                                    pointBackgroundColor: '#457b9d',
                                     order: 1,
                                     yAxisID: 'y1'
                                 }
@@ -2799,9 +2802,9 @@
                                 legend: { labels: { color: '#a8dadc', font: { size: 11 } } }
                             },
                             scales: {
-                                x: { ticks: { color: '#a8dadc', font: { size: 10 } }, grid: { color: '#1e3a5f' } },
-                                y: { ticks: { color: '#a8dadc', font: { size: 10 } }, grid: { color: '#1e3a5f' }, beginAtZero: true },
-                                y1: { position: 'right', ticks: { color: '#58a6ff', font: { size: 10 }, callback: v => v + '%' }, grid: { display: false } }
+                                x: { ticks: { color: '#a8dadc', font: { size: 10 } }, grid: { color: '#253e63' } },
+                                y: { ticks: { color: '#a8dadc', font: { size: 10 } }, grid: { color: '#253e63' }, beginAtZero: true },
+                                y1: { position: 'right', ticks: { color: '#457b9d', font: { size: 10 }, callback: v => v + '%' }, grid: { display: false } }
                             }
                         }
                     });
@@ -2818,7 +2821,7 @@
                             datasets: [{
                                 data: [googleBudget, metaBudget],
                                 backgroundColor: ['#457b9d', '#e63946'],
-                                borderColor: '#15263f',
+                                borderColor: '#1d3557',
                                 borderWidth: 2
                             }]
                         },
