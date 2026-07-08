@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduled Reports</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --imperial: #e63946; --honeydew: #f1faee; --nonphoto: #a8dadc; --celadon: #457b9d; --prussian: #1d3557; }
+        body { background: #0f172a; color: #e2e8f0; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; }
+        .btn-primary { background: var(--celadon); color: #fff; padding: 0.5rem 1rem; border-radius: 0.5rem; }
+        .btn-primary:hover { background: #3a6b8a; }
+        .btn-danger { background: var(--imperial); color: #fff; padding: 0.375rem 0.75rem; border-radius: 0.5rem; font-size: 0.8rem; }
+        .btn-danger:hover { background: #c1121f; }
+        .input { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.5rem 0.75rem; color: #e2e8f0; width: 100%; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-5xl mx-auto p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-white"><i class="fa-solid fa-calendar-check text-[var(--imperial)] mr-2"></i>Scheduled Reports</h1>
+                <p class="text-slate-400 text-sm mt-1">Schedule automated PDF report delivery via email</p>
+            </div>
+            <a href="/" class="text-slate-400 hover:text-white"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <div class="card p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-plus-circle text-green-400 mr-2"></i> New Schedule</h2>
+            <form id="scheduleForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm mb-1">Schedule Name</label>
+                        <input type="text" id="rsName" class="input" placeholder="Weekly Performance Report" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Recipient Email</label>
+                        <input type="email" id="rsEmail" class="input" placeholder="client@example.com" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Client Name</label>
+                        <input type="text" id="rsClient" class="input" placeholder="Client Name">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Report Template</label>
+                        <select id="rsTemplate" class="input"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Cron Schedule</label>
+                        <select id="rsCron" class="input">
+                            <option value="0 8 * * 1">Weekly - Monday 8:00 AM</option>
+                            <option value="0 9 * * 1">Weekly - Monday 9:00 AM</option>
+                            <option value="0 8 * * 1,4">Twice Weekly - Mon & Thu 8:00 AM</option>
+                            <option value="0 8 1,15 * *">Bi-Monthly - 1st & 15th 8:00 AM</option>
+                            <option value="0 8 1 * *">Monthly - 1st 8:00 AM</option>
+                            <option value="0 9 * * 1-5">Daily - Weekdays 9:00 AM</option>
+                            <option value="0 8 * * *">Daily 8:00 AM</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Timezone</label>
+                        <select id="rsTimezone" class="input">
+                            <option value="UTC">UTC</option>
+                            <option value="US/Eastern">US/Eastern</option>
+                            <option value="US/Central">US/Central</option>
+                            <option value="US/Mountain">US/Mountain</option>
+                            <option value="US/Pacific">US/Pacific</option>
+                            <option value="Europe/London">Europe/London</option>
+                            <option value="Europe/Berlin">Europe/Berlin</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Create Schedule</button>
+                <div id="rsStatus" class="text-sm"></div>
+            </form>
+        </div>
+
+        <div class="card p-6">
+            <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-list text-[var(--nonphoto)] mr-2"></i> Active Schedules</h2>
+            <div id="scheduleList" class="space-y-3">
+                <p class="text-sm text-slate-400">Loading schedules...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadTemplates() {
+            try {
+                const res = await fetch('/api/report-templates');
+                const data = await res.json();
+                const sel = document.getElementById('rsTemplate');
+                sel.innerHTML = '';
+                (data || []).forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.name;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Failed to load templates', e);
+            }
+        }
+
+        async function loadSchedules() {
+            const container = document.getElementById('scheduleList');
+            try {
+                const res = await fetch('/api/report-schedules');
+                const data = await res.json();
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p class="text-sm text-slate-400">No schedules yet. Create one above.</p>';
+                    return;
+                }
+                container.innerHTML = '';
+                data.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-slate-800 rounded-lg p-4 flex items-center justify-between';
+                    div.innerHTML = `
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-semibold text-white">${s.name}</h3>
+                                <span class="text-xs px-2 py-0.5 rounded-full ${s.is_active ? 'bg-green-900 text-green-400' : 'bg-slate-700 text-slate-400'}">${s.is_active ? 'Active' : 'Inactive'}</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">To: ${s.recipient_email} | Cron: <code class="bg-slate-900 px-1 rounded">${s.schedule_cron}</code> | ${s.timezone || 'UTC'}</p>
+                            ${s.last_sent_at ? `<p class="text-xs text-slate-500 mt-1">Last sent: ${new Date(s.last_sent_at).toLocaleString()}</p>` : ''}
+                            ${s.next_run_at ? `<p class="text-xs text-slate-500">Next: ${new Date(s.next_run_at).toLocaleString()}</p>` : ''}
+                        </div>
+                        <button onclick="deleteSchedule(${s.id})" class="btn-danger"><i class="fa-solid fa-trash-can"></i></button>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                container.innerHTML = '<p class="text-sm text-red-400">Failed to load schedules.</p>';
+            }
+        }
+
+        async function deleteSchedule(id) {
+            if (!confirm('Delete this schedule?')) return;
+            try {
+                const res = await fetch(`/api/report-schedules/${id}`, { method: 'DELETE' });
+                if (res.ok) loadSchedules();
+            } catch (e) {
+                console.error('Delete failed', e);
+            }
+        }
+
+        document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('rsStatus');
+            status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating schedule...';
+            try {
+                const res = await fetch('/api/report-schedules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('rsName').value,
+                        template_id: parseInt(document.getElementById('rsTemplate').value),
+                        recipient_email: document.getElementById('rsEmail').value,
+                        client_name: document.getElementById('rsClient').value,
+                        schedule_cron: document.getElementById('rsCron').value,
+                        timezone: document.getElementById('rsTimezone').value,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Error');
+                document.getElementById('scheduleForm').reset();
+                status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check-circle"></i> Schedule created</span>';
+                loadSchedules();
+            } catch (err) {
+                status.innerHTML = `<span class="text-red-400">${err.message}</span>`;
+            }
+        });
+
+        loadTemplates();
+        loadSchedules();
+    </script>
+</body>
+</html>

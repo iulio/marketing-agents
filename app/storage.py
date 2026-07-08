@@ -290,6 +290,7 @@ def init_db():
         _ensure_publish_events_table(conn)
         _ensure_report_templates_table(conn)
         _ensure_onboarding_progress_table(conn)
+        _ensure_report_schedules_table(conn)
 
 
 
@@ -1307,6 +1308,123 @@ def delete_onboarding_session(session_id: str) -> bool:
         result = conn.execute(
             text("DELETE FROM onboarding_progress WHERE id = :id"),
             {"id": session_id}
+        )
+        return result.rowcount > 0
+
+
+# ================================================================
+# REPORT SCHEDULES
+# ================================================================
+
+def _ensure_report_schedules_table(conn) -> None:
+    schedule_id = "INTEGER PRIMARY KEY AUTOINCREMENT" if IS_SQLITE else "SERIAL PRIMARY KEY"
+    conn.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS report_schedules (
+            id {schedule_id},
+            name TEXT NOT NULL,
+            template_id INTEGER NOT NULL,
+            recipient_email TEXT NOT NULL,
+            client_name TEXT DEFAULT '',
+            schedule_cron TEXT NOT NULL DEFAULT '0 8 * * 1',
+            timezone TEXT DEFAULT 'UTC',
+            is_active INTEGER DEFAULT 1,
+            last_sent_at TEXT,
+            next_run_at TEXT,
+            created_at TEXT NOT NULL
+        )
+    """))
+
+
+def create_report_schedule(data: Dict[str, Any]) -> int:
+    now = datetime.utcnow().isoformat()
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""
+                INSERT INTO report_schedules
+                (name, template_id, recipient_email, client_name, schedule_cron, timezone, is_active, created_at)
+                VALUES (:name, :template_id, :recipient_email, :client_name, :schedule_cron, :timezone, :is_active, :created_at)
+            """),
+            {
+                "name": data.get("name", "Unnamed Schedule"),
+                "template_id": data.get("template_id", 1),
+                "recipient_email": data.get("recipient_email", ""),
+                "client_name": data.get("client_name", ""),
+                "schedule_cron": data.get("schedule_cron", "0 8 * * 1"),
+                "timezone": data.get("timezone", "UTC"),
+                "is_active": 1 if data.get("is_active", True) else 0,
+                "created_at": now,
+            },
+        )
+    return result.lastrowid
+
+
+def get_report_schedules() -> list:
+    with engine.begin() as conn:
+        rows = _rows(conn.execute(text("SELECT * FROM report_schedules ORDER BY created_at DESC")))
+    return rows
+
+
+def get_report_schedule(schedule_id: int) -> Optional[Dict[str, Any]]:
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT * FROM report_schedules WHERE id = :id"),
+            {"id": schedule_id},
+        ).first()
+    return dict(row._mapping) if row else None
+
+
+def get_due_report_schedules() -> list:
+    """Return active schedules where next_run_at <= now or next_run_at is NULL."""
+    from datetime import datetime as dt
+    now = dt.utcnow().isoformat()
+    with engine.begin() as conn:
+        rows = _rows(conn.execute(
+            text("""
+                SELECT * FROM report_schedules
+                WHERE is_active = 1
+                  AND (next_run_at IS NULL OR next_run_at <= :now)
+                ORDER BY created_at ASC
+            """),
+            {"now": now},
+        ))
+    return rows
+
+
+def mark_report_schedule_sent(schedule_id: int) -> None:
+    from datetime import datetime as dt
+    now = dt.utcnow().isoformat()
+    import re
+    with engine.begin() as conn:
+        schedule = get_report_schedule(schedule_id)
+        if not schedule:
+            return
+        cron = schedule.get("schedule_cron", "0 8 * * 1")
+        parts = cron.strip().split()
+        if len(parts) == 5:
+            minute, hour, dom, month, dow = parts
+        else:
+            minute, hour, dom, month, dow = "0", "8", "*", "*", "1"
+        try:
+            from datetime import timedelta
+            next_dt = dt.utcnow() + timedelta(days=7)
+            next_run = next_dt.replace(hour=int(hour), minute=int(minute), second=0).isoformat()
+        except Exception:
+            next_run = (dt.utcnow() + timedelta(days=7)).isoformat()
+        conn.execute(
+            text("""
+                UPDATE report_schedules
+                SET last_sent_at = :now, next_run_at = :next_run
+                WHERE id = :id
+            """),
+            {"now": now, "next_run": next_run, "id": schedule_id},
+        )
+
+
+def delete_report_schedule(schedule_id: int) -> bool:
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("DELETE FROM report_schedules WHERE id = :id"),
+            {"id": schedule_id},
         )
         return result.rowcount > 0
 

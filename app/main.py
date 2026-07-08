@@ -1,5 +1,6 @@
 # app/main.py - MAIN APPLICATION
 # Triggering a new build
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request , Query, Response, Depends
 from fastapi.staticfiles import StaticFiles
@@ -11,7 +12,7 @@ from typing import Dict, Any, Optional
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
-from .models import OnboardRequest, CampaignResponse, ClientCreate, ClientStatus, ClientUpdate, ClientStatusUpdate
+from .models import OnboardRequest, CampaignResponse, ClientCreate, ClientStatus, ClientUpdate, ClientStatusUpdate, ReportScheduleIn
 from .agents import graph, AgencyState
 from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns, delete_client, delete_campaign
 from .analytics import generate_daily_metrics, aggregate_metrics
@@ -22,6 +23,10 @@ from .middleware import require_role, get_current_user
 from .email import send_welcome_email, send_audit_report_email, send_proposal_email, send_follow_up_email
 from .audit import perform_audit
 from .competitor import get_competitor_data
+from .keyword_optimizer import discover_keywords, analyze_search_terms
+from .competitor_intel import fetch_competitor_ads, analyze_ad_creative
+from .social_generator import generate_social_posts, generate_post_variants
+from .report_scheduler import scheduler_loop
 from .proposal import generate_proposal
 from .reporting import generate_audit_pdf, generate_proposal_pdf, render_custom_report
 from .notifications import notify_campaign_created, notify_campaign_approved, notify_performance_alert
@@ -31,6 +36,7 @@ from .analytics import generate_daily_metrics, aggregate_metrics, get_performanc
 from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events, get_global_llm_config, set_global_llm_config
 from .ab_testing import ABTestingEngine
 from .storage import create_onboarding_session, save_onboarding_session, get_latest_onboarding_session, get_onboarding_session, update_onboarding_status, delete_onboarding_session
+from .storage import create_report_schedule, get_report_schedules, get_report_schedule, delete_report_schedule
 from .image_service import StockImageSearch, AIImageGenerator, SmartImageSelector
 
 from .kpi_fetcher import KPIFetcher
@@ -84,7 +90,13 @@ async def lifespan(app: FastAPI):
     monitor.start()
     print("[Startup] Performance monitoring started")
     
+    # Start the background report scheduler
+    scheduler_task = asyncio.create_task(scheduler_loop(interval_seconds=300))
+    print("[Startup] Report scheduler started (interval=300s)")
+    
     yield
+    
+    scheduler_task.cancel()
     
     print("[Shutdown] Shutting down...")
     monitor.stop()
@@ -1522,6 +1534,145 @@ async def generate_custom_report_endpoint(request: Request, data: dict):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+# ================================================================
+# KEYWORD DISCOVERY ENDPOINTS
+# ================================================================
+
+@app.post("/api/keywords/discover")
+async def api_discover_keywords(data: dict):
+    """Discover keyword clusters, negatives, and match type recommendations."""
+    try:
+        result = await discover_keywords(
+            website=data.get("website", ""),
+            industry=data.get("industry", ""),
+            seed_keywords=data.get("seed_keywords", []),
+            location=data.get("location", "US"),
+            language=data.get("language", "en"),
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/keywords/analyze-search-terms")
+async def api_analyze_search_terms(data: dict):
+    """Analyze search term report and provide optimization recommendations."""
+    try:
+        result = await analyze_search_terms(data.get("query_log", []))
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ================================================================
+# COMPETITOR INTELLIGENCE ENDPOINTS
+# ================================================================
+
+@app.post("/api/competitor-intel/analyze")
+async def api_competitor_analyze(data: dict):
+    """Analyze competitors and produce intelligence report."""
+    try:
+        result = await fetch_competitor_ads(
+            domain=data.get("domain", ""),
+            competitors=data.get("competitors", []),
+            industry=data.get("industry", ""),
+            location=data.get("location", "US"),
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/competitor-intel/compare-ads")
+async def api_compare_ads(data: dict):
+    """Compare two ad copies and get improvement suggestions."""
+    try:
+        result = await analyze_ad_creative(
+            ad_copy=data.get("ad_copy", ""),
+            competitor_ad_copy=data.get("competitor_ad_copy", ""),
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ================================================================
+# SOCIAL MEDIA GENERATOR ENDPOINTS
+# ================================================================
+
+@app.post("/api/social/generate")
+async def api_social_generate(data: dict):
+    """Generate social media posts for multiple platforms."""
+    try:
+        result = await generate_social_posts(
+            campaign_description=data.get("campaign_description", ""),
+            platforms=data.get("platforms", ["facebook", "linkedin"]),
+            tone=data.get("tone", "professional"),
+            target_audience=data.get("target_audience", ""),
+            post_count=data.get("post_count", 3),
+            include_hashtags=data.get("include_hashtags", True),
+            include_cta=data.get("include_cta", True),
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/social/variants")
+async def api_social_variants(data: dict):
+    """Generate A/B test variants of a social post."""
+    try:
+        result = await generate_post_variants(
+            base_post=data.get("base_post", ""),
+            platform=data.get("platform", "facebook"),
+            variations=data.get("variations", 3),
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ================================================================
+# REPORT SCHEDULER ENDPOINTS
+# ================================================================
+
+@app.post("/api/report-schedules")
+async def api_create_schedule(data: ReportScheduleIn):
+    """Create a new report schedule."""
+    try:
+        schedule_id = create_report_schedule(data.model_dump())
+        return {"id": schedule_id, "message": "Schedule created"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/report-schedules")
+async def api_get_schedules():
+    """Get all report schedules."""
+    try:
+        return get_report_schedules()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/report-schedules/{schedule_id}")
+async def api_get_schedule(schedule_id: int):
+    """Get a single report schedule."""
+    schedule = get_report_schedule(schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return schedule
+
+
+@app.delete("/api/report-schedules/{schedule_id}")
+async def api_delete_schedule(schedule_id: int):
+    """Delete a report schedule."""
+    deleted = delete_report_schedule(schedule_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return {"message": "Schedule deleted"}
 
 
 # ================================================================

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyword Discovery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --imperial: #e63946; --honeydew: #f1faee; --nonphoto: #a8dadc; --celadon: #457b9d; --prussian: #1d3557; }
+        body { background: #0f172a; color: #e2e8f0; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; }
+        .btn-primary { background: var(--celadon); color: #fff; padding: 0.5rem 1rem; border-radius: 0.5rem; }
+        .btn-primary:hover { background: #3a6b8a; }
+        .btn-danger { background: var(--imperial); color: #fff; padding: 0.5rem 1rem; border-radius: 0.5rem; }
+        .input { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.5rem 0.75rem; color: #e2e8f0; width: 100%; }
+        .tag { display: inline-block; background: #334155; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; margin: 0.125rem; }
+        .tag-neg { background: var(--imperial); color: #fff; }
+        .tag-exact { background: var(--celadon); color: #fff; }
+        .tag-phrase { background: #8b5cf6; color: #fff; }
+        .tag-broad { background: #f59e0b; color: #000; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-5xl mx-auto p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-white"><i class="fa-solid fa-key text-[var(--imperial)] mr-2"></i>Keyword Discovery</h1>
+                <p class="text-slate-400 text-sm mt-1">AI-powered keyword research, clustering & negative keyword recommendations</p>
+            </div>
+            <a href="/" class="text-slate-400 hover:text-white"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <div class="card p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-magnifying-glass text-[var(--nonphoto)] mr-2"></i>Discover Keywords</h2>
+            <form id="discoverForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm mb-1">Website</label>
+                        <input type="text" id="kwWebsite" class="input" placeholder="example.com" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Industry</label>
+                        <input type="text" id="kwIndustry" class="input" placeholder="e-commerce, SaaS, healthcare" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Location</label>
+                        <input type="text" id="kwLocation" class="input" placeholder="US" value="US">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Language</label>
+                        <select id="kwLanguage" class="input">
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">Seed Keywords (comma separated)</label>
+                    <input type="text" id="kwSeeds" class="input" placeholder="digital marketing, PPC, conversion optimization" required>
+                </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Discover Keywords</button>
+                <div id="discoverStatus" class="text-sm"></div>
+            </form>
+        </div>
+
+        <div id="resultsSection" class="hidden space-y-6">
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Keyword Clusters</h2>
+                    <span id="trafficPotential" class="text-sm px-3 py-1 rounded-full bg-slate-700"></span>
+                </div>
+                <div id="keywordClusters" class="space-y-4"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <h2 class="text-lg font-semibold mb-3"><i class="fa-solid fa-ban text-[var(--imperial)] mr-2"></i>Negative Keywords</h2>
+                    <div id="negativeKeywords" class="flex flex-wrap gap-1"></div>
+                </div>
+                <div class="card p-6">
+                    <h2 class="text-lg font-semibold mb-3"><i class="fa-solid fa-list-check text-green-400 mr-2"></i>Match Type Recommendations</h2>
+                    <div id="matchTypeRecs" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-6 mt-6">
+            <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-chart-line text-[var(--nonphoto)] mr-2"></i>Search Term Analyzer</h2>
+            <p class="text-sm text-slate-400 mb-3">Paste your search term report to identify high-performing and wasteful queries.</p>
+            <form id="searchTermForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm mb-1">Search Terms (one per line: query, clicks, cost)</label>
+                    <textarea id="searchTermData" class="input font-mono text-xs" rows="5" placeholder="best running shoes, 45, 120.50&#10;cheap sneakers, 2, 85.00&#10;buy shoes online, 120, 310.00"></textarea>
+                </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-microscope mr-1"></i> Analyze</button>
+                <div id="searchTermStatus" class="text-sm"></div>
+            </form>
+            <div id="searchTermResults" class="hidden mt-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-green-900/30 border border-green-700 rounded-lg p-4">
+                        <h3 class="font-semibold text-green-400"><i class="fa-solid fa-thumbs-up mr-1"></i> High Performing</h3>
+                        <ul id="highPerformingTerms" class="mt-2 text-sm space-y-1 list-disc list-inside"></ul>
+                    </div>
+                    <div class="bg-red-900/30 border border-red-700 rounded-lg p-4">
+                        <h3 class="font-semibold text-red-400"><i class="fa-solid fa-thumbs-down mr-1"></i> Low Performing</h3>
+                        <ul id="lowPerformingTerms" class="mt-2 text-sm space-y-1 list-disc list-inside"></ul>
+                    </div>
+                </div>
+                <div class="card p-4">
+                    <h3 class="font-semibold mb-2"><i class="fa-solid fa-lightbulb text-yellow-400 mr-1"></i> Opportunities</h3>
+                    <ul id="searchOpportunities" class="text-sm space-y-1 list-disc list-inside text-slate-300"></ul>
+                </div>
+                <div class="card p-4">
+                    <h3 class="font-semibold mb-2"><i class="fa-solid fa-coins text-yellow-400 mr-1"></i> Estimated Savings</h3>
+                    <p id="estimatedSavings" class="text-sm text-slate-300"></p>
+                </div>
+                <div class="card p-4">
+                    <h3 class="font-semibold mb-2"><i class="fa-solid fa-list text-blue-400 mr-1"></i> Action Items</h3>
+                    <ul id="actionItems" class="text-sm space-y-1 list-disc list-inside text-slate-300"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('discoverForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('discoverStatus');
+            status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Discovering keywords...';
+            const website = document.getElementById('kwWebsite').value;
+            const industry = document.getElementById('kwIndustry').value;
+            const location = document.getElementById('kwLocation').value;
+            const language = document.getElementById('kwLanguage').value;
+            const seeds = document.getElementById('kwSeeds').value.split(',').map(s => s.trim()).filter(Boolean);
+            try {
+                const res = await fetch('/api/keywords/discover', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ website, industry, seed_keywords: seeds, location, language }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Error');
+                renderKeywordResults(data);
+                status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check-circle"></i> Keywords discovered</span>';
+            } catch (err) {
+                status.innerHTML = `<span class="text-red-400">${err.message}</span>`;
+            }
+        });
+
+        function renderKeywordResults(data) {
+            document.getElementById('resultsSection').classList.remove('hidden');
+            const clusters = document.getElementById('keywordClusters');
+            clusters.innerHTML = '';
+            (data.keyword_clusters || []).forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'bg-slate-800 rounded-lg p-4';
+                div.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold text-[var(--nonphoto)]">${c.theme}</h3>
+                        <span class="text-xs text-slate-400">~${c.avg_monthly_searches.toLocaleString()} searches/mo</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1">${c.keywords.map(k => `<span class="tag">${k}</span>`).join('')}</div>
+                `;
+                clusters.appendChild(div);
+            });
+
+            const negEl = document.getElementById('negativeKeywords');
+            negEl.innerHTML = (data.negative_keywords || []).map(k => `<span class="tag tag-neg">${k}</span>`).join('');
+
+            const recs = document.getElementById('matchTypeRecs');
+            recs.innerHTML = '';
+            const mt = data.match_type_recommendations || {};
+            if (mt.exact && mt.exact.length) {
+                recs.innerHTML += `<div><h4 class="text-xs font-semibold text-[var(--celadon)] mb-1">Exact Match</h4><div class="flex flex-wrap gap-1">${mt.exact.map(k => `<span class="tag tag-exact">${k}</span>`).join('')}</div></div>`;
+            }
+            if (mt.phrase && mt.phrase.length) {
+                recs.innerHTML += `<div class="mt-2"><h4 class="text-xs font-semibold text-purple-400 mb-1">Phrase Match</h4><div class="flex flex-wrap gap-1">${mt.phrase.map(k => `<span class="tag tag-phrase">${k}</span>`).join('')}</div></div>`;
+            }
+            if (mt.broad && mt.broad.length) {
+                recs.innerHTML += `<div class="mt-2"><h4 class="text-xs font-semibold text-amber-400 mb-1">Broad Match</h4><div class="flex flex-wrap gap-1">${mt.broad.map(k => `<span class="tag tag-broad">${k}</span>`).join('')}</div></div>`;
+            }
+
+            const tp = document.getElementById('trafficPotential');
+            tp.textContent = `Traffic: ${data.estimated_traffic_potential || 'N/A'}`;
+        }
+
+        document.getElementById('searchTermForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('searchTermStatus');
+            status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+            const raw = document.getElementById('searchTermData').value;
+            const queries = raw.split('\n').filter(l => l.trim()).map(line => {
+                const parts = line.split(',').map(s => s.trim());
+                return { query: parts[0] || '', clicks: parseInt(parts[1]) || 0, cost: parseFloat(parts[2]) || 0 };
+            });
+            try {
+                const res = await fetch('/api/keywords/analyze-search-terms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query_log: queries }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Error');
+                renderSearchTermResults(data);
+                status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check-circle"></i> Analysis complete</span>';
+            } catch (err) {
+                status.innerHTML = `<span class="text-red-400">${err.message}</span>`;
+            }
+        });
+
+        function renderSearchTermResults(data) {
+            const section = document.getElementById('searchTermResults');
+            section.classList.remove('hidden');
+            document.getElementById('highPerformingTerms').innerHTML = (data.high_performing_terms || []).map(t => `<li>${t}</li>`).join('');
+            document.getElementById('lowPerformingTerms').innerHTML = (data.low_performing_terms || []).map(t => `<li>${t}</li>`).join('');
+            document.getElementById('searchOpportunities').innerHTML = (data.opportunities || []).map(t => `<li>${t}</li>`).join('');
+            document.getElementById('estimatedSavings').textContent = data.estimated_savings || '';
+            document.getElementById('actionItems').innerHTML = (data.action_items || []).map(t => `<li>${t}</li>`).join('');
+        }
+    </script>
+</body>
+</html>

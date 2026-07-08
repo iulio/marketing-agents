@@ -374,6 +374,11 @@
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="analytics">Analytics</button>
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="integrations">Integrations</button>
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="settings">Settings</button>
+                <hr class="border-slate-700 my-1">
+                <a href="/keywords.html" class="nav-link rounded-lg px-3 py-2 text-left flex items-center gap-2"><i class="fa-solid fa-key text-[var(--imperial)] text-xs"></i>Keywords</a>
+                <a href="/competitors.html" class="nav-link rounded-lg px-3 py-2 text-left flex items-center gap-2"><i class="fa-solid fa-building text-yellow-400 text-xs"></i>Competitors</a>
+                <a href="/social.html" class="nav-link rounded-lg px-3 py-2 text-left flex items-center gap-2"><i class="fa-solid fa-hashtag text-green-400 text-xs"></i>Social Posts</a>
+                <a href="/reports.html" class="nav-link rounded-lg px-3 py-2 text-left flex items-center gap-2"><i class="fa-solid fa-calendar-check text-blue-400 text-xs"></i>Reports</a>
             </nav>
             <div class="mt-auto flex flex-col items-center space-y-4">
                 <a href="#" title="Help" class="text-gray-600 hover:text-white text-xl">
@@ -575,8 +580,12 @@
                 <div class="panel rounded-xl p-5">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold text-white"><i class="fa-solid fa-images mr-1.5 text-emerald-400"></i>Campaign Images</h3>
-                        <button onclick="openImageSearchModal()"
-                            class="rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600 flex items-center gap-1"><i class="fa-solid fa-plus"></i> Add Images</button>
+                        <div class="flex gap-2">
+                            <button onclick="regenerateImages()"
+                                class="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-600 flex items-center gap-1"><i class="fa-solid fa-rotate"></i> Regenerate</button>
+                            <button onclick="openImageSearchModal()"
+                                class="rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600 flex items-center gap-1"><i class="fa-solid fa-plus"></i> Add Images</button>
+                        </div>
                     </div>
                     <div id="creativeCarouselStudio" class="flex flex-wrap gap-4 pb-2">
                         <div class="text-slate-400 text-sm p-4">No images loaded.</div>
@@ -2388,6 +2397,30 @@
                 alert(e.message);
             } finally {
                 if (btn) { btn.disabled = false; btn.textContent = '↺ Regenerate All'; }
+            }
+        }
+
+        async function regenerateImages() {
+            const campaignId = document.getElementById('creativeCampaignSelect').value || document.getElementById('creativeCampaignSelect2').value;
+            if (!campaignId) return alert('Select a campaign first.');
+            const btn = event?.target;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Regenerating...'; }
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/images/regenerate`, {
+                    method: 'POST', headers: getHeaders()
+                });
+                if (!res.ok) throw new Error((await res.json()).detail || 'Regeneration failed');
+                const data = await res.json();
+                await loadCreatives();
+                const toast = document.createElement('div');
+                toast.textContent = `✅ Regenerated ${data.count} image(s) successfully!`;
+                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Regenerate'; }
             }
         }
 

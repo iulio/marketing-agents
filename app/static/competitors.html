@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competitor Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --imperial: #e63946; --honeydew: #f1faee; --nonphoto: #a8dadc; --celadon: #457b9d; --prussian: #1d3557; }
+        body { background: #0f172a; color: #e2e8f0; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; }
+        .btn-primary { background: var(--celadon); color: #fff; padding: 0.5rem 1rem; border-radius: 0.5rem; }
+        .btn-primary:hover { background: #3a6b8a; }
+        .input { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.5rem 0.75rem; color: #e2e8f0; width: 100%; }
+        .badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+        .badge-green { background: #166534; color: #86efac; }
+        .badge-red { background: #7f1d1d; color: #fca5a5; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-6xl mx-auto p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-white"><i class="fa-solid fa-building text-[var(--imperial)] mr-2"></i>Competitor Intelligence</h1>
+                <p class="text-slate-400 text-sm mt-1">Analyze competitor ad strategies, positioning, and find differentiation opportunities</p>
+            </div>
+            <a href="/" class="text-slate-400 hover:text-white"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <div class="card p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-crosshairs text-[var(--nonphoto)] mr-2"></i>Competitor Analysis</h2>
+            <form id="competitorForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm mb-1">Your Domain</label>
+                        <input type="text" id="ciDomain" class="input" placeholder="example.com" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1">Industry</label>
+                        <input type="text" id="ciIndustry" class="input" placeholder="e-commerce, SaaS" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">Competitor Domains (comma separated)</label>
+                    <input type="text" id="ciCompetitors" class="input" placeholder="competitor1.com, competitor2.com, competitor3.com" required>
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">Location</label>
+                    <input type="text" id="ciLocation" class="input" placeholder="US" value="US">
+                </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-bolt mr-1"></i> Analyze Competitors</button>
+                <div id="ciStatus" class="text-sm"></div>
+            </form>
+        </div>
+
+        <div id="ciResults" class="hidden space-y-6">
+            <div class="card p-6">
+                <h2 class="text-lg font-semibold mb-4">Client Snapshot</h2>
+                <div id="clientSnapshot" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+            </div>
+
+            <div id="competitorCards" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+
+            <div class="card p-6">
+                <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-chess text-yellow-400 mr-2"></i> Market Positioning</h2>
+                <div id="marketPositioning" class="space-y-3"></div>
+            </div>
+
+            <div class="card p-6">
+                <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-list-check text-green-400 mr-2"></i> Recommended Actions</h2>
+                <ul id="recommendedActions" class="space-y-2"></ul>
+            </div>
+        </div>
+
+        <div class="card p-6 mt-6">
+            <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-file-pen text-[var(--nonphoto)] mr-2"></i> Ad Copy Comparator</h2>
+            <form id="adCompareForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm mb-1">Your Ad Copy</label>
+                    <textarea id="ourAdCopy" class="input font-mono text-xs" rows="3"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm mb-1">Competitor Ad Copy</label>
+                    <textarea id="competitorAdCopy" class="input font-mono text-xs" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-scale-balanced mr-1"></i> Compare Ads</button>
+                <div id="adCompareStatus" class="text-sm"></div>
+            </form>
+            <div id="adCompareResults" class="hidden mt-6 space-y-4"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('competitorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('ciStatus');
+            status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing competitors...';
+            const domain = document.getElementById('ciDomain').value;
+            const industry = document.getElementById('ciIndustry').value;
+            const competitors = document.getElementById('ciCompetitors').value.split(',').map(s => s.trim()).filter(Boolean);
+            const location = document.getElementById('ciLocation').value;
+            try {
+                const res = await fetch('/api/competitor-intel/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain, competitors, industry, location }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Error');
+                renderCompetitorResults(data);
+                status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check-circle"></i> Analysis complete</span>';
+            } catch (err) {
+                status.innerHTML = `<span class="text-red-400">${err.message}</span>`;
+            }
+        });
+
+        function renderCompetitorResults(data) {
+            document.getElementById('ciResults').classList.remove('hidden');
+
+            const client = data.client || {};
+            const snap = document.getElementById('clientSnapshot');
+            snap.innerHTML = `
+                <div class="bg-slate-800 rounded-lg p-3 text-center"><div class="text-xs text-slate-400">Est. Spend</div><div class="text-lg font-bold text-white">$${(client.estimated_monthly_spend || 0).toLocaleString()}</div></div>
+                <div class="bg-slate-800 rounded-lg p-3 text-center"><div class="text-xs text-slate-400">Keywords</div><div class="text-lg font-bold text-white">${(client.primary_keywords || []).length}</div></div>
+                <div class="bg-slate-800 rounded-lg p-3 text-center"><div class="text-xs text-slate-400">Ad Copies</div><div class="text-lg font-bold text-white">${(client.top_ad_copy || []).length}</div></div>
+                <div class="bg-slate-800 rounded-lg p-3 text-center"><div class="text-xs text-slate-400">Domain</div><div class="text-sm font-bold text-white truncate">${client.domain || ''}</div></div>
+            `;
+
+            const cards = document.getElementById('competitorCards');
+            cards.innerHTML = '';
+            (data.competitors || []).forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'card p-5';
+                div.innerHTML = `
+                    <h3 class="text-lg font-bold text-white mb-2">${c.domain}</h3>
+                    <div class="text-sm space-y-2">
+                        <p><span class="text-slate-400">Est. Spend:</span> <strong>$${(c.estimated_monthly_spend || 0).toLocaleString()}</strong></p>
+                        <p><span class="text-slate-400">Est. CTR:</span> <strong>${c.estimated_ctr || 'N/A'}%</strong></p>
+                        <div><span class="text-slate-400">Headlines:</span> <div class="flex flex-wrap gap-1 mt-1">${(c.top_ad_headlines || []).map(h => `<span class="tag bg-slate-700 text-xs px-2 py-0.5 rounded">${h}</span>`).join('')}</div></div>
+                        <div><span class="text-slate-400">Keywords:</span> <div class="flex flex-wrap gap-1 mt-1">${(c.primary_keywords || []).slice(0, 8).map(k => `<span class="tag bg-slate-700 text-xs px-2 py-0.5 rounded">${k}</span>`).join('')}</div></div>
+                        <p><span class="text-slate-400">Landing Page:</span> ${c.landing_page_strategy || 'N/A'}</p>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            ${(c.strengths || []).map(s => `<span class="badge badge-green">${s}</span>`).join('')}
+                            ${(c.weaknesses || []).map(w => `<span class="badge badge-red">${w}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+                cards.appendChild(div);
+            });
+
+            const mp = data.market_positioning || {};
+            const mpDiv = document.getElementById('marketPositioning');
+            mpDiv.innerHTML = `
+                <div><span class="text-slate-400">Pricing:</span> <span class="font-semibold">${mp.pricing || 'N/A'}</span></div>
+                <div><span class="text-slate-400">USPs:</span> <ul class="list-disc list-inside text-sm mt-1">${(mp.unique_selling_points || []).map(u => `<li>${u}</li>`).join('')}</ul></div>
+                <div><span class="text-slate-400">Differentiation Opportunities:</span> <ul class="list-disc list-inside text-sm mt-1">${(mp.differentiation_opportunities || []).map(d => `<li>${d}</li>`).join('')}</ul></div>
+            `;
+
+            const actions = document.getElementById('recommendedActions');
+            actions.innerHTML = (data.recommended_actions || []).map(a => `<li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-green-400 mt-1"></i><span>${a}</span></li>`).join('');
+        }
+
+        document.getElementById('adCompareForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('adCompareStatus');
+            status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Comparing...';
+            try {
+                const res = await fetch('/api/competitor-intel/compare-ads', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ad_copy: document.getElementById('ourAdCopy').value,
+                        competitor_ad_copy: document.getElementById('competitorAdCopy').value,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Error');
+                const section = document.getElementById('adCompareResults');
+                section.classList.remove('hidden');
+                section.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-green-900/30 border border-green-700 rounded-lg p-4"><h3 class="font-semibold text-green-400">Our Strengths</h3><ul class="text-sm mt-1 list-disc list-inside">${(data.our_strengths || []).map(s => `<li>${s}</li>`).join('')}</ul></div>
+                        <div class="bg-red-900/30 border border-red-700 rounded-lg p-4"><h3 class="font-semibold text-red-400">Competitor Strengths</h3><ul class="text-sm mt-1 list-disc list-inside">${(data.competitor_strengths || []).map(s => `<li>${s}</li>`).join('')}</ul></div>
+                    </div>
+                    <div class="card p-4"><h3 class="font-semibold mb-2">Improvements</h3><ul class="text-sm list-disc list-inside">${(data.improvement_suggestions || []).map(s => `<li>${s}</li>`).join('')}</ul></div>
+                    ${data.recommended_headlines ? `<div class="card p-4"><h3 class="font-semibold mb-2">Recommended Headlines</h3><div class="flex flex-wrap gap-2">${data.recommended_headlines.map(h => `<span class="tag bg-[var(--celadon)] text-white">${h}</span>`).join('')}</div></div>` : ''}
+                    ${data.angle_differentiation ? `<div class="card p-4"><h3 class="font-semibold mb-2">Angle Differentiation</h3><p class="text-sm">${data.angle_differentiation}</p></div>` : ''}
+                `;
+                status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check-circle"></i> Comparison complete</span>';
+            } catch (err) {
+                status.innerHTML = `<span class="text-red-400">${err.message}</span>`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,12 +1,13 @@
 import base64
 import os
-from typing import Any, Dict, List
+import time
+from typing import Any, Dict, List, Optional
 
 import requests
 
 try:
     import replicate
-except Exception:  # pragma: no cover - optional dependency at runtime
+except Exception:
     replicate = None
 
 
@@ -15,7 +16,12 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "")
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN", "")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "")
+IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "pollinations").strip().lower()
 
+
+# ================================================================
+# STOCK IMAGE PROVIDERS
+# ================================================================
 
 class StockImageSearch:
     """Search free stock image providers with graceful fallbacks."""
@@ -139,6 +145,111 @@ class StockImageSearch:
         return deduped[:per_page]
 
 
+# ================================================================
+# AI IMAGE GENERATION PROVIDERS
+# ================================================================
+
+def generate_pollinations(prompt: str, width: int = 512, height: int = 512) -> Optional[str]:
+    """Generate image using Pollinations.ai (free)."""
+    try:
+        url = (
+            f"https://image.pollinations.ai/prompt/{requests.utils.quote(prompt)}"
+            f"?width={width}&height={height}&nologo=true"
+        )
+        response = requests.get(url, timeout=30)
+        if response.status_code == 200:
+            return f"data:image/png;base64,{base64.b64encode(response.content).decode()}"
+    except Exception as e:
+        print(f"[Image] Pollinations error: {e}")
+    return None
+
+
+def generate_huggingface(prompt: str, width: int = 512, height: int = 512) -> Optional[str]:
+    """Generate using HuggingFace Inference API (free with token)."""
+    if not HUGGINGFACE_API_TOKEN:
+        return None
+    model = "runwayml/stable-diffusion-v1-5"
+    api_url = f"https://api-inference.huggingface.co/models/{model}"
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
+    payload = {"inputs": prompt, "parameters": {"width": width, "height": height}}
+    try:
+        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+        if response.status_code == 200:
+            return f"data:image/png;base64,{base64.b64encode(response.content).decode()}"
+        if response.status_code == 503:
+            time.sleep(5)
+            retry = requests.post(api_url, headers=headers, json=payload, timeout=60)
+            if retry.status_code == 200:
+                return f"data:image/png;base64,{base64.b64encode(retry.content).decode()}"
+    except Exception as e:
+        print(f"[Image] HuggingFace error: {e}")
+    return None
+
+
+def generate_replicate(prompt: str) -> Optional[str]:
+    """Generate using Replicate (paid, high quality)."""
+    if not REPLICATE_API_TOKEN or replicate is None:
+        return None
+    try:
+        client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+        output = client.run(
+            "stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c47161d6b2c2d2e",
+            input={"prompt": prompt, "width": 512, "height": 512, "num_outputs": 1},
+        )
+        if output and isinstance(output, list) and output[0]:
+            return str(output[0])
+    except Exception as e:
+        print(f"[Image] Replicate error: {e}")
+    return None
+
+
+def generate_image(prompt: str, width: int = 512, height: int = 512) -> Optional[str]:
+    """Generate a single image with provider fallback chain.
+
+    Tries providers in order: preferred provider first,
+    then falls back to free alternatives.
+    Returns a base64 data URL or a remote URL, or None on total failure.
+    """
+    provider = IMAGE_PROVIDER
+
+    # Build the ordered list of providers to try
+    if provider == "replicate":
+        chain = [generate_replicate, generate_pollinations, generate_huggingface]
+    elif provider == "huggingface":
+        chain = [generate_huggingface, generate_pollinations, generate_replicate]
+    else:
+        chain = [generate_pollinations, generate_huggingface, generate_replicate]
+
+    for gen in chain:
+        img = gen(prompt, width, height)
+        if img:
+            return img
+    return None
+
+
+def generate_images(prompt: str, num_images: int = 3) -> List[str]:
+    """Generate multiple images with prompt variations."""
+    images: List[str] = []
+    variations = [
+        prompt,
+        f"{prompt}, professional photography, high quality",
+        f"{prompt}, creative, artistic, vibrant colors",
+        f"{prompt}, minimalistic, clean, modern",
+    ]
+    for i in range(num_images):
+        variation = variations[i % len(variations)]
+        img = generate_image(variation)
+        if img:
+            images.append(img)
+        if len(images) >= num_images:
+            break
+    return images
+
+
+# ================================================================
+# LEGACY WRAPPER (used by existing code)
+# ================================================================
+
 class AIImageGenerator:
     """Generate campaign images with paid or free providers."""
 
@@ -199,13 +310,23 @@ class AIImageGenerator:
 
     @staticmethod
     def generate(prompt: str, negative_prompt: str = "", num_images: int = 2) -> List[str]:
-        provider = os.getenv("IMAGE_PROVIDER", "pollinations").strip().lower()
-        if provider == "replicate":
-            return AIImageGenerator.generate_replicate(prompt, negative_prompt, num_images)
-        if provider == "huggingface":
-            return AIImageGenerator.generate_huggingface(prompt, num_images)
-        return AIImageGenerator.generate_free(prompt, num_images)
+        """Generate with fallback chain instead of single-provider-only."""
+        results: List[str] = []
+        attempts = 0
+        max_attempts = num_images * 2  # Allow some room for fallback
 
+        while len(results) < num_images and attempts < max_attempts:
+            attempts += 1
+            img = generate_image(prompt)
+            if img:
+                results.append(img)
+
+        return results
+
+
+# ================================================================
+# SMART IMAGE SELECTOR (orchestrates stock + generation)
+# ================================================================
 
 class SmartImageSelector:
     """Suggest campaign imagery using stock search first, AI generation second."""
@@ -258,7 +379,7 @@ class SmartImageSelector:
                         "type": "generated",
                         "url": generated_image,
                         "thumb": generated_image,
-                        "source": os.getenv("IMAGE_PROVIDER", "pollinations") or "ai_generated",
+                        "source": IMAGE_PROVIDER or "ai_generated",
                         "alt": prompt[:120],
                         "photographer": "AI",
                     }

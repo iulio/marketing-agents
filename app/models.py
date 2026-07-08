@@ -265,4 +265,26 @@ class ClientStatusUpdate(BaseModel):
     platform_status: ClientStatus
 
 
+class ReportScheduleIn(BaseModel):
+    name: str
+    template_id: int
+    recipient_email: str
+    client_name: str = ""
+    schedule_cron: str = "0 8 * * 1"  # default: every Monday 8am
+    timezone: str = "UTC"
+    is_active: bool = True
+
+
+class ReportScheduleOut(BaseModel):
+    id: int
+    name: str
+    template_id: int
+    recipient_email: str
+    client_name: str
+    schedule_cron: str
+    timezone: str
+    is_active: bool
+    last_sent_at: Optional[str] = None
+    next_run_at: Optional[str] = None
+    created_at: str
 
