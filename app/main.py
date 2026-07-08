@@ -847,6 +847,29 @@ def get_creatives(campaign_id: str):
     state = campaigns[campaign_id]["state"]
     return state.get("creative_assets", {})
 
+@app.patch("/api/campaigns/{campaign_id}/creatives")
+async def update_creative(campaign_id: str, request: Request):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    data = await request.json()
+    state = campaigns[campaign_id]["state"]
+    creatives = state.get("creative_assets", {})
+    platform = data.get("platform")
+    index = data.get("index")
+    updates = data.get("updates", {})
+    if platform == "google":
+        ads = creatives.get("google_ads", [])
+        if 0 <= index < len(ads):
+            ads[index].update(updates)
+    elif platform == "meta":
+        ads = creatives.get("meta_ads", [])
+        if 0 <= index < len(ads):
+            ads[index].update(updates)
+    state["creative_assets"] = creatives
+    campaigns[campaign_id]["state"] = state
+    save_campaign_state(campaign_id, state, campaigns[campaign_id].get("status", "pending_review"), campaigns[campaign_id].get("client_id"))
+    return {"status": "ok", "creatives": creatives}
+
 
 @app.get("/api/campaigns/{campaign_id}/publish-events")
 def campaign_publish_events(campaign_id: str):
@@ -1273,6 +1296,40 @@ async def create_ab_test_endpoint(campaign_id: str, request: Request):
 @app.get("/api/campaigns/{campaign_id}/ab-test/results")
 async def get_ab_test_results_endpoint(campaign_id: str):
     return ab_testing_engine.evaluate_test(campaign_id)
+
+@app.post("/api/campaigns/{campaign_id}/ab-test/promote")
+async def promote_ab_test_winner(campaign_id: str, request: Request):
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    body = await request.json()
+    variant_id = body.get("variant_id", "")
+    state = campaigns[campaign_id]["state"]
+    creatives = state.get("creative_assets", {})
+    test_data = ab_testing_engine.tests.get(campaign_id, {})
+    variants = test_data.get("variants", [])
+    winner = None
+    for v in variants:
+        if v.get("id") == variant_id:
+            winner = v
+            break
+    if winner is None:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    winner_content = winner.get("content", {})
+    google_ads = creatives.get("google_ads", [])
+    if winner_content.get("headline"):
+        for ad in google_ads:
+            ad["headline"] = winner_content["headline"]
+    if winner_content.get("description"):
+        for ad in google_ads:
+            ad["description"] = winner_content["description"]
+    if winner_content.get("primary_text"):
+        meta_ads = creatives.get("meta_ads", [])
+        for ad in meta_ads:
+            ad["primary_text"] = winner_content["primary_text"]
+    state["creative_assets"] = creatives
+    campaigns[campaign_id]["state"] = state
+    save_campaign_state(campaign_id, state, campaigns[campaign_id].get("status", "pending_review"), campaigns[campaign_id].get("client_id"))
+    return {"status": "ok", "promoted_variant": variant_id, "creatives": creatives}
 
 # ================================================================
 # IMAGE SERVICE ENDPOINTS
