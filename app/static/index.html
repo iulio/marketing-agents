@@ -11,6 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
+        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; align-items: flex-end; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         :root {
             --prussian: #1d3557;
             --prussian-mid: #1d3557;
@@ -434,8 +436,18 @@
                 <div class="panel rounded-xl p-5 overflow-x-auto">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold text-white">Recent Campaigns</h3>
-                        <button onclick="loadCampaigns()"
-                            class="rounded-lg bg-slate-800 px-3 py-2 text-sm hover:bg-slate-700">Refresh</button>
+                        <div class="flex gap-2 items-center">
+                            <input type="text" id="dashCampaignSearch" oninput="filterCampaignTables()" placeholder="Search campaigns..." class="input text-xs px-2 py-1 w-40">
+                            <select id="dashCampaignFilter" onchange="filterCampaignTables()" class="input text-xs px-2 py-1">
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="pending_review">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="complete">Complete</option>
+                                <option value="paused">Paused</option>
+                            </select>
+                            <button onclick="loadCampaigns()" class="rounded-lg bg-slate-800 px-3 py-2 text-sm hover:bg-slate-700">Refresh</button>
+                        </div>
                     </div>
                     <table class="min-w-full text-sm">
                         <thead class="text-slate-300 border-b border-slate-800">
@@ -477,6 +489,17 @@
                     </div>
                 </div>
                 <div class="panel rounded-xl p-5 overflow-x-auto">
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="campaignSearch" oninput="filterCampaignTables()" placeholder="Search campaigns..." class="input text-xs px-3 py-2 w-48">
+                        <select id="campaignFilter" onchange="filterCampaignTables()" class="input text-xs px-3 py-2">
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="pending_review">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="complete">Complete</option>
+                            <option value="paused">Paused</option>
+                        </select>
+                    </div>
                     <table class="min-w-full text-sm">
                         <thead class="text-slate-300 border-b border-slate-800">
                             <tr>
@@ -493,7 +516,8 @@
                         <tbody id="campaignTableBody2">
                             <tr>
                                 <td colspan="7" class="text-center text-gray-400 py-4">No campaigns yet. Click "New
-                                    Campaign" to start!</td>
+                                    Campaign" to start!
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -514,6 +538,9 @@
                     </div>
                 </div>
                 <div class="panel rounded-xl p-5 overflow-x-auto">
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="clientSearch" oninput="filterClientTable()" placeholder="Search clients..." class="input text-xs px-3 py-2 w-48">
+                    </div>
                     <table class="min-w-full text-sm">
                         <thead class="text-slate-300 border-b border-slate-800">
                             <tr>
@@ -623,6 +650,22 @@
                             <option value="">Select Campaign</option>
                         </select>
                     </div>
+                </div>
+
+                <!-- Date Range Picker & Export -->
+                <div class="flex flex-wrap gap-2 items-center">
+                    <select id="analyticsDateRange" onchange="toggleCustomDateRange()" class="input rounded-lg px-3 py-2 text-sm w-auto">
+                        <option value="7">Last 7 Days</option>
+                        <option value="14" selected>Last 14 Days</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="90">Last 90 Days</option>
+                        <option value="custom">Custom Range...</option>
+                    </select>
+                    <input type="date" id="analyticsStartDate" class="input rounded-lg px-3 py-2 text-sm w-auto hidden" onchange="loadAnalytics()">
+                    <input type="date" id="analyticsEndDate" class="input rounded-lg px-3 py-2 text-sm w-auto hidden" onchange="loadAnalytics()">
+                    <span class="text-slate-600 text-sm">|</span>
+                    <button onclick="exportChart('performanceChart', 'png')" class="rounded-lg bg-slate-800 px-3 py-2 text-xs hover:bg-slate-700 flex items-center gap-1"><i class="fa-solid fa-download"></i> Export Chart</button>
+                    <button onclick="exportChart('budgetChart', 'png')" class="rounded-lg bg-slate-800 px-3 py-2 text-xs hover:bg-slate-700 flex items-center gap-1"><i class="fa-solid fa-download"></i> Export Budget</button>
                 </div>
 
                 <!-- Action buttons -->
@@ -1736,6 +1779,25 @@
             }
         }
 
+        function filterCampaignTables() {
+            const search = (document.getElementById('dashCampaignSearch')?.value || document.getElementById('campaignSearch')?.value || '').toLowerCase();
+            const status = document.getElementById('dashCampaignFilter')?.value || document.getElementById('campaignFilter')?.value || 'all';
+            document.querySelectorAll('#campaignTableBody tr, #campaignTableBody2 tr').forEach(row => {
+                if (!row.dataset.search) return;
+                const matchSearch = !search || row.dataset.search.includes(search);
+                const matchStatus = status === 'all' || row.dataset.status === status;
+                row.style.display = matchSearch && matchStatus ? '' : 'none';
+            });
+        }
+
+        function filterClientTable() {
+            const search = (document.getElementById('clientSearch')?.value || '').toLowerCase();
+            document.querySelectorAll('#clientsTableBody tr').forEach(row => {
+                if (!row.dataset.search) return;
+                row.style.display = !search || row.dataset.search.includes(search) ? '' : 'none';
+            });
+        }
+
         function renderCampaignTable(tableId, campaigns) {
             const tbody = document.getElementById(tableId);
             if (!tbody) return;
@@ -1757,8 +1819,9 @@
                     c.google_platform_error_message,
                     c.meta_platform_error_message
                 ].filter(Boolean).join(' | ');
+                const searchText = `${c.campaign_name || 'Unnamed'} ${c.platform || ''} ${c.language || ''}`.toLowerCase();
                 return `
-                    <tr class="border-t border-slate-800 hover:bg-slate-950/40">
+                    <tr class="border-t border-slate-800 hover:bg-slate-950/40" data-status="${c.status || 'unknown'}" data-search="${escapeHtml(searchText)}">
                         <td class="py-3">${escapeHtml(c.campaign_name || 'Unnamed')}</td>
                         <td class="py-3">${escapeHtml(c.platform || 'Google & Meta')}</td>
                         <td class="py-3">${escapeHtml(c.language || 'en-US')}</td>
@@ -1817,8 +1880,10 @@
                 tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-slate-400">No clients yet.</td></tr>';
                 return;
             }
-            tbody.innerHTML = clients.map(client => `
-                <tr class="border-t border-slate-800 hover:bg-slate-950/40">
+            tbody.innerHTML = clients.map(client => {
+                const searchText = `${client.name} ${client.industry || ''} ${client.website || ''} ${client.platform_status || ''}`.toLowerCase();
+                return `
+                <tr class="border-t border-slate-800 hover:bg-slate-950/40" data-search="${escapeHtml(searchText)}">
                     <td class="py-3">${escapeHtml(client.name)}</td>
                     <td class="py-3">${client.industry || '-'}</td>
                     <td class="py-3">${client.website ? `<a class="text-blue-400 hover:underline" href="${escapeHtml(client.website)}" target="_blank">${escapeHtml(client.website)}</a>` : '-'}</td>
@@ -1836,7 +1901,8 @@
                             <button onclick="deleteClientRecord('${client.id}')" class="text-red-400 hover:text-red-300 text-xs">Delete</button>
                         </div>
                     </td>
-                </tr>`).join('');
+                </tr>`;
+            }).join('');
         }
 
         async function loadClients() {
@@ -2358,24 +2424,16 @@
                     body: JSON.stringify({ platform, index, updates })
                 });
                 if (!res.ok) throw new Error('Failed to save edits');
-                const toast = document.createElement('div');
-                toast.textContent = 'Creative updated successfully';
-                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
+                showToast('Creative updated successfully');
             } catch (e) {
-                alert('Error saving creative: ' + e.message);
+                showToast('Error saving creative: ' + e.message, 'error');
             }
         }
         function useImage(imageId) {
             // Copy image URL to clipboard and highlight selection
             const cards = document.querySelectorAll('.creative-card');
             cards.forEach(c => c.style.outline = '');
-            const toast = document.createElement('div');
-            toast.textContent = `✅ Image selected for this campaign.`;
-            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            showToast(`Image selected for this campaign.`);
         }
         async function regenerateImage() {
             if (!currentCreativeCampaignId) return alert('Select a campaign first.');
@@ -2388,15 +2446,11 @@
                 if (!res.ok) throw new Error((await res.json()).detail || 'Regeneration failed');
                 const data = await res.json();
                 await loadCreatives();
-                const toast = document.createElement('div');
-                toast.textContent = `✅ Regenerated ${data.count} image(s) successfully!`;
-                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
+                showToast(`Regenerated ${data.count} image(s) successfully!`);
             } catch (e) {
                 alert(e.message);
             } finally {
-                if (btn) { btn.disabled = false; btn.textContent = '↺ Regenerate All'; }
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Regenerate'; }
             }
         }
 
@@ -2412,13 +2466,9 @@
                 if (!res.ok) throw new Error((await res.json()).detail || 'Regeneration failed');
                 const data = await res.json();
                 await loadCreatives();
-                const toast = document.createElement('div');
-                toast.textContent = `✅ Regenerated ${data.count} image(s) successfully!`;
-                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
+                showToast(`Regenerated ${data.count} image(s) successfully!`);
             } catch (e) {
-                alert(e.message);
+                showToast(e.message, 'error');
             } finally {
                 if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Regenerate'; }
             }
@@ -2566,11 +2616,7 @@
                 });
                 if (!res.ok) throw new Error('Failed to add image to campaign');
                 await loadCreatives();
-                const toast = document.createElement('div');
-                toast.textContent = `✅ Image added to campaign!`;
-                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
+                showToast('✅ Image added to campaign successfully!');
             } catch (e) {
                 alert(`Error: ${e.message}`);
             }
@@ -2588,13 +2634,9 @@
                 });
                 if (!res.ok) throw new Error('Failed to delete image');
                 await loadCreatives();
-                const toast = document.createElement('div');
-                toast.textContent = `✅ Image removed from campaign!`;
-                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
+                showToast('Image removed from campaign!');
             } catch (e) {
-                alert(`Error: ${e.message}`);
+                showToast(`Error: ${e.message}`, 'error');
             }
         }
 
@@ -2737,15 +2779,34 @@
                     body: JSON.stringify({ variant_id: variantId })
                 });
                 if (!res.ok) throw new Error('Failed to promote winner');
-                const toast = document.createElement('div');
-                toast.textContent = 'Winner promoted and applied to campaign!';
-                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
+                showToast('Winner promoted and applied to campaign!');
                 loadCreatives();
             } catch (e) {
-                alert('Error promoting winner: ' + e.message);
+                showToast('Error promoting winner: ' + e.message, 'error');
             }
+        }
+
+        function toggleCustomDateRange() {
+            const val = document.getElementById('analyticsDateRange').value;
+            const show = val === 'custom';
+            document.getElementById('analyticsStartDate').classList.toggle('hidden', !show);
+            document.getElementById('analyticsEndDate').classList.toggle('hidden', !show);
+            if (show) loadAnalytics();
+        }
+
+        function exportChart(chartId, format) {
+            const canvas = document.getElementById(chartId);
+            if (!canvas) return showToast('Chart not found', 'error');
+            const link = document.createElement('a');
+            if (format === 'png') {
+                link.download = `${chartId}.png`;
+                link.href = canvas.toDataURL('image/png');
+            } else {
+                link.download = `${chartId}.svg`;
+                link.href = canvas.toDataURL('image/svg+xml');
+            }
+            link.click();
+            showToast(`${chartId}.png exported`);
         }
 
         async function loadAnalytics() {
@@ -3192,6 +3253,60 @@
         loadSettings();
         loadLlmConfig();
         refreshIntegrationStatus();
+    </script>
+    <div id="toast-container"></div>
+
+    <script>
+        // ================================================================
+        // TOAST NOTIFICATION SYSTEM
+        // ================================================================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const colors = {
+                success: { bg: '#238636', icon: 'fa-circle-check' },
+                error: { bg: '#da3633', icon: 'fa-circle-xmark' },
+                warning: { bg: '#d29922', icon: 'fa-triangle-exclamation' },
+                info: { bg: '#1f6feb', icon: 'fa-circle-info' },
+            };
+            const cfg = colors[type] || colors.success;
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<i class="fa-solid ${cfg.icon} mr-2"></i>${message}`;
+            toast.style.cssText = `background:${cfg.bg};color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;animation:slideIn 0.2s ease-out;`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ================================================================
+        // KEYBOARD SHORTCUTS
+        // ================================================================
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key.toLowerCase()) {
+                    case 'n':
+                        e.preventDefault();
+                        openOnboardModal();
+                        break;
+                    case 'a':
+                        e.preventDefault();
+                        showSection('analytics');
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        showSection('campaigns');
+                        break;
+                    case 'r':
+                        e.preventDefault();
+                        if (currentCreativeCampaignId) regenerateImage();
+                        break;
+                }
+            }
+        });
     </script>
 </body>
 
