@@ -77,6 +77,14 @@
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="analytics">Analytics</button>
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="settings">Settings</button>
             </nav>
+            <div class="mt-auto flex flex-col items-center space-y-4">
+                <a href="#" title="Help" class="text-gray-600 hover:text-white text-xl">
+                    <i class="fa-regular fa-circle-question"></i>
+                </a>
+                <button onclick="logout()" title="Logout" class="text-gray-400 hover:text-white text-xl transition">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
         </aside>
 
         <main class="flex-1 p-6 space-y-6">
@@ -3970,6 +3978,13 @@
         } catch (e) {
             return {};
         }
+    }
+    function logout() {
+        // Clear all authentication data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Redirect to login page
+        window.location.href = '/login.html';
     }
 </script>
 

@@ -309,32 +309,39 @@
                 }
 
                 // 3. Create campaign
+                let budget = collectedData.client.daily_budget || 50;
+                if (budget < 5) budget = 5;
+
                 const campaignPayload = {
                     client_name: collectedData.client.name,
                     website_url: collectedData.client.website || 'https://example.com',
                     language: collectedData.campaign.language || 'en-US',
                     industry: collectedData.client.industry || 'General',
-                    daily_budget: collectedData.client.daily_budget || 50,
+                    daily_budget: budget,
                     target_geo: collectedData.client.target_geo || ['Worldwide'],
                     tone_of_voice: collectedData.client.tone_of_voice || 'professional',
                     cultural_triggers: collectedData.client.cultural_triggers || [],
-                    llm_backend: 'cloud',
+                    llm_backend: 'cloud',   // <-- FIXED: always "cloud"
                     objective: collectedData.campaign.objective || 'sales',
                     special_events: [],
                     product_keywords: collectedData.campaign.product_keywords || []
                 };
+
                 const campRes = await fetch(`${API_BASE}/api/campaigns/onboard?client_id=${clientId}`, {
                     method: 'POST',
                     headers: getHeaders(),
                     body: JSON.stringify(campaignPayload)
                 });
-                if (!campRes.ok) throw new Error('Failed to create campaign');
+
+                if (!campRes.ok) {
+                    const err = await campRes.json();
+                    throw new Error(`Campaign creation failed: ${JSON.stringify(err)}`);
+                }
                 const campData = await campRes.json();
 
                 status.innerHTML = `<span class="text-green-400">✅ Client created! Campaign ID: ${campData.campaign_id}</span>`;
                 btn.disabled = false;
 
-                // Redirect to dashboard after short delay
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 3000);
