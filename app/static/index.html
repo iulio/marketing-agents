@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketing Agency Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         :root {
@@ -99,6 +100,253 @@
         .creative-card {
             min-width: 240px;
         }
+
+        /* ===== MOCKUP PREVIEWER STYLES ===== */
+        .mockup-google-ad {
+            background: #15263f;
+            border: 1px solid var(--celadon);
+            border-radius: 12px;
+            padding: 16px;
+            max-width: 480px;
+            transition: box-shadow 0.3s ease;
+        }
+        .mockup-google-ad:hover {
+            box-shadow: 0 0 20px rgba(69, 123, 157, 0.25);
+        }
+        .mockup-google-ad .ad-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--prussian);
+            background: var(--nonphoto);
+            padding: 1px 6px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-bottom: 6px;
+        }
+        .mockup-google-ad .ad-url {
+            font-size: 12px;
+            color: var(--nonphoto);
+            margin-bottom: 2px;
+        }
+        .mockup-google-ad .ad-headline {
+            font-size: 18px;
+            font-weight: 600;
+            color: #58a6ff;
+            cursor: text;
+            border-bottom: 1px dashed transparent;
+            transition: border-color 0.2s;
+            line-height: 1.4;
+        }
+        .mockup-google-ad .ad-headline:hover, .mockup-google-ad .ad-headline:focus {
+            border-bottom-color: var(--nonphoto);
+            outline: none;
+        }
+        .mockup-google-ad .ad-description {
+            font-size: 13px;
+            color: var(--honeydew);
+            margin-top: 4px;
+            cursor: text;
+            border-bottom: 1px dashed transparent;
+            transition: border-color 0.2s;
+            opacity: 0.85;
+        }
+        .mockup-google-ad .ad-description:hover, .mockup-google-ad .ad-description:focus {
+            border-bottom-color: var(--nonphoto);
+            outline: none;
+        }
+
+        .mockup-meta-ad {
+            background: #15263f;
+            border: 1px solid var(--celadon);
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 400px;
+            transition: box-shadow 0.3s ease;
+        }
+        .mockup-meta-ad:hover {
+            box-shadow: 0 0 20px rgba(69, 123, 157, 0.25);
+        }
+        .mockup-meta-ad .meta-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+        }
+        .mockup-meta-ad .meta-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--celadon);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--honeydew);
+        }
+        .mockup-meta-ad .meta-body {
+            padding: 0 16px 12px;
+        }
+        .mockup-meta-ad .meta-text {
+            font-size: 14px;
+            color: var(--honeydew);
+            cursor: text;
+            border-bottom: 1px dashed transparent;
+            transition: border-color 0.2s;
+        }
+        .mockup-meta-ad .meta-text:hover, .mockup-meta-ad .meta-text:focus {
+            border-bottom-color: var(--nonphoto);
+            outline: none;
+        }
+        .mockup-meta-ad .meta-cta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            border-top: 1px solid var(--celadon);
+        }
+        .mockup-meta-ad .meta-cta-btn {
+            background: var(--celadon);
+            color: var(--honeydew);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: default;
+        }
+
+        /* ===== A/B TEST SIMULATOR ===== */
+        .ab-variant-card {
+            background: #15263f;
+            border: 2px solid var(--celadon);
+            border-radius: 12px;
+            padding: 20px;
+            flex: 1;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .ab-variant-card.winner {
+            border-color: #86efac;
+            box-shadow: 0 0 30px rgba(134, 239, 172, 0.15);
+        }
+        .ab-variant-card .winner-badge {
+            position: absolute;
+            top: -10px;
+            right: 12px;
+            background: #22c55e;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .confidence-bar-track {
+            background: #101c2e;
+            border-radius: 8px;
+            height: 10px;
+            overflow: hidden;
+        }
+        .confidence-bar-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 1.5s ease;
+        }
+        .ab-metric {
+            text-align: center;
+        }
+        .ab-metric .value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .ab-metric .label {
+            font-size: 11px;
+            color: var(--nonphoto);
+            margin-top: 2px;
+        }
+
+        /* ===== ANALYTICS CHARTS ===== */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-height: 300px;
+        }
+        .kpi-card-enhanced {
+            background: #15263f;
+            border: 1px solid var(--celadon);
+            border-radius: 12px;
+            padding: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .kpi-card-enhanced:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(69, 123, 157, 0.2);
+        }
+        .kpi-trend-up { color: #86efac; }
+        .kpi-trend-down { color: #fca5a5; }
+
+        /* AI Advice Feed */
+        .ai-tip-card {
+            background: #101c2e;
+            border-left: 3px solid var(--celadon);
+            border-radius: 0 8px 8px 0;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--honeydew);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+        .ai-tip-card:hover {
+            background: #15263f;
+        }
+        .ai-tip-card.tip-warning { border-left-color: #fde68a; }
+        .ai-tip-card.tip-success { border-left-color: #86efac; }
+        .ai-tip-card.tip-danger  { border-left-color: var(--imperial); }
+        .ai-tip-card.tip-info    { border-left-color: #58a6ff; }
+
+        /* ===== INTEGRATIONS / AUDITOR ===== */
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            animation: pulse-dot 2s infinite;
+        }
+        .status-dot.connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+        .status-dot.disconnected { background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: none; }
+        .status-dot.warning      { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .integration-card {
+            background: #15263f;
+            border: 1px solid var(--celadon);
+            border-radius: 12px;
+            padding: 20px;
+            transition: box-shadow 0.3s;
+        }
+        .integration-card:hover {
+            box-shadow: 0 0 20px rgba(69, 123, 157, 0.2);
+        }
+
+        .audit-log-row {
+            font-size: 12px;
+            padding: 8px 12px;
+            border-bottom: 1px solid #1e3a5f;
+            transition: background 0.15s;
+        }
+        .audit-log-row:hover {
+            background: #1e3a5f;
+        }
+        .audit-log-row.status-2xx { border-left: 3px solid #22c55e; }
+        .audit-log-row.status-4xx { border-left: 3px solid #ef4444; }
+        .audit-log-row.status-5xx { border-left: 3px solid #ef4444; }
+        .audit-log-row.status-3xx { border-left: 3px solid #f59e0b; }
     </style>
 </head>
 
@@ -119,6 +367,7 @@
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="clients">Clients</button>
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="creatives">Creatives</button>
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="analytics">Analytics</button>
+                <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="integrations">Integrations</button>
                 <button class="nav-link rounded-lg px-3 py-2 text-left" data-section="settings">Settings</button>
             </nav>
             <div class="mt-auto flex flex-col items-center space-y-4">
@@ -280,8 +529,8 @@
             <section id="section-creatives" class="hidden space-y-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-2xl font-semibold text-white">Creative Studio</h2>
-                        <p class="text-slate-400">Review ads, images, and A/B tests.</p>
+                        <h2 class="text-2xl font-semibold text-white"><i class="fa-solid fa-palette mr-2"></i>Creative Studio</h2>
+                        <p class="text-slate-400">Live ad mockups, inline editing, and A/B testing.</p>
                     </div>
                     <div class="flex gap-2">
                         <select id="creativeCampaignSelect" onchange="loadCreatives()"
@@ -294,43 +543,65 @@
                         </select>
                     </div>
                 </div>
-                <div class="panel rounded-xl p-5">
-                    <div id="creativePanelInfo" class="text-sm text-slate-400 mb-4">Select a campaign to review
-                        creatives.</div>
-                    <div id="creativeCarousel" class="flex flex-wrap gap-4 pb-2">
-                        <div class="text-slate-400 text-sm p-4">No creatives loaded.</div>
-                    </div>
-                </div>
+
+                <!-- Live Ad Mockup Previewer -->
                 <div class="panel rounded-xl p-5">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-white">Creative Studio View</h3>
+                        <div>
+                            <h3 class="text-lg font-semibold text-white"><i class="fa-solid fa-eye mr-1.5 text-blue-400"></i>Live Ad Mockup Previewer</h3>
+                            <p class="text-xs text-slate-400 mt-1">Click any headline or description to edit inline. Changes save automatically.</p>
+                        </div>
                         <div class="flex gap-2">
                             <button onclick="openImageSearchModal()"
                                 class="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600 flex items-center gap-1"><i
                                     class="fa-solid fa-magnifying-glass"></i> Search Images</button>
                             <button onclick="regenerateImage()"
                                 class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 flex items-center gap-1"><i
-                                    class="fa-solid fa-rotate"></i> Regenerate All</button>
-                            <button onclick="createABTest()"
-                                class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Create
-                                A/B Test</button>
+                                    class="fa-solid fa-rotate"></i> Regenerate</button>
                         </div>
                     </div>
-                    <div id="creativeCarouselStudio" class="flex flex-wrap gap-4 pb-2">
+                    <div id="creativePanelInfo" class="text-sm text-slate-400 mb-4">Select a campaign to preview ad mockups.</div>
+                    <div id="creativeCarousel" class="flex flex-wrap gap-5 pb-2">
                         <div class="text-slate-400 text-sm p-4">No creatives loaded.</div>
                     </div>
-                    <div id="abTestResults" class="mt-4 text-sm text-slate-400"></div>
+                </div>
+
+                <!-- Campaign Images Gallery -->
+                <div class="panel rounded-xl p-5">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-white"><i class="fa-solid fa-images mr-1.5 text-emerald-400"></i>Campaign Images</h3>
+                        <button onclick="openImageSearchModal()"
+                            class="rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600 flex items-center gap-1"><i class="fa-solid fa-plus"></i> Add Images</button>
+                    </div>
+                    <div id="creativeCarouselStudio" class="flex flex-wrap gap-4 pb-2">
+                        <div class="text-slate-400 text-sm p-4">No images loaded.</div>
+                    </div>
+                </div>
+
+                <!-- A/B Test Simulator -->
+                <div class="panel rounded-xl p-5">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-white"><i class="fa-solid fa-flask mr-1.5 text-violet-400"></i>A/B Test Simulator</h3>
+                            <p class="text-xs text-slate-400 mt-1">Compare ad variants side-by-side with simulated performance data.</p>
+                        </div>
+                        <button onclick="createABTest()"
+                            class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 flex items-center gap-1.5">
+                            <i class="fa-solid fa-flask"></i> Run A/B Test
+                        </button>
+                    </div>
+                    <div id="abTestResults" class="text-sm text-slate-400">Select a campaign and click "Run A/B Test" to simulate variant comparison.</div>
                 </div>
             </section>
 
             <section id="section-analytics" class="hidden space-y-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-2xl font-semibold text-white">Analytics</h2>
-                        <p class="text-slate-400">Performance insights and optimization history.</p>
+                        <h2 class="text-2xl font-semibold text-white"><i class="fa-solid fa-chart-line mr-2"></i>Analytics</h2>
+                        <p class="text-slate-400">Interactive performance charts and AI-powered insights.</p>
                     </div>
                     <div class="flex gap-2">
-                        <select id="analystCampaignSelect" class="input rounded-lg px-3 py-2 text-sm">
+                        <select id="analystCampaignSelect" onchange="loadAnalytics()" class="input rounded-lg px-3 py-2 text-sm">
                             <option value="">Select Campaign</option>
                         </select>
                         <select id="analystCampaignSelect2" onchange="loadAnalyticsView()"
@@ -339,24 +610,188 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- Action buttons -->
                 <div class="flex gap-2">
                     <button onclick="loadAnalytics()"
-                        class="rounded-lg bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700">Load KPIs</button>
+                        class="rounded-lg bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-chart-bar"></i> Load KPIs</button>
                     <button onclick="runAnalysis()"
-                        class="rounded-lg bg-blue-600 px-4 py-2 text-sm hover:bg-blue-500">Analyze</button>
+                        class="rounded-lg bg-blue-600 px-4 py-2 text-sm hover:bg-blue-500 flex items-center gap-1.5"><i class="fa-solid fa-microchip"></i> Analyze</button>
                     <button onclick="runOptimization()"
-                        class="rounded-lg bg-emerald-600 px-4 py-2 text-sm hover:bg-emerald-500">Optimize</button>
+                        class="rounded-lg bg-emerald-600 px-4 py-2 text-sm hover:bg-emerald-500 flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> Optimize</button>
                     <button onclick="viewOptimizationHistory()"
-                        class="rounded-lg bg-violet-600 px-4 py-2 text-sm hover:bg-violet-500">History</button>
+                        class="rounded-lg bg-violet-600 px-4 py-2 text-sm hover:bg-violet-500 flex items-center gap-1.5"><i class="fa-regular fa-clock"></i> History</button>
                 </div>
-                <div id="analyticsResults" class="panel rounded-xl p-5 text-sm text-slate-400">Select a campaign to
-                    analyze.</div>
-                <div id="analyticsResultsView" class="panel rounded-xl p-5 text-sm text-slate-400">Select a campaign to
-                    analyze.</div>
-                <div id="optimizationResults" class="panel rounded-xl p-5 text-sm text-slate-400">Optimization output
-                    will appear here.</div>
-                <div id="optimizationResultsView" class="panel rounded-xl p-5 text-sm text-slate-400">Optimization
-                    output will appear here.</div>
+
+                <!-- KPI Summary Cards -->
+                <div id="analyticsResults" class="grid grid-cols-5 gap-4">
+                    <div class="kpi-card-enhanced">
+                        <div class="text-xs text-slate-400">Impressions</div>
+                        <div class="text-2xl font-bold mt-1" id="kpiImpressions">—</div>
+                        <div class="text-xs mt-1 kpi-trend-up" id="kpiImpressionsTrend"></div>
+                    </div>
+                    <div class="kpi-card-enhanced">
+                        <div class="text-xs text-slate-400">Clicks</div>
+                        <div class="text-2xl font-bold mt-1" id="kpiClicks">—</div>
+                        <div class="text-xs mt-1 kpi-trend-up" id="kpiClicksTrend"></div>
+                    </div>
+                    <div class="kpi-card-enhanced">
+                        <div class="text-xs text-slate-400">CTR</div>
+                        <div class="text-2xl font-bold mt-1 text-emerald-400" id="kpiCTR">—</div>
+                        <div class="text-xs mt-1 kpi-trend-up" id="kpiCTRTrend"></div>
+                    </div>
+                    <div class="kpi-card-enhanced">
+                        <div class="text-xs text-slate-400">CPC</div>
+                        <div class="text-2xl font-bold mt-1 text-amber-400" id="kpiCPC">—</div>
+                        <div class="text-xs mt-1 kpi-trend-down" id="kpiCPCTrend"></div>
+                    </div>
+                    <div class="kpi-card-enhanced">
+                        <div class="text-xs text-slate-400">ROAS</div>
+                        <div class="text-2xl font-bold mt-1 text-blue-400" id="kpiROAS">—</div>
+                        <div class="text-xs mt-1 kpi-trend-up" id="kpiROASTrend"></div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- Performance Over Time Chart -->
+                    <div class="panel rounded-xl p-5 lg:col-span-2">
+                        <h3 class="text-lg font-semibold text-white mb-3"><i class="fa-solid fa-chart-area mr-1.5 text-blue-400"></i>Performance Over Time</h3>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Budget Allocation Doughnut -->
+                    <div class="panel rounded-xl p-5">
+                        <h3 class="text-lg font-semibold text-white mb-3"><i class="fa-solid fa-chart-pie mr-1.5 text-emerald-400"></i>Budget Split</h3>
+                        <div class="chart-container" style="max-height:220px">
+                            <canvas id="budgetChart"></canvas>
+                        </div>
+                        <div id="budgetChartLegend" class="text-xs text-slate-400 mt-3 text-center"></div>
+                    </div>
+                </div>
+
+                <!-- AI Recommendations Feed -->
+                <div class="panel rounded-xl p-5">
+                    <h3 class="text-lg font-semibold text-white mb-3"><i class="fa-solid fa-robot mr-1.5 text-violet-400"></i>AI Recommendations</h3>
+                    <div id="aiAdviceFeed" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-sm text-slate-400 p-4 text-center">Load campaign KPIs to receive AI-powered optimization tips.</div>
+                    </div>
+                </div>
+
+                <!-- Optimization Results -->
+                <div id="analyticsResultsView" class="panel rounded-xl p-5 text-sm text-slate-400 hidden"></div>
+                <div id="optimizationResults" class="panel rounded-xl p-5 text-sm text-slate-400 hidden"></div>
+                <div id="optimizationResultsView" class="panel rounded-xl p-5 text-sm text-slate-400 hidden"></div>
+            </section>
+
+            <!-- ===== INTEGRATIONS SECTION (Feature 5) ===== -->
+            <section id="section-integrations" class="hidden space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-white"><i class="fa-solid fa-plug mr-2"></i>Integrations</h2>
+                        <p class="text-slate-400">API connection health, token status, and audit log.</p>
+                    </div>
+                    <button onclick="refreshIntegrationStatus()"
+                        class="rounded-lg bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate"></i> Refresh Status
+                    </button>
+                </div>
+
+                <!-- Connection Health Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="integrationCards">
+                    <!-- Google Ads -->
+                    <div class="integration-card">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="status-dot disconnected" id="statusDotGoogle"></span>
+                            <span class="font-semibold text-white">Google Ads API</span>
+                        </div>
+                        <div class="space-y-1 text-xs text-slate-400">
+                            <div>Status: <span id="googleApiStatus" class="text-slate-300">Checking...</span></div>
+                            <div>Customer ID: <span id="googleCustomerId" class="text-slate-300">—</span></div>
+                            <div>Last Refresh: <span id="googleLastRefresh" class="text-slate-300">—</span></div>
+                        </div>
+                        <button onclick="testIntegration('google')" class="mt-3 w-full text-xs py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-white transition">
+                            <i class="fa-solid fa-bolt mr-1"></i>Test Connection
+                        </button>
+                    </div>
+                    <!-- Meta Ads -->
+                    <div class="integration-card">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="status-dot disconnected" id="statusDotMeta"></span>
+                            <span class="font-semibold text-white">Meta Ads API</span>
+                        </div>
+                        <div class="space-y-1 text-xs text-slate-400">
+                            <div>Status: <span id="metaApiStatus" class="text-slate-300">Checking...</span></div>
+                            <div>Ad Account: <span id="metaAdAccount" class="text-slate-300">—</span></div>
+                            <div>Token Expires: <span id="metaTokenExpiry" class="text-slate-300">—</span></div>
+                        </div>
+                        <button onclick="testIntegration('meta')" class="mt-3 w-full text-xs py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-white transition">
+                            <i class="fa-solid fa-bolt mr-1"></i>Test Connection
+                        </button>
+                    </div>
+                    <!-- Image APIs -->
+                    <div class="integration-card">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="status-dot connected" id="statusDotImages"></span>
+                            <span class="font-semibold text-white">Image Services</span>
+                        </div>
+                        <div class="space-y-1 text-xs text-slate-400">
+                            <div><span class="status-dot connected" style="width:6px;height:6px"></span> Pollinations: <span class="text-emerald-400">Available</span></div>
+                            <div><span class="status-dot connected" style="width:6px;height:6px"></span> Unsplash: <span class="text-emerald-400">Available</span></div>
+                            <div><span class="status-dot connected" style="width:6px;height:6px"></span> Pexels: <span class="text-emerald-400">Available</span></div>
+                        </div>
+                        <button onclick="testIntegration('images')" class="mt-3 w-full text-xs py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-white transition">
+                            <i class="fa-solid fa-bolt mr-1"></i>Test Connection
+                        </button>
+                    </div>
+                    <!-- LLM / AI -->
+                    <div class="integration-card">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="status-dot connected" id="statusDotLLM"></span>
+                            <span class="font-semibold text-white">AI / LLM Engine</span>
+                        </div>
+                        <div class="space-y-1 text-xs text-slate-400">
+                            <div>Backend: <span id="llmBackendStatus" class="text-slate-300">Vertex AI</span></div>
+                            <div>Model: <span id="llmModelStatus" class="text-slate-300">gemini-2.5-flash</span></div>
+                            <div>Avg Latency: <span id="llmLatency" class="text-slate-300">—</span></div>
+                        </div>
+                        <button onclick="testIntegration('llm')" class="mt-3 w-full text-xs py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-white transition">
+                            <i class="fa-solid fa-bolt mr-1"></i>Test Connection
+                        </button>
+                    </div>
+                </div>
+
+                <!-- API Audit Log -->
+                <div class="panel rounded-xl p-5">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-white"><i class="fa-solid fa-scroll mr-1.5 text-amber-400"></i>API Audit Log</h3>
+                            <p class="text-xs text-slate-400 mt-1">All API calls are logged automatically. Newest first.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="filterAuditLog('all')" class="audit-filter-btn text-xs px-3 py-1 rounded-md bg-slate-700 text-white hover:bg-slate-600 transition active" data-filter="all">All</button>
+                            <button onclick="filterAuditLog('google')" class="audit-filter-btn text-xs px-3 py-1 rounded-md bg-slate-700 text-white hover:bg-slate-600 transition" data-filter="google">Google</button>
+                            <button onclick="filterAuditLog('meta')" class="audit-filter-btn text-xs px-3 py-1 rounded-md bg-slate-700 text-white hover:bg-slate-600 transition" data-filter="meta">Meta</button>
+                            <button onclick="filterAuditLog('images')" class="audit-filter-btn text-xs px-3 py-1 rounded-md bg-slate-700 text-white hover:bg-slate-600 transition" data-filter="images">Images</button>
+                            <button onclick="filterAuditLog('campaigns')" class="audit-filter-btn text-xs px-3 py-1 rounded-md bg-slate-700 text-white hover:bg-slate-600 transition" data-filter="campaigns">Campaigns</button>
+                            <button onclick="clearAuditLog()" class="text-xs px-3 py-1 rounded-md bg-red-900 text-red-300 hover:bg-red-800 transition">
+                                <i class="fa-solid fa-trash-can mr-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Audit Log Header -->
+                    <div class="grid grid-cols-6 gap-2 text-xs font-semibold text-slate-400 border-b border-slate-700 pb-2 mb-1 px-3">
+                        <div>Timestamp</div>
+                        <div>Method</div>
+                        <div class="col-span-2">Endpoint</div>
+                        <div>Status</div>
+                        <div>Duration</div>
+                    </div>
+                    <div id="auditLogBody" class="max-h-72 overflow-y-auto">
+                        <div class="text-sm text-slate-400 p-4 text-center">No API calls logged yet. Interact with the dashboard to start capturing.</div>
+                    </div>
+                </div>
             </section>
 
             <section id="section-settings" class="hidden space-y-6">
@@ -709,6 +1144,81 @@
                     class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm transition">
                     Got it!
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMAGE STUDIO SEARCH & GENERATION MODAL -->
+    <div id="imageSearchModal" class="fixed inset-0 flex items-center justify-center modal-backdrop hidden z-50">
+        <div class="glass-card rounded-xl w-full max-w-4xl p-6 border border-[#30363d] shadow-2xl max-h-[90vh] overflow-y-auto" style="background:#161b22; width: 850px;">
+            <div class="flex justify-between items-center mb-6 border-b border-[#30363d] pb-3">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2"><i class="fa-solid fa-palette text-blue-400"></i> Creative Image Studio</h2>
+                <button onclick="closeImageSearchModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+            
+            <!-- Tabs for Search vs Generate -->
+            <div class="flex border-b border-[#30363d] mb-6">
+                <button id="tab-btn-search" onclick="switchImageStudioTab('search')" class="px-4 py-2 border-b-2 border-blue-500 text-sm font-semibold text-white">
+                    <i class="fa-solid fa-magnifying-glass mr-1.5"></i> Search Stock Photos
+                </button>
+                <button id="tab-btn-generate" onclick="switchImageStudioTab('generate')" class="px-4 py-2 border-b-2 border-transparent text-sm font-semibold text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i> Generate AI Image
+                </button>
+            </div>
+
+            <!-- Tab 1: Search Stock Photos -->
+            <div id="image-studio-search" class="space-y-4">
+                <div class="flex gap-2">
+                    <input type="text" id="stockSearchQuery" placeholder="Search keywords (e.g. 'office meeting', 'flowers')..." class="input flex-1 rounded-md px-3 py-2 text-sm">
+                    <select id="stockSearchProvider" class="input rounded-md px-3 py-2 text-sm w-36">
+                        <option value="all">All Sources</option>
+                        <option value="unsplash">Unsplash</option>
+                        <option value="pexels">Pexels</option>
+                        <option value="pixabay">Pixabay</option>
+                    </select>
+                    <button onclick="performStockSearch()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-md text-sm font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-magnifying-glass"></i> Search
+                    </button>
+                </div>
+                <div id="stockSearchResults" class="grid grid-cols-3 gap-4 max-h-[45vh] overflow-y-auto pt-2">
+                    <div class="text-slate-400 text-sm col-span-3 text-center py-8">Search stock pictures to add to your campaign assets.</div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Generate AI Image -->
+            <div id="image-studio-generate" class="space-y-4 hidden">
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Image Prompt</label>
+                        <textarea id="aiPromptInput" rows="3" placeholder="Describe the image you want to generate (e.g. 'A professional workspace with laptops, minimal style, warm lighting')..." class="input w-full rounded-md px-3 py-2 text-sm"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-400 block mb-1">Negative Prompt (Optional)</label>
+                            <input type="text" id="aiNegativePrompt" placeholder="Things to avoid (e.g. blurry, low quality)..." class="input w-full rounded-md px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 block mb-1">AI Image Provider</label>
+                            <select id="aiImageProvider" class="input w-full rounded-md px-3 py-2 text-sm">
+                                <option value="pollinations">Pollinations (Fast, No Key Required)</option>
+                                <option value="huggingface">Hugging Face</option>
+                                <option value="replicate">Replicate</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end pt-2">
+                        <button onclick="performAIGeneration()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-md text-sm font-medium transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Image
+                        </button>
+                    </div>
+                </div>
+                <div id="aiGenerationResults" class="grid grid-cols-2 gap-4 max-h-[45vh] overflow-y-auto pt-2">
+                    <div class="text-slate-400 text-sm col-span-2 text-center py-8">Describe and generate high-quality AI images.</div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end border-t border-[#30363d] mt-6 pt-4">
+                <button onclick="closeImageSearchModal()" class="px-5 py-2 text-sm text-slate-400 hover:text-white border border-[#30363d] rounded-md transition">Close</button>
             </div>
         </div>
     </div>
@@ -1693,15 +2203,20 @@
                 const imageSource = img.source || 'unknown source';
                 const imageType = img.type || 'image';
                 const badgeLabel = imageType === 'generated' ? '🤖 AI Generated' : imageType === 'stock' ? '📸 Stock Image' : '🖼️ Image';
-                const imageId = img.id || `image-${idx + 1}`;
+                const imageId = img.id || img.url || img || `image-${idx + 1}`;
                 container.innerHTML += `
                     <div class="creative-card panel rounded-lg p-4">
-                        <span class="text-xs text-slate-400">${badgeLabel}</span>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400">${badgeLabel}</span>
+                            <button onclick="deleteCampaignImage('${imageId}')" class="text-rose-400 hover:text-rose-300 text-xs transition" title="Delete Image">
+                                <i class="fa-regular fa-trash-can"></i>
+                            </button>
+                        </div>
                         <img src="${imageUrl}" alt="${escapeHtml(imageAlt)}" class="mt-2 rounded-md max-h-40 w-full object-cover bg-slate-800">
                         <p class="text-[10px] text-slate-400 mt-1">${escapeHtml(imageSource)}</p>
                         <div class="flex mt-2 gap-2">
                             <button onclick="useImage('${imageId}')" class="text-xs text-emerald-400 hover:text-emerald-300">Use</button>
-                            <button onclick="regenerateImage()" class="text-xs text-blue-400 hover:text-blue-300">Regenerate</button>
+                            <button onclick="regenerateImage()" class="text-xs text-blue-400 hover:text-blue-300">Regenerate All</button>
                         </div>
                     </div>`;
             });
@@ -1711,7 +2226,7 @@
             const cards = document.querySelectorAll('.creative-card');
             cards.forEach(c => c.style.outline = '');
             const toast = document.createElement('div');
-            toast.textContent = `✅ Image ${imageId} selected for this campaign.`;
+            toast.textContent = `✅ Image selected for this campaign.`;
             toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
@@ -1736,6 +2251,180 @@
                 alert(e.message);
             } finally {
                 if (btn) { btn.disabled = false; btn.textContent = '↺ Regenerate All'; }
+            }
+        }
+
+        // --- IMAGE STUDIO SEARCH & GENERATION DIALOG LOGIC ---
+        function openImageSearchModal() {
+            const campaignId = document.getElementById('creativeCampaignSelect').value;
+            if (!campaignId) return alert('Please select a campaign first.');
+            document.getElementById('imageSearchModal').classList.remove('hidden');
+            document.getElementById('imageSearchModal').classList.add('flex');
+            // Reset modal states
+            document.getElementById('stockSearchResults').innerHTML = '<div class="text-slate-400 text-sm col-span-3 text-center py-8">Search stock pictures to add to your campaign assets.</div>';
+            document.getElementById('aiGenerationResults').innerHTML = '<div class="text-slate-400 text-sm col-span-2 text-center py-8">Describe and generate high-quality AI images.</div>';
+            document.getElementById('stockSearchQuery').value = '';
+            document.getElementById('aiPromptInput').value = '';
+        }
+
+        function closeImageSearchModal() {
+            document.getElementById('imageSearchModal').classList.add('hidden');
+            document.getElementById('imageSearchModal').classList.remove('flex');
+        }
+
+        function switchImageStudioTab(tab) {
+            const searchTab = document.getElementById('image-studio-search');
+            const generateTab = document.getElementById('image-studio-generate');
+            const searchBtn = document.getElementById('tab-btn-search');
+            const generateBtn = document.getElementById('tab-btn-generate');
+            
+            if (tab === 'search') {
+                searchTab.classList.remove('hidden');
+                generateTab.classList.add('hidden');
+                searchBtn.className = "px-4 py-2 border-b-2 border-blue-500 text-sm font-semibold text-white";
+                generateBtn.className = "px-4 py-2 border-b-2 border-transparent text-sm font-semibold text-gray-400 hover:text-white";
+            } else {
+                searchTab.classList.add('hidden');
+                generateTab.classList.remove('hidden');
+                searchBtn.className = "px-4 py-2 border-b-2 border-transparent text-sm font-semibold text-gray-400 hover:text-white";
+                generateBtn.className = "px-4 py-2 border-b-2 border-blue-500 text-sm font-semibold text-white";
+            }
+        }
+
+        async function performStockSearch() {
+            const query = document.getElementById('stockSearchQuery').value.trim();
+            const provider = document.getElementById('stockSearchProvider').value;
+            if (!query) return alert('Please enter keywords to search.');
+            const container = document.getElementById('stockSearchResults');
+            container.innerHTML = '<div class="col-span-3 text-center text-slate-400 py-8"><i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i> Searching stock photos...</div>';
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/images/search`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ query, provider, per_page: 9 })
+                });
+                if (!res.ok) throw new Error('Search failed');
+                const data = await res.json();
+                const images = data.images || [];
+                if (images.length === 0) {
+                    container.innerHTML = '<div class="col-span-3 text-center text-slate-400 py-8">No results found. Try different keywords.</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                images.forEach((img) => {
+                    const card = document.createElement('div');
+                    card.className = 'panel rounded-lg p-2 border border-[#30363d] flex flex-col justify-between';
+                    
+                    // Safely stringify img object for custom button
+                    const serialized = JSON.stringify(img).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    
+                    card.innerHTML = `
+                        <img src="${img.thumb || img.url}" class="rounded w-full h-32 object-cover bg-slate-800">
+                        <div class="mt-2 text-[10px] text-slate-400 truncate">${escapeHtml(img.photographer || 'Stock Source')}</div>
+                        <button onclick="addCustomImageToCampaign(${serialized})" class="mt-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-1.5 rounded transition">
+                            <i class="fa-solid fa-plus mr-1"></i> Add to Campaign
+                        </button>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (e) {
+                container.innerHTML = `<div class="col-span-3 text-center text-red-400 py-8">Error: ${e.message}</div>`;
+            }
+        }
+
+        async function performAIGeneration() {
+            const prompt = document.getElementById('aiPromptInput').value.trim();
+            const negativePrompt = document.getElementById('aiNegativePrompt').value.trim();
+            const provider = document.getElementById('aiImageProvider').value;
+            if (!prompt) return alert('Please enter a description prompt.');
+            const container = document.getElementById('aiGenerationResults');
+            container.innerHTML = '<div class="col-span-2 text-center text-slate-400 py-8"><i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i> Generating AI image (might take 10-20 seconds)...</div>';
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/images/generate`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ prompt, negative_prompt: negativePrompt, provider, num_images: 2 })
+                });
+                if (!res.ok) throw new Error('Generation failed');
+                const data = await res.json();
+                const images = data.images || [];
+                if (images.length === 0) {
+                    container.innerHTML = '<div class="col-span-2 text-center text-slate-400 py-8">Failed to generate image.</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                images.forEach((img) => {
+                    const card = document.createElement('div');
+                    card.className = 'panel rounded-lg p-2 border border-[#30363d] flex flex-col justify-between';
+                    
+                    // Safely stringify img object for custom button
+                    const serialized = JSON.stringify(img).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    
+                    card.innerHTML = `
+                        <img src="${img.url}" class="rounded w-full h-40 object-cover bg-slate-800">
+                        <button onclick="addCustomImageToCampaign(${serialized})" class="mt-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-1.5 rounded transition">
+                            <i class="fa-solid fa-plus mr-1"></i> Add to Campaign
+                        </button>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (e) {
+                container.innerHTML = `<div class="col-span-2 text-center text-red-400 py-8">Error: ${e.message}</div>`;
+            }
+        }
+
+        async function addCustomImageToCampaign(imgObj) {
+            const campaignId = document.getElementById('creativeCampaignSelect').value;
+            if (!campaignId) return alert('Please select a campaign first.');
+            
+            const payload = {
+                id: imgObj.id || `custom-${Date.now()}`,
+                type: imgObj.type || 'generated',
+                url: imgObj.url || imgObj.thumb,
+                thumb: imgObj.thumb || imgObj.url,
+                source: imgObj.source || 'user upload',
+                alt: imgObj.alt || 'Custom added campaign image'
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/images`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Failed to add image to campaign');
+                await loadCreatives();
+                const toast = document.createElement('div');
+                toast.textContent = `✅ Image added to campaign!`;
+                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            } catch (e) {
+                alert(`Error: ${e.message}`);
+            }
+        }
+
+        async function deleteCampaignImage(imageId) {
+            const campaignId = document.getElementById('creativeCampaignSelect').value;
+            if (!campaignId) return;
+            if (!confirm('Are you sure you want to delete this image from the campaign?')) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/images/${encodeURIComponent(imageId)}`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+                if (!res.ok) throw new Error('Failed to delete image');
+                await loadCreatives();
+                const toast = document.createElement('div');
+                toast.textContent = `✅ Image removed from campaign!`;
+                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            } catch (e) {
+                alert(`Error: ${e.message}`);
             }
         }
 

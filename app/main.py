@@ -1353,6 +1353,46 @@ async def regenerate_campaign_images(campaign_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/campaigns/{campaign_id}/images")
+async def add_campaign_image(campaign_id: str, img: dict):
+    """Add a custom image to the campaign's creatives."""
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    data = campaigns[campaign_id]
+    state = data.get("state", {})
+    creatives = state.get("creative_assets", {}) or {}
+    if "images" not in creatives:
+        creatives["images"] = []
+    creatives["images"].append(img)
+    state["creative_assets"] = creatives
+    data["state"] = state
+    campaigns[campaign_id] = data
+    save_campaign_state(campaign_id, state, data.get("status"), data.get("client_id"))
+    return {"status": "success", "images": creatives["images"]}
+
+@app.delete("/api/campaigns/{campaign_id}/images/{image_id}")
+async def delete_campaign_image_endpoint(campaign_id: str, image_id: str):
+    """Delete a specific image from the campaign's creatives."""
+    if campaign_id not in campaigns:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    data = campaigns[campaign_id]
+    state = data.get("state", {})
+    creatives = state.get("creative_assets", {}) or {}
+    images = creatives.get("images", [])
+    
+    # Helper to check matching ID (supporting both dicts and plain string URLs)
+    def match_id(x):
+        if isinstance(x, dict):
+            return x.get("id") == image_id or x.get("url") == image_id
+        return x == image_id
+
+    creatives["images"] = [img for img in images if not match_id(img)]
+    state["creative_assets"] = creatives
+    data["state"] = state
+    campaigns[campaign_id] = data
+    save_campaign_state(campaign_id, state, data.get("status"), data.get("client_id"))
+    return {"status": "success", "images": creatives["images"]}
+
 # ================================================================
 # REPORT TEMPLATES ENDPOINTS
 # ================================================================
