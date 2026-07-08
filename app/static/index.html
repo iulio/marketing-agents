@@ -98,6 +98,10 @@
                         <select id="clientSelect" onchange="switchClient()" class="input rounded-lg px-3 py-2 text-sm">
                             <option value="">All Clients</option>
                         </select>
+                        <a href="/onboarding.html"
+                            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 inline-flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Onboarding Wizard
+                        </a>
                         <button onclick="openOnboardModal()"
                             class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
                             <i class="fa-solid fa-plus"></i> New Campaign
@@ -158,10 +162,16 @@
                         <h2 class="text-2xl font-semibold text-white">Campaigns</h2>
                         <p class="text-slate-400">Manage all campaigns.</p>
                     </div>
-                    <button onclick="openOnboardModal()"
-                        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
-                        <i class="fa-solid fa-plus"></i> New Campaign
-                    </button>
+                    <div class="flex gap-2">
+                        <a href="/onboarding.html"
+                            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 inline-flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Onboarding Wizard
+                        </a>
+                        <button onclick="openOnboardModal()"
+                            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
+                            <i class="fa-solid fa-plus"></i> New Campaign
+                        </button>
+                    </div>
                 </div>
                 <div class="panel rounded-xl p-5 overflow-x-auto">
                     <table class="min-w-full text-sm">
@@ -496,55 +506,103 @@
                 <button onclick="closeOnboardModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
             </div>
             <form id="onboardForm" onsubmit="submitOnboard(event)" class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-xs text-slate-400 block mb-1">Client Name</label><input type="text"
-                            id="clientName" class="input w-full rounded-md px-3 py-2 text-sm" value="Tech Startup">
-                    </div>
-                    <div><label class="text-xs text-slate-400 block mb-1">Website URL</label><input type="text"
-                            id="websiteUrl" class="input w-full rounded-md px-3 py-2 text-sm"
-                            value="https://example.com"></div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-rocket text-green-400"></i> Launch New Campaign</h2>
+                    <button type="button" onclick="closeOnboardModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
                 </div>
+
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">Client Profile</label>
+                    <select id="modalClientSelect" onchange="onModalClientSelectChange()" class="input w-full rounded-md px-3 py-2 text-sm">
+                        <option value="new" selected>+ Add New Client...</option>
+                    </select>
+                </div>
+
+                <div id="modalNewClientFields" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-xs text-slate-400 block mb-1">Client Name</label><input type="text"
+                                id="clientName" class="input w-full rounded-md px-3 py-2 text-sm" value="Tech Startup">
+                        </div>
+                        <div><label class="text-xs text-slate-400 block mb-1">Website URL</label><input type="text"
+                                id="websiteUrl" class="input w-full rounded-md px-3 py-2 text-sm"
+                                value="https://example.com"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-slate-400 block mb-1">Industry</label>
+                            <select id="modalClientIndustry" onchange="handleModalDropdownChange('modalClientIndustry', 'industry')" class="input w-full rounded-md px-3 py-2 text-sm">
+                                <option value="Tech & SaaS" selected>Tech & SaaS</option>
+                                <option value="Retail & E-commerce">Retail & E-commerce</option>
+                                <option value="Health & Wellness">Health & Wellness</option>
+                                <option value="Real Estate">Real Estate</option>
+                                <option value="Finance & Consulting">Finance & Consulting</option>
+                                <option value="custom">Other / Custom...</option>
+                            </select>
+                            <input type="text" id="industry" class="input w-full rounded-md px-3 py-2 text-sm mt-1.5 hidden" value="Tech & SaaS">
+                        </div>
+                        <div><!-- €1,245.00 --><label class="text-xs text-slate-400 block mb-1">Daily Budget (€)</label><input type="number" id="dailyBudget"
+                                class="input w-full rounded-md px-3 py-2 text-sm" value="150"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="flex items-center gap-1 mb-1">
+                                <label class="text-xs text-slate-400 block">Target Location</label>
+                                <button type="button" onclick="showLocationTutorial()"
+                                    class="text-blue-400 hover:text-blue-300 text-xs" title="Location targeting guide"><i
+                                        class="fa-regular fa-circle-question"></i></button>
+                            </div>
+                            <select id="modalTargetGeoSelect" onchange="handleModalDropdownChange('modalTargetGeoSelect', 'targetGeo')" class="input w-full rounded-md px-3 py-2 text-sm">
+                                <option value="Bucharest, Cluj-Napoca, Timisoara" selected>Romania (Bucharest, Cluj, Timisoara)</option>
+                                <option value="Constanta">Constanta</option>
+                                <option value="Germany">Germany</option>
+                                <option value="United Kingdom">United Kingdom</option>
+                                <option value="United States">United States</option>
+                                <option value="Worldwide">Worldwide</option>
+                                <option value="custom">Other / Custom...</option>
+                            </select>
+                            <input type="text" id="targetGeo" class="input w-full rounded-md px-3 py-2 text-sm mt-1.5 hidden"
+                                value="Bucharest, Cluj-Napoca, Timisoara">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 block mb-1">Tone of Voice</label>
+                            <select id="modalToneOfVoiceSelect" onchange="handleModalDropdownChange('modalToneOfVoiceSelect', 'toneOfVoice')" class="input w-full rounded-md px-3 py-2 text-sm">
+                                <option value="Professional" selected>Professional</option>
+                                <option value="Friendly">Friendly</option>
+                                <option value="Urgent">Urgent</option>
+                                <option value="Luxury">Luxury</option>
+                                <option value="custom">Other / Custom...</option>
+                            </select>
+                            <input type="text" id="toneOfVoice" class="input w-full rounded-md px-3 py-2 text-sm mt-1.5 hidden" value="Professional">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Cultural Triggers</label>
+                        <input type="text" id="culturalTriggers" class="input w-full rounded-md px-3 py-2 text-sm"
+                            value="Black Friday, Christmas, 1 Decembrie">
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs text-slate-400 block mb-1">Campaign Language</label>
-                        <select id="campaignLanguage" class="input w-full rounded-md px-3 py-2 text-sm">
-                            <option value="en-US">English (US)</option>
+                        <select id="campaignLanguage" onchange="handleModalLanguageChange()" class="input w-full rounded-md px-3 py-2 text-sm">
+                            <option value="en-US" selected>English (US)</option>
                             <option value="ro-RO">Romanian</option>
                             <option value="de-DE">German</option>
                             <option value="fr-FR">French</option>
+                            <option value="custom">Other / Custom...</option>
                         </select>
+                        <input type="text" id="campaignLanguageCustom" placeholder="Type custom language locale (e.g. es-ES)..."
+                            class="input w-full rounded-md px-3 py-2 text-sm mt-1.5 hidden">
                     </div>
-                    <div><label class="text-xs text-slate-400 block mb-1">Industry</label><input type="text"
-                            id="industry" class="input w-full rounded-md px-3 py-2 text-sm" value="Tech & SaaS"></div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><!-- €1,245.00 --><label class="text-xs text-slate-400 block mb-1">Daily Budget (€)</label><input type="number" id="dailyBudget"
-                            class="input w-full rounded-md px-3 py-2 text-sm" value="150"></div>
-                    <div>
-                        <div class="flex items-center gap-1 mb-1">
-                            <label class="text-xs text-slate-400 block">Target Location</label>
-                            <button type="button" onclick="showLocationTutorial()"
-                                class="text-blue-400 hover:text-blue-300 text-xs" title="Location targeting guide"><i
-                                    class="fa-regular fa-circle-question"></i></button>
-                        </div>
-                        <input type="text" id="targetGeo" class="input w-full rounded-md px-3 py-2 text-sm"
-                            value="Bucharest, Cluj, Timisoara">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-xs text-slate-400 block mb-1">Tone of Voice</label><input type="text"
-                            id="toneOfVoice" class="input w-full rounded-md px-3 py-2 text-sm" value="Professional">
-                    </div>
-                    <div><label class="text-xs text-slate-400 block mb-1">Cultural Triggers</label><input type="text"
-                            id="culturalTriggers" class="input w-full rounded-md px-3 py-2 text-sm"
-                            value="Black Friday, Christmas, 1 Decembrie"></div>
+                    <div><label class="text-xs text-slate-400 block mb-1">Product Keywords</label><input type="text"
+                            id="productKeywords" class="input w-full rounded-md px-3 py-2 text-sm"
+                            value="AI, automation, SaaS"></div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="text-xs text-slate-400 block mb-1">Special Events</label><input type="text"
                             id="specialEvents" class="input w-full rounded-md px-3 py-2 text-sm"></div>
-                    <div><label class="text-xs text-slate-400 block mb-1">Product Keywords</label><input type="text"
-                            id="productKeywords" class="input w-full rounded-md px-3 py-2 text-sm"
-                            value="AI, automation, SaaS"></div>
+                    <div><!-- Space for potential layout symmetry --></div>
                 </div>
                 <div class="grid grid-cols-3 gap-4">
                     <div><label class="text-xs text-slate-400 block mb-1">Start Date</label><input type="date"
@@ -1328,9 +1386,74 @@
             document.getElementById('locationTutorialModal').classList.add('hidden');
         }
 
+        function handleModalDropdownChange(selectId, inputId) {
+            const select = document.getElementById(selectId);
+            const input = document.getElementById(inputId);
+            if (select.value === 'custom') {
+                input.classList.remove('hidden');
+                input.value = '';
+                input.required = true;
+                input.focus();
+            } else {
+                input.classList.add('hidden');
+                input.value = select.value;
+                input.required = false;
+            }
+        }
+
+        function handleModalLanguageChange() {
+            const select = document.getElementById('campaignLanguage');
+            const customInput = document.getElementById('campaignLanguageCustom');
+            if (select.value === 'custom') {
+                customInput.classList.remove('hidden');
+                customInput.required = true;
+                customInput.focus();
+            } else {
+                customInput.classList.add('hidden');
+                customInput.required = false;
+            }
+        }
+
+        function populateModalClientDropdown() {
+            const select = document.getElementById('modalClientSelect');
+            select.innerHTML = '<option value="new" selected>+ Add New Client...</option>';
+            clientsList.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function onModalClientSelectChange() {
+            const val = document.getElementById('modalClientSelect').value;
+            const fields = document.getElementById('modalNewClientFields');
+            if (val === 'new') {
+                fields.classList.remove('hidden');
+                // Reset inputs to default values
+                document.getElementById('clientName').value = 'Tech Startup';
+                document.getElementById('websiteUrl').value = 'https://example.com';
+                document.getElementById('modalClientIndustry').value = 'Tech & SaaS';
+                document.getElementById('industry').value = 'Tech & SaaS';
+                document.getElementById('industry').classList.add('hidden');
+                document.getElementById('dailyBudget').value = '150';
+                document.getElementById('modalTargetGeoSelect').value = 'Bucharest, Cluj-Napoca, Timisoara';
+                document.getElementById('targetGeo').value = 'Bucharest, Cluj-Napoca, Timisoara';
+                document.getElementById('targetGeo').classList.add('hidden');
+                document.getElementById('modalToneOfVoiceSelect').value = 'Professional';
+                document.getElementById('toneOfVoice').value = 'Professional';
+                document.getElementById('toneOfVoice').classList.add('hidden');
+                document.getElementById('culturalTriggers').value = 'Black Friday, Christmas, 1 Decembrie';
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+
         function openOnboardModal() {
             document.getElementById('onboardModal').classList.remove('hidden');
             document.getElementById('onboardModal').classList.add('flex');
+            populateModalClientDropdown();
+            onModalClientSelectChange();
         }
         function closeOnboardModal() {
             document.getElementById('onboardModal').classList.add('hidden');
@@ -1338,10 +1461,18 @@
         }
         async function submitOnboard(event) {
             event.preventDefault();
+            
+            const clientSelectVal = document.getElementById('modalClientSelect').value;
+            let clientId = null;
+            
+            // Resolve language
+            const langSelect = document.getElementById('campaignLanguage');
+            const lang = langSelect.value === 'custom' ? document.getElementById('campaignLanguageCustom').value.trim() : langSelect.value;
+            
             const payload = {
                 client_name: document.getElementById('clientName').value,
                 website_url: document.getElementById('websiteUrl').value,
-                language: document.getElementById('campaignLanguage').value,
+                language: lang,
                 industry: document.getElementById('industry').value,
                 daily_budget: parseFloat(document.getElementById('dailyBudget').value),
                 target_geo: splitList(document.getElementById('targetGeo').value),
@@ -1355,10 +1486,48 @@
                 end_date: document.getElementById('campaignEndDate').value || null,
                 duration_days: document.getElementById('campaignDurationDays').value ? parseInt(document.getElementById('campaignDurationDays').value, 10) : null
             };
+
+            const btn = document.querySelector('#onboardForm button[type="submit"]');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Orchestrating...';
+            btn.disabled = true;
+
             try {
-                let url = `${API_BASE}/api/campaigns/onboard`;
-                if (currentClientId) url += `?client_id=${currentClientId}`;
-                const res = await fetch(url, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
+                if (clientSelectVal === 'new') {
+                    // Create new client first
+                    const clientPayload = {
+                        name: payload.client_name,
+                        industry: payload.industry,
+                        website: payload.website_url
+                    };
+                    const clientRes = await fetch(`${API_BASE}/api/clients`, {
+                        method: 'POST',
+                        headers: getHeaders(),
+                        body: JSON.stringify(clientPayload)
+                    });
+                    if (!clientRes.ok) throw new Error('Failed to create client');
+                    const clientData = await clientRes.json();
+                    clientId = clientData.client_id;
+                } else {
+                    clientId = clientSelectVal;
+                    // Prepopulate client details from the existing client list
+                    const client = clientsList.find(c => c.id === clientId);
+                    if (client) {
+                        payload.client_name = client.name;
+                        payload.website_url = client.website || payload.website_url;
+                        payload.industry = client.industry || payload.industry;
+                        payload.daily_budget = client.default_budget || payload.daily_budget;
+                        payload.target_geo = client.settings?.target_geo || payload.target_geo;
+                        payload.tone_of_voice = client.settings?.tone_of_voice || payload.tone_of_voice;
+                        payload.cultural_triggers = client.settings?.cultural_triggers || payload.cultural_triggers;
+                    }
+                }
+
+                let url = `${API_BASE}/api/campaigns/onboard?client_id=${clientId}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(payload)
+                });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     throw new Error(err.detail || 'Failed to create campaign');
@@ -1368,7 +1537,10 @@
                 await loadCampaigns();
                 viewCampaign(data.campaign_id);
             } catch (error) {
-                alert(error.message);
+                alert(`❌ Error: ${error.message}`);
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Start Orchestration';
+                btn.disabled = false;
             }
         }
 
