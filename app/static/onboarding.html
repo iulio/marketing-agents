@@ -156,16 +156,27 @@
         </div>
 
         <div id="step-4" class="step-content hidden-step">
-            <h2 class="text-xl font-bold mb-2">Step 4: Review & Launch</h2>
-            <p class="text-gray-400 text-sm mb-4">Review all information and create the client.</p>
-            <div id="reviewSummary" class="bg-[#0d1117] p-3 rounded-lg text-sm space-y-1">
-                <!-- Dynamically filled -->
+            <div id="reviewContent">
+                <h2 class="text-xl font-bold mb-2">Step 4: Review & Launch</h2>
+                <p class="text-gray-400 text-sm mb-4">Review all information and create the client.</p>
+                <div id="reviewSummary" class="bg-[#0d1117] p-3 rounded-lg text-sm space-y-1">
+                    <!-- Dynamically filled -->
+                </div>
+                <div class="flex justify-between mt-4">
+                    <button onclick="prevStep(3)" class="text-gray-400 hover:text-white text-sm">← Back</button>
+                    <button onclick="submitOnboarding()"
+                        class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">🚀 Launch
+                        Campaign</button>
+                </div>
             </div>
-            <div class="flex justify-between mt-4">
-                <button onclick="prevStep(3)" class="text-gray-400 hover:text-white text-sm">← Back</button>
-                <button onclick="submitOnboarding()"
-                    class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">🚀 Launch
-                    Campaign</button>
+            <!-- Premium Loading State -->
+            <div id="submitLoading" class="hidden flex flex-col items-center justify-center py-12 space-y-4">
+                <div class="relative w-16 h-16">
+                    <div class="absolute inset-0 rounded-full border-4 border-slate-700"></div>
+                    <div class="absolute inset-0 rounded-full border-4 border-t-emerald-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                </div>
+                <p class="text-lg font-semibold text-white animate-pulse" id="loadingText">Creating client profile...</p>
+                <p class="text-xs text-slate-400 text-center max-w-sm">Please wait while our marketing agents research keywords, write copy, and orchestrate the campaign assets.</p>
             </div>
             <div id="submitStatus" class="mt-2 text-sm"></div>
         </div>
@@ -275,10 +286,15 @@
         }
 
         async function submitOnboarding() {
+            const reviewContent = document.getElementById('reviewContent');
+            const submitLoading = document.getElementById('submitLoading');
+            const loadingText = document.getElementById('loadingText');
             const status = document.getElementById('submitStatus');
-            status.innerHTML = '<span class="text-yellow-400">⏳ Creating client...</span>';
-            const btn = document.querySelector('#step-4 button:last-child');
-            btn.disabled = true;
+
+            reviewContent.classList.add('hidden');
+            submitLoading.classList.remove('hidden');
+            status.innerHTML = '';
+            loadingText.textContent = 'Creating client profile...';
 
             try {
                 // 1. Create client
@@ -300,6 +316,7 @@
                 const creds = collectedData.credentials || {};
                 const hasCreds = Object.values(creds).some(v => v);
                 if (hasCreds) {
+                    loadingText.textContent = 'Configuring ad credentials...';
                     const credRes = await fetch(`${API_BASE}/api/clients/${clientId}/credentials`, {
                         method: 'POST',
                         headers: getHeaders(),
@@ -309,6 +326,7 @@
                 }
 
                 // 3. Create campaign
+                loadingText.textContent = 'Orchestrating agents & drafting creatives...';
                 let budget = collectedData.client.daily_budget || 50;
                 if (budget < 5) budget = 5;
 
@@ -339,16 +357,17 @@
                 }
                 const campData = await campRes.json();
 
-                status.innerHTML = `<span class="text-green-400">✅ Client created! Campaign ID: ${campData.campaign_id}</span>`;
-                btn.disabled = false;
+                loadingText.innerHTML = '🎉 Success! Campaign created.';
+                status.innerHTML = `<span class="text-green-400 block text-center mt-2 font-medium">✅ Client created! Campaign ID: ${campData.campaign_id}</span>`;
 
                 setTimeout(() => {
-                    window.location.href = '/';
-                }, 3000);
+                    window.location.href = `/?campaign_id=${campData.campaign_id}`;
+                }, 2000);
 
             } catch (e) {
                 status.innerHTML = `<span class="text-red-400">❌ Error: ${e.message}</span>`;
-                btn.disabled = false;
+                reviewContent.classList.remove('hidden');
+                submitLoading.classList.add('hidden');
             }
         }
 

@@ -1308,9 +1308,7 @@
                 const data = await res.json();
                 closeOnboardModal();
                 await loadCampaigns();
-                showSection('creatives');
-                document.getElementById('creativeCampaignSelect').value = data.campaign_id;
-                loadCreatives();
+                viewCampaign(data.campaign_id);
             } catch (error) {
                 alert(error.message);
             }
@@ -1739,7 +1737,13 @@
         showSection('dashboard');
         loadOverview();
         loadClients();
-        loadCampaigns();
+        loadCampaigns().then(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const campaignId = urlParams.get('campaign_id');
+            if (campaignId) {
+                viewCampaign(campaignId);
+            }
+        });
         loadSettings();
         loadLlmConfig();
     </script>
@@ -3274,11 +3278,9 @@
     }
 
     function viewCampaign(campaignId) {
-        document.querySelectorAll('#sidebarNav .nav-link').forEach(l => l.classList.remove('active'));
-        document.querySelector('#sidebarNav .nav-link[data-section="dashboard"]').classList.add('active');
-        document.querySelectorAll('[id^="section-"]').forEach(s => s.style.display = 'none');
-        document.getElementById('section-dashboard').style.display = 'block';
+        showSection('creatives');
         document.getElementById('creativeCampaignSelect').value = campaignId;
+        document.getElementById('creativeCampaignSelect2').value = campaignId;
         loadCreatives();
     }
 
@@ -3372,13 +3374,10 @@
                 throw new Error(detail);
             }
             const data = await res.json();
-            alert(`✅ Campaign ${data.campaign_id} created!\n${data.message}`);
             closeOnboardModal();
-            loadCampaigns();
-            setTimeout(() => {
-                document.getElementById('creativeCampaignSelect').value = data.campaign_id;
-                loadCreatives();
-            }, 1000);
+            loadCampaigns().then(() => {
+                viewCampaign(data.campaign_id);
+            });
         } catch (error) {
             alert(`❌ Error: ${error.message}`);
         } finally {
@@ -3609,7 +3608,13 @@
             return;
         }
         loadClients();
-        loadCampaigns();
+        loadCampaigns().then(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const campaignId = urlParams.get('campaign_id');
+            if (campaignId) {
+                viewCampaign(campaignId);
+            }
+        });
         checkPlatformStatus();
         setInterval(simulateAgentActivity, 5000);
         setInterval(loadCampaigns, 30000);
