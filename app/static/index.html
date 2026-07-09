@@ -458,13 +458,14 @@
                                 <th class="py-3 text-left">Budget</th>
                                 <th class="py-3 text-left">Duration</th>
                                 <th class="py-3 text-left">Verification</th>
+                                <th class="py-3 text-left">Budget Status</th>
                                 <th class="py-3 text-left">Status</th>
                                 <th class="py-3 text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="campaignTableBody">
                             <tr>
-                                <td colspan="7" class="py-4 text-slate-400">No campaigns yet.</td>
+                                <td colspan="9" class="py-4 text-slate-400">No campaigns yet.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -509,13 +510,14 @@
                                 <th class="py-3 text-left">Budget</th>
                                 <th class="py-3 text-left">Duration</th>
                                 <th class="py-3 text-left">Verification</th>
+                                <th class="py-3 text-left">Budget Status</th>
                                 <th class="py-3 text-left">Status</th>
                                 <th class="py-3 text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="campaignTableBody2">
                             <tr>
-                                <td colspan="7" class="text-center text-gray-400 py-4">No campaigns yet. Click "New
+                                <td colspan="9" class="text-center text-gray-400 py-4">No campaigns yet. Click "New
                                     Campaign" to start!
                                 </td>
                             </tr>
@@ -725,6 +727,20 @@
                             <canvas id="budgetChart"></canvas>
                         </div>
                         <div id="budgetChartLegend" class="text-xs text-slate-400 mt-3 text-center"></div>
+                    </div>
+                </div>
+
+                <!-- Performance Benchmarking -->
+                <div class="glass-card rounded-lg p-5 border border-[#30363d] mt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-chart-simple text-purple-400"></i> 
+                            Performance vs Industry Benchmark
+                        </h2>
+                        <span class="text-xs text-gray-400" id="benchmarkInfo">Select a campaign</span>
+                    </div>
+                    <div id="benchmarkContainer">
+                        <div class="text-gray-400 text-sm p-4">Select a campaign to see how it compares to industry benchmarks.</div>
                     </div>
                 </div>
 
@@ -1828,6 +1844,7 @@
                         <td class="py-3">${formatEuroPerDay(c.budget)}</td>
                         <td class="py-3">${escapeHtml(duration)}</td>
                         <td class="py-3 ${verification === 'Verified' ? 'badge-active' : 'badge-pending'}" title="${escapeHtml(verificationTitle)}">${escapeHtml(verification)}</td>
+                        <td class="py-3"><span class="budget-status text-xs" data-campaign="${escapeHtml(c.campaign_id)}"><span class="text-xs text-gray-500">...</span></span></td>
                         <td class="py-3 ${statusClass}">${escapeHtml((c.status || 'unknown').replace('_', ' '))}</td>
                         <td class="py-3">
                             <div class="flex gap-2">
@@ -1868,6 +1885,7 @@
                 renderCampaignTable('campaignTableBody2', campaigns);
                 updateDropdowns(campaigns);
                 document.getElementById('kpiCampaigns').textContent = campaigns.length;
+                setTimeout(loadAllBudgetStatuses, 500);
             } catch (error) {
                 console.error('Failed to load campaigns', error);
             }
@@ -2391,21 +2409,41 @@
                     const imageAlt = img.alt || 'Campaign image';
                     const imageSource = img.source || 'unknown source';
                     const imageType = img.type || 'image';
-                    const badgeLabel = imageType === 'generated' ? 'AI Generated' : imageType === 'stock' ? 'Stock Image' : 'Image';
+                    const isPlaceholder = imageUrl.includes('placeholder') || imageUrl.includes('via.placeholder');
+                    const badgeLabel = isPlaceholder ? 'Placeholder' : (imageType === 'generated' ? 'AI Generated' : imageType === 'stock' ? 'Stock Image' : 'Image');
                     const imageId = img.id || img.url || img || `image-${idx + 1}`;
+                    const fallbackUrl = 'https://via.placeholder.com/512x512/1f2937/ffffff?text=Error+Loading+Image';
                     container.innerHTML += `
                         <div class="panel rounded-lg p-2" style="max-width:200px">
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-[10px] text-slate-400">${badgeLabel}</span>
-                                <button onclick="deleteCampaignImage('${imageId}')" class="text-rose-400 hover:text-rose-300 text-[10px] transition" title="Delete Image"><i class="fa-regular fa-trash-can"></i></button>
+                                <span class="text-[10px] ${isPlaceholder ? 'text-yellow-400' : 'text-slate-400'}">${badgeLabel}</span>
+                                <div class="flex gap-1">
+                                    <button onclick="downloadImage('${imageUrl}', 'campaign_image_${idx + 1}.png')" class="text-blue-400 hover:text-blue-300 text-[10px] transition" title="Download"><i class="fa-regular fa-download"></i></button>
+                                    <button onclick="deleteCampaignImage('${imageId}')" class="text-rose-400 hover:text-rose-300 text-[10px] transition" title="Delete Image"><i class="fa-regular fa-trash-can"></i></button>
+                                </div>
                             </div>
-                            <img src="${imageUrl}" alt="${escapeHtml(imageAlt)}" class="rounded-md h-24 w-full object-cover bg-slate-800">
+                            <img src="${imageUrl}" alt="${escapeHtml(imageAlt)}" class="rounded-md h-24 w-full object-cover bg-slate-800" onerror="this.src='${fallbackUrl}'">
                             <p class="text-[9px] text-slate-400 mt-0.5">${escapeHtml(imageSource)}</p>
                         </div>`;
                 });
             }
         }
         function renderCreatives(containerId, creatives) { renderMockupCreatives(containerId, creatives); }
+
+        function downloadImage(url, filename) {
+            if (url.startsWith('data:image')) {
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                return;
+            }
+            fetch(url).then(r => r.blob()).then(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = filename;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            }).catch(() => showToast('Could not download image', 'error'));
+        }
 
         async function saveCreativeEdit(platform, index) {
             const campaignId = document.getElementById('creativeCampaignSelect').value;
@@ -2809,8 +2847,94 @@
             showToast(`${chartId}.png exported`);
         }
 
+        // ================================================================
+        // BENCHMARKING FUNCTIONS
+        // ================================================================
+
+        async function loadBenchmark(campaignId) {
+            const container = document.getElementById('benchmarkContainer');
+            const info = document.getElementById('benchmarkInfo');
+            if (!campaignId) {
+                container.innerHTML = '<div class="text-gray-400 text-sm p-4">Select a campaign to see how it compares to industry benchmarks.</div>';
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/benchmark`, { headers: getHeaders() });
+                if (!res.ok) throw new Error('Failed to load benchmark data');
+                const data = await res.json();
+                const comparison = data.comparison;
+                if (!comparison.available) {
+                    container.innerHTML = `<div class="text-yellow-400 text-sm p-4">${comparison.message || 'No benchmark data available'}</div>`;
+                    return;
+                }
+                info.textContent = `Industry: ${comparison.industry} | Source: ${comparison.benchmark.source || 'Industry average'}`;
+                const metrics = ['ctr', 'cpc', 'roas', 'conversion_rate'];
+                const labels = { 'ctr': 'CTR (%)', 'cpc': 'CPC (\u20AC)', 'roas': 'ROAS (x)', 'conversion_rate': 'Conversion Rate (%)' };
+                let html = '<div class="grid grid-cols-4 gap-4">';
+                for (const metric of metrics) {
+                    const comp = comparison.comparison[metric];
+                    const campaignVal = comp.value || 0;
+                    const benchmarkVal = comp.benchmark || 0;
+                    const status = comp.status || 'average';
+                    const badgeColor = status === 'excellent' ? 'bg-green-400/20 text-green-400' : status === 'good' ? 'bg-blue-400/20 text-blue-400' : 'bg-yellow-400/20 text-yellow-400';
+                    html += `
+                        <div class="bg-[#161b22] p-3 rounded-lg">
+                            <p class="text-xs text-gray-400">${labels[metric] || metric}</p>
+                            <div class="flex items-center justify-between mt-1">
+                                <div>
+                                    <span class="text-lg font-bold">${campaignVal.toFixed(2)}</span>
+                                    <span class="text-xs text-gray-500">vs ${benchmarkVal.toFixed(2)}</span>
+                                </div>
+                                <span class="${badgeColor} px-2 py-0.5 rounded-full text-xs capitalize">${status}</span>
+                            </div>
+                            ${comp.diff !== 0 ? `<p class="text-xs ${comp.diff > 0 ? (metric === 'cpc' ? 'text-red-400' : 'text-green-400') : (metric === 'cpc' ? 'text-green-400' : 'text-red-400')} mt-1">${comp.diff > 0 ? '+' : ''}${comp.diff.toFixed(2)} (${comp.percentage_diff.toFixed(1)}%)</p>` : ''}
+                        </div>`;
+                }
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load benchmark:', e);
+                container.innerHTML = `<div class="text-red-400 text-sm p-4">Error loading benchmark data: ${e.message}</div>`;
+            }
+        }
+
+        // ================================================================
+        // BUDGET STATUS FUNCTIONS
+        // ================================================================
+
+        async function loadBudgetStatus(campaignId) {
+            try {
+                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/budget-status`, { headers: getHeaders() });
+                if (!res.ok) throw new Error('Failed to load budget status');
+                const data = await res.json();
+                const elements = document.querySelectorAll(`.budget-status[data-campaign="${campaignId}"]`);
+                for (const el of elements) {
+                    if (data.status === 'critical') {
+                        el.innerHTML = `<span class="text-red-400">\uD83D\uDD34 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
+                    } else if (data.status === 'warning') {
+                        el.innerHTML = `<span class="text-yellow-400">\uD83D\uDFE1 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
+                    } else if (data.status === 'no_budget') {
+                        el.innerHTML = `<span class="text-gray-500">\u2014</span>`;
+                    } else {
+                        el.innerHTML = `<span class="text-green-400">\uD83D\uDFE2 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load budget status:', e);
+            }
+        }
+
+        async function loadAllBudgetStatuses() {
+            const elements = document.querySelectorAll('.budget-status');
+            for (const el of elements) {
+                const campaignId = el.dataset.campaign;
+                if (campaignId) await loadBudgetStatus(campaignId);
+            }
+        }
+
         async function loadAnalytics() {
             const campaignId = document.getElementById('analystCampaignSelect').value;
+            loadBenchmark(campaignId);
             if (!campaignId) {
                 document.getElementById('analyticsResults').innerHTML = 'Select a campaign to analyze.';
                 return;
@@ -3249,6 +3373,7 @@
             if (campaignId) {
                 viewCampaign(campaignId);
             }
+            setTimeout(loadAllBudgetStatuses, 2000);
         });
         loadSettings();
         loadLlmConfig();
@@ -3307,6 +3432,43 @@
                 }
             }
         });
+
+        // ================================================================
+        // TOKEN EXPIRY WATCHER — redirect 20s before expiry
+        // ================================================================
+        function tokenExpirySeconds() {
+            const stored = localStorage.getItem('expires_at');
+            if (stored) {
+                const exp = parseInt(stored, 10);
+                if (isNaN(exp)) return -1;
+                return exp - Math.floor(Date.now() / 1000);
+            }
+            const token = localStorage.getItem('token');
+            if (!token) return -1;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.exp) {
+                    localStorage.setItem('expires_at', String(payload.exp));
+                    return payload.exp - Math.floor(Date.now() / 1000);
+                }
+            } catch (_) {}
+            return -1;
+        }
+
+        function checkTokenExpiry() {
+            const remaining = tokenExpirySeconds();
+            if (remaining <= 20) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('expires_at');
+                localStorage.removeItem('user');
+                window.location.href = '/login.html';
+            }
+        }
+
+        (function initExpiryWatcher() {
+            tokenExpirySeconds();
+            setInterval(checkTokenExpiry, 10000);
+        })();
     </script>
 </body>
 

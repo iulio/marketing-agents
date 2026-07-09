@@ -569,6 +569,36 @@
             }
         }
 
+        // Token expiry watcher — redirect 20s before expiry
+        function tokenExpirySeconds() {
+            const stored = localStorage.getItem('expires_at');
+            if (stored) {
+                const exp = parseInt(stored, 10);
+                if (isNaN(exp)) return -1;
+                return exp - Math.floor(Date.now() / 1000);
+            }
+            const token = localStorage.getItem('token');
+            if (!token) return -1;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.exp) {
+                    localStorage.setItem('expires_at', String(payload.exp));
+                    return payload.exp - Math.floor(Date.now() / 1000);
+                }
+            } catch (_) {}
+            return -1;
+        }
+        function checkTokenExpiry() {
+            const remaining = tokenExpirySeconds();
+            if (remaining <= 20) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('expires_at');
+                localStorage.removeItem('user');
+                window.location.href = '/login.html';
+            }
+        }
+        (function initExpiryWatcher() { tokenExpirySeconds(); setInterval(checkTokenExpiry, 10000); })();
+
         // Auto-login check & dynamic client loading
         document.addEventListener('DOMContentLoaded', function () {
             if (!getToken()) {

@@ -112,6 +112,18 @@ def notify_campaign_approved(
     })
 
 
+def send_budget_alert(campaign_name: str, message: str, severity: str = "warning"):
+    emoji = "🟡" if severity == "warning" else "🔴" if severity == "critical" else "🔵"
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": f"{emoji} *Budget Alert: {campaign_name}*"}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": message}}
+    ]
+    _post({
+        "text": f"Budget alert for {campaign_name}",
+        "blocks": blocks
+    })
+
+
 def notify_performance_alert(
     campaign_name: str,
     metric: str,

@@ -38,6 +38,9 @@ from .ab_testing import ABTestingEngine
 from .storage import create_onboarding_session, save_onboarding_session, get_latest_onboarding_session, get_onboarding_session, update_onboarding_status, delete_onboarding_session
 from .storage import create_report_schedule, get_report_schedules, get_report_schedule, delete_report_schedule
 from .image_service import StockImageSearch, AIImageGenerator, SmartImageSelector
+from .benchmarks import compare_campaign_to_benchmark, get_benchmarks_for_industry, load_benchmarks
+from .budget_monitor import check_budget_alerts
+from .notifications import send_budget_alert
 
 from .kpi_fetcher import KPIFetcher
 from pydantic import BaseModel, EmailStr
@@ -93,9 +96,36 @@ async def lifespan(app: FastAPI):
     # Start the background report scheduler
     scheduler_task = asyncio.create_task(scheduler_loop(interval_seconds=300))
     print("[Startup] Report scheduler started (interval=300s)")
-    
+
+    # Start background budget monitor loop
+    async def budget_monitor_loop():
+        while True:
+            await asyncio.sleep(900)
+            try:
+                for cid, data in campaigns.items():
+                    if data.get("status") == "active":
+                        state = data.get("state", {})
+                        client = state.get("client_profile", {})
+                        daily_budget = float(client.get("daily_budget", 0) or 0)
+                        campaign_name = client.get("client_name", "Unknown")
+                        kpis = kpi_store.get(cid, {})
+                        spend = float(kpis.get("cost", 0) or 0)
+                        alert_data = check_budget_alerts(cid, spend, daily_budget, campaign_name, client.get("client_name", "Unknown"))
+                        for alert in alert_data.get("alerts", []):
+                            if alert.get("severity") in ["critical", "warning"]:
+                                send_budget_alert(campaign_name, alert["message"], alert.get("severity"))
+                        if alert_data.get("status") == "critical":
+                            print(f"[Budget Monitor] Auto-pausing campaign {cid}")
+                            data["status"] = "paused"
+            except Exception as e:
+                print(f"[Budget Monitor] Error: {e}")
+
+    budget_task = asyncio.create_task(budget_monitor_loop())
+    print("[Startup] Budget monitor started (interval=900s)")
+
     yield
-    
+
+    budget_task.cancel()
     scheduler_task.cancel()
     
     print("[Shutdown] Shutting down...")
@@ -302,8 +332,12 @@ async def login(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = generate_token(user['id'], user['email'], user['role'], user.get('client_id'))
+    from .auth import verify_token
+    payload = verify_token(token)
+    expires_at = payload.get("exp", 0) if payload else 0
     return {
         "token": token,
+        "expires_at": expires_at,
         "user": {
             "id": user['id'],
             "email": user['email'],
@@ -1254,6 +1288,56 @@ async def get_all_analytics():
         "campaigns": all_campaigns,
         "aggregated": aggregated
     }
+
+# ================================================================
+# BENCHMARK ENDPOINTS
+# ================================================================
+
+@app.get("/api/campaigns/{campaign_id}/benchmark")
+async def get_benchmark(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(404, "Campaign not found")
+    state = campaigns[campaign_id].get("state", {})
+    client = state.get("client_profile", {})
+    industry = client.get("industry", "general")
+    kpis = kpi_store.get(campaign_id, {})
+    comparison = compare_campaign_to_benchmark(kpis, industry)
+    return {"campaign_id": campaign_id, "industry": industry, "comparison": comparison}
+
+@app.get("/api/benchmarks/industries")
+async def list_benchmark_industries():
+    benchmarks = load_benchmarks()
+    return {"industries": list(benchmarks.keys())}
+
+@app.get("/api/benchmarks/{industry}")
+async def get_industry_benchmark(industry: str):
+    benchmark = get_benchmarks_for_industry(industry)
+    if not benchmark:
+        raise HTTPException(404, f"Benchmark data not found for industry: {industry}")
+    return benchmark
+
+# ================================================================
+# BUDGET STATUS ENDPOINT
+# ================================================================
+
+@app.get("/api/campaigns/{campaign_id}/budget-status")
+async def get_budget_status(campaign_id: str):
+    if campaign_id not in campaigns:
+        raise HTTPException(404, "Campaign not found")
+    data = campaigns[campaign_id]
+    state = data.get("state", {})
+    client = state.get("client_profile", {})
+    daily_budget = float(client.get("daily_budget", 0) or 0)
+    campaign_name = client.get("client_name", "Unknown")
+    kpis = kpi_store.get(campaign_id, {})
+    spend = float(kpis.get("cost", 0) or 0)
+    alert_data = check_budget_alerts(campaign_id, spend, daily_budget, campaign_name, client.get("client_name", "Unknown"))
+    for alert in alert_data.get("alerts", []):
+        if alert.get("severity") in ["critical", "warning"]:
+            send_budget_alert(campaign_name, alert["message"], alert.get("severity"))
+    if alert_data.get("status") == "critical":
+        data["status"] = "paused"
+    return {"campaign_id": campaign_id, "campaign_name": campaign_name, "daily_budget": daily_budget, "spent_today": spend, **alert_data}
 
 # ================================================================
 # SCHEDULING ENDPOINTS
