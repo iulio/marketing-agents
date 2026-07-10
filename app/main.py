@@ -356,7 +356,7 @@ VALID_CLIENT_STATUSES = {status.value for status in ClientStatus}
 # CLIENT MANAGEMENT ENDPOINTS
 # ================================================================
 @app.post("/api/clients")
-@require_role(["admin"])
+@require_role(["admin", "client_manager"])
 async def create_new_client(request: Request, client_data: ClientCreate):
     client_data_dict = client_data.model_dump()
     if not str(client_data_dict.get("name", "")).strip():
