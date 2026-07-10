@@ -12,7 +12,7 @@
     </div>
 </div>
 <script>
-    fetch('/api/admin/analytics', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } })
+    fetch('/api/admin/analytics', { headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('token') } })
         .then(res => res.json())
         .then(data => {
             document.getElementById('totalClients').textContent = data.total_clients;
