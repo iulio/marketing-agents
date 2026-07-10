@@ -383,9 +383,9 @@
                 <a href="/reports.html" class="nav-link rounded-lg px-3 py-2 text-left flex items-center gap-2"><i class="fa-solid fa-calendar-check text-blue-400 text-xs"></i>Reports</a>
             </nav>
             <div class="mt-auto flex flex-col items-center space-y-4">
-                <a href="#" title="Help" class="text-gray-600 hover:text-white text-xl">
+                <button onclick="openHelpModal(event)" title="Help" class="text-gray-400 hover:text-white text-xl transition">
                     <i class="fa-regular fa-circle-question"></i>
-                </a>
+                </button>
                 <button onclick="logout()" title="Logout" class="text-gray-400 hover:text-white text-xl transition">
                     <i class="fa-solid fa-right-from-bracket"></i>
                 </button>
@@ -711,7 +711,43 @@
                     </div>
                 </div>
 
-                <!-- Charts Row -->
+                <!-- Help Modal -->
+                <div id="helpModal" class="fixed inset-0 hidden items-center justify-center modal-backdrop z-50">
+                    <div class="glass-card rounded-2xl w-full max-w-2xl border p-6 text-white shadow-2xl relative">
+                        <button onclick="closeHelpModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="bg-blue-600/20 p-2 rounded-lg text-blue-400">
+                                <i class="fa-solid fa-book-open text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold">How to use Agentic Marketing</h2>
+                        </div>
+                        <div class="space-y-5 text-sm text-slate-300">
+                            <div>
+                                <h3 class="text-base font-semibold text-white mb-1"><i class="fa-solid fa-rocket text-emerald-400 mr-2"></i>1. Create a Campaign</h3>
+                                <p>Go to the <strong>Dashboard</strong> or <strong>Campaigns</strong> tab and click "Add Campaign". Select an existing client or create a new one. The AI agent will immediately start orchestrating the campaign (market research, copy generation, and platform deployment).</p>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-semibold text-white mb-1"><i class="fa-solid fa-users text-blue-400 mr-2"></i>2. Manage Clients</h3>
+                                <p>In the <strong>Clients</strong> tab, you can view your active roster. Each client stores global preferences like Tone of Voice, target geos, and budgets that campaigns inherit automatically.</p>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-semibold text-white mb-1"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>3. Review Creatives</h3>
+                                <p>Check the <strong>Creatives</strong> tab to review AI-generated ad copy and visual concepts. You can also view these within each specific campaign's details page.</p>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-semibold text-white mb-1"><i class="fa-solid fa-gears text-purple-400 mr-2"></i>4. Set Global Settings</h3>
+                                <p>Ensure your ad platform credentials (Google Ads, Meta) are configured in the <strong>Settings</strong> tab so the AI agent can successfully push campaigns to production.</p>
+                            </div>
+                        </div>
+                        <div class="mt-8 flex justify-end">
+                            <button onclick="closeHelpModal()" class="bg-[#238636] hover:bg-[#2ea043] text-white px-6 py-2 rounded-md transition font-medium">Got it</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onboard Modal -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <!-- Performance Over Time Chart -->
                     <div class="panel rounded-xl p-5 lg:col-span-2">
@@ -2183,6 +2219,16 @@
             } else {
                 fields.classList.add('hidden');
             }
+        }
+
+        function openHelpModal(e) {
+            if (e) e.preventDefault();
+            document.getElementById('helpModal').classList.remove('hidden');
+            document.getElementById('helpModal').classList.add('flex');
+        }
+        function closeHelpModal() {
+            document.getElementById('helpModal').classList.add('hidden');
+            document.getElementById('helpModal').classList.remove('flex');
         }
 
         function openOnboardModal() {
