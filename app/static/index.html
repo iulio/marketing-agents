@@ -1646,6 +1646,7 @@
         let currentClientId = null;
         let currentCreativeCampaignId = null;
         let auditLogEntries = [];
+        let clientsList = [];
         let performanceChartInstance = null;
         let budgetChartInstance = null;
         let abTestChartInstance = null;
@@ -1783,6 +1784,7 @@
                     fetch(`${API_BASE}/api/admin/analytics`, { headers: getHeaders() })
                 ]);
                 const clientsData = clientsRes.ok ? await clientsRes.json() : { clients: [] };
+                clientsList = clientsData.clients || [];
                 const campaignsData = campaignsRes.ok ? await campaignsRes.json() : { campaigns: [] };
                 const analyticsData = analyticsRes.ok ? await analyticsRes.json() : {};
                 const campaigns = campaignsData.campaigns || campaignsData || [];
@@ -2231,7 +2233,8 @@
                     const clientPayload = {
                         name: payload.client_name,
                         industry: payload.industry,
-                        website: payload.website_url
+                        website: payload.website_url,
+                        platform_status: 'active'
                     };
                     const clientRes = await fetch(`${API_BASE}/api/clients`, {
                         method: 'POST',
