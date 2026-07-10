@@ -499,6 +499,7 @@
                         name: collectedData.client.name,
                         industry: collectedData.client.industry,
                         website: collectedData.client.website,
+                        platform_status: 'active'
                     };
                     const clientRes = await fetch(`${API_BASE}/api/clients`, {
                         method: 'POST',
