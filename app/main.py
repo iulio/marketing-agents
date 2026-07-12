@@ -1,10 +1,12 @@
 # app/main.py - MAIN APPLICATION
 # Triggering a new build
 import asyncio
+import json
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request , Query, Response, Depends
+from fastapi import FastAPI, HTTPException, Request , Query, Response, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
@@ -12,6 +14,7 @@ from typing import Dict, Any, Optional
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
+from google_auth_oauthlib.flow import Flow
 from .models import OnboardRequest, CampaignResponse, ClientCreate, ClientStatus, ClientUpdate, ClientStatusUpdate, ReportScheduleIn
 from .agents import graph, AgencyState
 from .storage import save_campaign_state, get_all_campaigns, get_client, get_client_campaigns, delete_client, delete_campaign
@@ -778,6 +781,40 @@ async def cancel_onboarding(request: Request, payload: dict):
         raise HTTPException(status_code=404, detail="Onboarding session not found")
     return {"message": "Onboarding cancelled"}
 
+# ================================================================
+# OAUTH 2.0 AUTHENTICATION FLOWS
+# ================================================================
+
+@app.get("/api/auth/google/start")
+@require_role(["admin"])
+async def auth_google_start(request: Request, session_id: str = Query(...)):
+    """
+    Starts the Google OAuth 2.0 flow by redirecting the user to Google's consent screen.
+    """
+    creds = load_global_ad_credentials(mask_secrets=False)
+    google_client_id = creds.get("google_ads_client_id")
+    google_client_secret = creds.get("google_ads_client_secret")
+
+    if not google_client_id or not google_client_secret:
+        raise HTTPException(status_code=500, detail="Google OAuth credentials are not configured on the server.")
+
+    # The redirect_uri must be registered in your Google Cloud project
+    redirect_uri = f"{request.base_url}api/auth/google/callback"
+
+    flow = Flow.from_client_config(
+        client_config={
+            "web": {
+                "client_id": google_client_id,
+                "client_secret": google_client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        },
+        scopes=["https://www.googleapis.com/auth/adwords"],
+        redirect_uri=redirect_uri
+    )
+    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', state=session_id)
+    return RedirectResponse(authorization_url)
 
 # ================================================================
 # CAMPAIGN ENDPOINTS

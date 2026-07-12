@@ -75,14 +75,9 @@ async function handleClientProfileSubmit(event) {
 }
 
 function connectGoogle() {
-    // Placeholder for OAuth flow
-    alert('Connecting to Google... (OAuth flow to be implemented)');
-    // On success:
-    document.getElementById('google-status').textContent = 'Connected';
-    document.getElementById('google-connect-btn').textContent = 'Connected';
-    document.getElementById('google-connect-btn').disabled = true;
-    clientData.google_connected = true;
-    saveStepData(2, { google_connected: true });
+    if (!onboardingSessionId) return alert('Onboarding session not found. Please refresh.');
+    // Redirect to the backend to start the OAuth flow
+    window.location.href = `/api/auth/google/start?session_id=${onboardingSessionId}`;
 }
 
 function connectMeta() {
