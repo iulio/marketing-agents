@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 try:
     from google.ads.googleads.client import GoogleAdsClient
+    from google.ads.googleads.errors import GoogleAdsException
     GOOGLE_ADS_AVAILABLE = True
 except ImportError:
     GOOGLE_ADS_AVAILABLE = False
@@ -15,19 +16,21 @@ except ImportError:
 class GoogleAdsAPI:
     """Real Google Ads API integration with fallback to simulation"""
     
-    def __init__(self):
+    def __init__(self, credentials: Optional[Dict[str, Any]] = None):
         self.client = None
-        self.customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID", "")
-        self._init_client()
+        self.credentials = credentials or {}
+        self.customer_id = self.credentials.get("google_ads_customer_id") or os.getenv("GOOGLE_ADS_CUSTOMER_ID", "")
+        self._init_client(self.credentials)
     
-    def _init_client(self):
+    def _init_client(self, credentials: Optional[Dict[str, Any]] = None):
         """Initialize Google Ads client from environment or credentials file."""
         if not GOOGLE_ADS_AVAILABLE:
             print("[GoogleAds] ⚠️  google-ads library not installed")
             return
         
         try:
-            # Try environment variables first
+            # Try passed credentials first, then environment variables
+            creds_to_use = credentials or {}
             if all([os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN"),
                    os.getenv("GOOGLE_ADS_CLIENT_ID"),
                    os.getenv("GOOGLE_ADS_REFRESH_TOKEN")]):
@@ -35,6 +38,23 @@ class GoogleAdsAPI:
                 print("[GoogleAds] ✅ Client initialized from environment variables")
                 return
             
+            if all([creds_to_use.get("google_ads_developer_token"),
+                    creds_to_use.get("google_ads_client_id"),
+                    creds_to_use.get("google_ads_client_secret"),
+                    creds_to_use.get("google_ads_refresh_token")]):
+                
+                config = {
+                    "developer_token": creds_to_use["google_ads_developer_token"],
+                    "client_id": creds_to_use["google_ads_client_id"],
+                    "client_secret": creds_to_use["google_ads_client_secret"],
+                    "refresh_token": creds_to_use["google_ads_refresh_token"],
+                    "login_customer_id": creds_to_use.get("google_ads_customer_id", "").replace("-", ""),
+                    "use_proto_plus": True
+                }
+                self.client = GoogleAdsClient.load_from_dict(config)
+                print("[GoogleAds] ✅ Client initialized from provided credentials")
+                return
+
             # Try credentials file
             cred_path = os.path.join(os.path.dirname(__file__), "credentials", "google-ads.yaml")
             if os.path.exists(cred_path):
@@ -49,6 +69,34 @@ class GoogleAdsAPI:
     def is_available(self) -> bool:
         """Check if real API is available."""
         return self.client is not None and GOOGLE_ADS_AVAILABLE
+
+    def test_credentials(self) -> Dict[str, Any]:
+        """Test credentials by fetching a single campaign to verify connectivity."""
+        if not self.is_available():
+            return {"status": "error", "message": "Google Ads library not installed or client not initialized."}
+        
+        if not self.customer_id:
+            return {"status": "error", "message": "Google Ads Customer ID is not configured."}
+
+        try:
+            ga_service = self.client.get_service("GoogleAdsService")
+            query = """
+                SELECT campaign.id, campaign.name FROM campaign
+                WHERE campaign.status != 'REMOVED'
+                ORDER BY campaign.id
+                LIMIT 1
+            """
+            response_stream = ga_service.search_stream(customer_id=self.customer_id.replace("-", ""), query=query)
+            
+            # Iterating through the stream is what actually makes the API call
+            for batch in response_stream:
+                # If we get here, even with no results, the call was successful.
+                pass
+            return {"status": "success", "message": "Successfully connected to Google Ads."}
+        except GoogleAdsException as ex:
+            return {"status": "error", "message": f"Google Ads API Error: {ex.error.code().name}"}
+        except Exception as e:
+            return {"status": "error", "message": f"An unexpected error occurred: {str(e)}"}
     
     def create_campaign(self, campaign_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a campaign (real or simulated)."""

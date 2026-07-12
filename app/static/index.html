@@ -7,354 +7,10 @@
     <title>Marketing Agency Dashboard</title>
     <link rel="icon" type="image/png" href="/logo.png">
     <link rel="shortcut icon" type="image/png" href="/logo.png">
+    <link rel="stylesheet" href="/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <style>
-        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; align-items: flex-end; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        :root {
-            --prussian: #1d3557;
-            --prussian-mid: #1d3557;
-            --prussian-light: #253e63;
-            --prussian-dark: #0f1d2e;
-            --honeydew: #f1faee;
-            --nonphoto: #a8dadc;
-            --celadon: #457b9d;
-            --imperial: #e63946;
-        }
-
-        body {
-            background-color: var(--prussian) !important;
-            color: var(--honeydew) !important;
-            font-family: Inter, Arial, sans-serif;
-        }
-
-        /* Panels and Cards */
-        .panel, .glass-card, [class*="glass-card"], .bg-slate-900, [class*="bg-[#111827]"], [class*="bg-[#161b22]"] {
-            background: var(--prussian-mid) !important;
-            border-color: var(--celadon) !important;
-        }
-
-        /* Inputs and Selects */
-        .input, input, select, textarea, [class*="bg-[#0d1117]"], [class*="bg-[#0b1220]"] {
-            background-color: var(--prussian-dark) !important;
-            border-color: var(--celadon) !important;
-            color: var(--honeydew) !important;
-        }
-        .input:focus, input:focus, select:focus, textarea:focus {
-            border-color: var(--nonphoto) !important;
-            outline: none !important;
-        }
-
-        /* Buttons & Badges */
-        .bg-blue-600, [class*="bg-blue-600"], .bg-emerald-600, [class*="bg-emerald-600"], [class*="bg-[#238636]"], button[onclick*="runAnalysisView"], button[onclick*="runOptimizationView"] {
-            background-color: var(--celadon) !important;
-            color: var(--honeydew) !important;
-        }
-        .hover\:bg-blue-500:hover, [class*="hover:bg-blue-500"]:hover, .hover\:bg-emerald-500:hover, [class*="hover:bg-emerald-500"]:hover, [class*="hover:bg-[#2ea043]"]:hover, button[onclick*="runAnalysisView"]:hover, button[onclick*="runOptimizationView"]:hover {
-            background-color: var(--nonphoto) !important;
-            color: var(--prussian) !important;
-        }
-        
-        .bg-indigo-600, [class*="bg-indigo-600"], [class*="bg-[#e63946]"], .bg-red-700, button[type="submit"] {
-            background-color: var(--imperial) !important;
-            color: var(--honeydew) !important;
-        }
-        .hover\:bg-indigo-500:hover, [class*="hover:bg-indigo-500"]:hover, .hover\:bg-red-600:hover, button[type="submit"]:hover {
-            background-color: var(--honeydew) !important;
-            color: var(--imperial) !important;
-        }
-
-        /* Text and labels contrast */
-        .text-slate-400, .text-gray-400, .text-slate-300, .text-gray-300 {
-            color: var(--nonphoto) !important;
-        }
-        .text-white {
-            color: var(--honeydew) !important;
-        }
-
-        /* Borders */
-        .border-slate-800, [class*="border-[#30363d]"], [class*="border-[#2d333b]"], .border-b {
-            border-color: var(--celadon) !important;
-        }
-
-        /* Navigation Links */
-        .nav-link.active {
-            background-color: var(--celadon) !important;
-            color: var(--honeydew) !important;
-        }
-        .nav-link:hover {
-            background-color: var(--prussian-light) !important;
-        }
-
-        .modal-backdrop {
-            background: rgba(29, 53, 87, 0.85);
-        }
-
-        .badge-active {
-            color: #86efac;
-        }
-
-        .badge-pending {
-            color: #fde68a;
-        }
-
-        .badge-inactive {
-            color: #fca5a5;
-        }
-
-        .creative-card {
-            min-width: 240px;
-        }
-
-        /* ===== MOCKUP PREVIEWER STYLES ===== */
-        .mockup-google-ad {
-            background: var(--prussian-mid);
-            border: 1px solid var(--celadon);
-            border-radius: 12px;
-            padding: 16px;
-            max-width: 480px;
-            transition: box-shadow 0.3s ease;
-        }
-        .mockup-google-ad:hover {
-            box-shadow: 0 0 20px rgba(69, 123, 157, 0.25);
-        }
-        .mockup-google-ad .ad-label {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--prussian);
-            background: var(--nonphoto);
-            padding: 1px 6px;
-            border-radius: 3px;
-            display: inline-block;
-            margin-bottom: 6px;
-        }
-        .mockup-google-ad .ad-url {
-            font-size: 12px;
-            color: var(--nonphoto);
-            margin-bottom: 2px;
-        }
-        .mockup-google-ad .ad-headline {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--celadon);
-            cursor: text;
-            border-bottom: 1px dashed transparent;
-            transition: border-color 0.2s;
-            line-height: 1.4;
-        }
-        .mockup-google-ad .ad-headline:hover, .mockup-google-ad .ad-headline:focus {
-            border-bottom-color: var(--nonphoto);
-            outline: none;
-        }
-        .mockup-google-ad .ad-description {
-            font-size: 13px;
-            color: var(--honeydew);
-            margin-top: 4px;
-            cursor: text;
-            border-bottom: 1px dashed transparent;
-            transition: border-color 0.2s;
-            opacity: 0.85;
-        }
-        .mockup-google-ad .ad-description:hover, .mockup-google-ad .ad-description:focus {
-            border-bottom-color: var(--nonphoto);
-            outline: none;
-        }
-
-        .mockup-meta-ad {
-            background: var(--prussian-mid);
-            border: 1px solid var(--celadon);
-            border-radius: 12px;
-            overflow: hidden;
-            max-width: 400px;
-            transition: box-shadow 0.3s ease;
-        }
-        .mockup-meta-ad:hover {
-            box-shadow: 0 0 20px rgba(69, 123, 157, 0.25);
-        }
-        .mockup-meta-ad .meta-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 16px;
-        }
-        .mockup-meta-ad .meta-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--celadon);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 14px;
-            color: var(--honeydew);
-        }
-        .mockup-meta-ad .meta-body {
-            padding: 0 16px 12px;
-        }
-        .mockup-meta-ad .meta-text {
-            font-size: 14px;
-            color: var(--honeydew);
-            cursor: text;
-            border-bottom: 1px dashed transparent;
-            transition: border-color 0.2s;
-        }
-        .mockup-meta-ad .meta-text:hover, .mockup-meta-ad .meta-text:focus {
-            border-bottom-color: var(--nonphoto);
-            outline: none;
-        }
-        .mockup-meta-ad .meta-cta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 16px;
-            border-top: 1px solid var(--celadon);
-        }
-        .mockup-meta-ad .meta-cta-btn {
-            background: var(--celadon);
-            color: var(--honeydew);
-            font-size: 12px;
-            font-weight: 600;
-            padding: 6px 16px;
-            border-radius: 6px;
-            border: none;
-            cursor: default;
-        }
-
-        /* ===== A/B TEST SIMULATOR ===== */
-        .ab-variant-card {
-            background: var(--prussian-mid);
-            border: 2px solid var(--celadon);
-            border-radius: 12px;
-            padding: 20px;
-            flex: 1;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        .ab-variant-card.winner {
-            border-color: #86efac;
-            box-shadow: 0 0 30px rgba(134, 239, 172, 0.15);
-        }
-        .ab-variant-card .winner-badge {
-            position: absolute;
-            top: -10px;
-            right: 12px;
-            background: #22c55e;
-            color: #fff;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 20px;
-        }
-        .confidence-bar-track {
-            background: var(--prussian-dark);
-            border-radius: 8px;
-            height: 10px;
-            overflow: hidden;
-        }
-        .confidence-bar-fill {
-            height: 100%;
-            border-radius: 8px;
-            transition: width 1.5s ease;
-        }
-        .ab-metric {
-            text-align: center;
-        }
-        .ab-metric .value {
-            font-size: 20px;
-            font-weight: 700;
-        }
-        .ab-metric .label {
-            font-size: 11px;
-            color: var(--nonphoto);
-            margin-top: 2px;
-        }
-
-        /* ===== ANALYTICS CHARTS ===== */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-height: 300px;
-        }
-        .kpi-card-enhanced {
-            background: var(--prussian-mid);
-            border: 1px solid var(--celadon);
-            border-radius: 12px;
-            padding: 16px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .kpi-card-enhanced:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(69, 123, 157, 0.2);
-        }
-        .kpi-trend-up { color: #86efac; }
-        .kpi-trend-down { color: #fca5a5; }
-
-        /* AI Advice Feed */
-        .ai-tip-card {
-            background: var(--prussian-dark);
-            border-left: 3px solid var(--celadon);
-            border-radius: 0 8px 8px 0;
-            padding: 12px 16px;
-            font-size: 13px;
-            color: var(--honeydew);
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            transition: background 0.2s;
-        }
-        .ai-tip-card:hover {
-            background: var(--prussian-mid);
-        }
-        .ai-tip-card.tip-warning { border-left-color: #fde68a; }
-        .ai-tip-card.tip-success { border-left-color: #86efac; }
-        .ai-tip-card.tip-danger  { border-left-color: var(--imperial); }
-        .ai-tip-card.tip-info    { border-left-color: var(--celadon); }
-
-        /* ===== INTEGRATIONS / AUDITOR ===== */
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 6px;
-            animation: pulse-dot 2s infinite;
-        }
-        .status-dot.connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-        .status-dot.disconnected { background: var(--imperial); box-shadow: 0 0 6px var(--imperial); animation: none; }
-        .status-dot.warning      { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .integration-card {
-            background: var(--prussian-mid);
-            border: 1px solid var(--celadon);
-            border-radius: 12px;
-            padding: 20px;
-            transition: box-shadow 0.3s;
-        }
-        .integration-card:hover {
-            box-shadow: 0 0 20px rgba(69, 123, 157, 0.2);
-        }
-
-        .audit-log-row {
-            font-size: 12px;
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--prussian-light);
-            transition: background 0.15s;
-        }
-        .audit-log-row:hover {
-            background: var(--prussian-light);
-        }
-        .audit-log-row.status-2xx { border-left: 3px solid #22c55e; }
-        .audit-log-row.status-4xx { border-left: 3px solid var(--imperial); }
-        .audit-log-row.status-5xx { border-left: 3px solid var(--imperial); }
-        .audit-log-row.status-3xx { border-left: 3px solid #f59e0b; }
-    </style>
 </head>
 
 <body class="min-h-screen">
@@ -1923,7 +1579,7 @@
                 renderCampaignTable('campaignTableBody2', campaigns);
                 updateDropdowns(campaigns);
                 document.getElementById('kpiCampaigns').textContent = campaigns.length;
-                setTimeout(loadAllBudgetStatuses, 500);
+                setTimeout(() => loadAllBudgetStatuses(campaigns), 500);
             } catch (error) {
                 console.error('Failed to load campaigns', error);
             }
@@ -2026,6 +1682,13 @@
             document.getElementById('clientModal').classList.add('hidden');
             document.getElementById('clientModal').classList.remove('flex');
         }
+        function closeClientModal() {
+            document.getElementById('clientModal').classList.add('hidden');
+            document.getElementById('clientModal').classList.remove('flex');
+            // Don't clear the credential test result on close
+            // document.getElementById('credentialTestResult').innerHTML = '';
+        }
+
         async function submitClientForm(event) {
             event.preventDefault();
             clearClientError();
@@ -2950,34 +2613,37 @@
         // ================================================================
         // BUDGET STATUS FUNCTIONS
         // ================================================================
+        
+        async function loadAllBudgetStatuses(campaigns) {
+            const campaignIds = campaigns.map(c => c.campaign_id).filter(Boolean);
+            if (campaignIds.length === 0) return;
 
-        async function loadBudgetStatus(campaignId) {
             try {
-                const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/budget-status`, { headers: getHeaders() });
-                if (!res.ok) throw new Error('Failed to load budget status');
-                const data = await res.json();
-                const elements = document.querySelectorAll(`.budget-status[data-campaign="${campaignId}"]`);
-                for (const el of elements) {
-                    if (data.status === 'critical') {
-                        el.innerHTML = `<span class="text-red-400">\uD83D\uDD34 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
-                    } else if (data.status === 'warning') {
-                        el.innerHTML = `<span class="text-yellow-400">\uD83D\uDFE1 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
-                    } else if (data.status === 'no_budget') {
-                        el.innerHTML = `<span class="text-gray-500">\u2014</span>`;
-                    } else {
-                        el.innerHTML = `<span class="text-green-400">\uD83D\uDFE2 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
+                const res = await fetch(`${API_BASE}/api/campaigns/budget-statuses`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ campaign_ids: campaignIds })
+                });
+                if (!res.ok) throw new Error('Failed to load budget statuses');
+                const statuses = await res.json();
+
+                for (const campaignId in statuses) {
+                    const data = statuses[campaignId];
+                    const elements = document.querySelectorAll(`.budget-status[data-campaign-id="${campaignId}"]`);
+                    for (const el of elements) {
+                        if (data.status === 'critical') {
+                            el.innerHTML = `<span class="text-red-400" title="Spent: ${data.percentage_spent?.toFixed(0) || 0}%">\uD83D\uDD34 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
+                        } else if (data.status === 'warning') {
+                            el.innerHTML = `<span class="text-yellow-400" title="Spent: ${data.percentage_spent?.toFixed(0) || 0}%">\uD83D\uDFE1 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
+                        } else if (data.status === 'no_budget') {
+                            el.innerHTML = `<span class="text-gray-500" title="No budget set">\u2014</span>`;
+                        } else {
+                            el.innerHTML = `<span class="text-green-400" title="Spent: ${data.percentage_spent?.toFixed(0) || 0}%">\uD83D\uDFE2 ${data.percentage_spent?.toFixed(0) || 0}%</span>`;
+                        }
                     }
                 }
             } catch (e) {
-                console.error('Failed to load budget status:', e);
-            }
-        }
-
-        async function loadAllBudgetStatuses() {
-            const elements = document.querySelectorAll('.budget-status');
-            for (const el of elements) {
-                const campaignId = el.dataset.campaign;
-                if (campaignId) await loadBudgetStatus(campaignId);
+                console.error('Failed to load budget statuses in bulk:', e);
             }
         }
 
@@ -3422,7 +3088,6 @@
             if (campaignId) {
                 viewCampaign(campaignId);
             }
-            setTimeout(loadAllBudgetStatuses, 2000);
         });
         loadSettings();
         loadLlmConfig();
@@ -3430,95 +3095,7 @@
     </script>
     <div id="toast-container"></div>
 
-    <script>
-        // ================================================================
-        // TOAST NOTIFICATION SYSTEM
-        // ================================================================
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
-            const colors = {
-                success: { bg: '#238636', icon: 'fa-circle-check' },
-                error: { bg: '#da3633', icon: 'fa-circle-xmark' },
-                warning: { bg: '#d29922', icon: 'fa-triangle-exclamation' },
-                info: { bg: '#1f6feb', icon: 'fa-circle-info' },
-            };
-            const cfg = colors[type] || colors.success;
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.innerHTML = `<i class="fa-solid ${cfg.icon} mr-2"></i>${message}`;
-            toast.style.cssText = `background:${cfg.bg};color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;animation:slideIn 0.2s ease-out;`;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.3s';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // ================================================================
-        // KEYBOARD SHORTCUTS
-        // ================================================================
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                switch (e.key.toLowerCase()) {
-                    case 'n':
-                        e.preventDefault();
-                        openOnboardModal();
-                        break;
-                    case 'a':
-                        e.preventDefault();
-                        showSection('analytics');
-                        break;
-                    case 'e':
-                        e.preventDefault();
-                        showSection('campaigns');
-                        break;
-                    case 'r':
-                        e.preventDefault();
-                        if (currentCreativeCampaignId) regenerateImage();
-                        break;
-                }
-            }
-        });
-
-        // ================================================================
-        // TOKEN EXPIRY WATCHER — redirect 20s before expiry
-        // ================================================================
-        function tokenExpirySeconds() {
-            const stored = sessionStorage.getItem('expires_at');
-            if (stored) {
-                const exp = parseInt(stored, 10);
-                if (isNaN(exp)) return -1;
-                return exp - Math.floor(Date.now() / 1000);
-            }
-            const token = sessionStorage.getItem('token');
-            if (!token) return -1;
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                if (payload.exp) {
-                    sessionStorage.setItem('expires_at', String(payload.exp));
-                    return payload.exp - Math.floor(Date.now() / 1000);
-                }
-            } catch (_) {}
-            return -1;
-        }
-
-        function checkTokenExpiry() {
-            const remaining = tokenExpirySeconds();
-            if (remaining <= 20) {
-                sessionStorage.removeItem('token');
-                sessionStorage.removeItem('expires_at');
-                sessionStorage.removeItem('user');
-                window.location.href = '/login.html';
-            }
-        }
-
-        (function initExpiryWatcher() {
-            tokenExpirySeconds();
-            setInterval(checkTokenExpiry, 10000);
-        })();
-    </script>
+    <script src="/app.js" defer></script>
 </body>
 
 </html>

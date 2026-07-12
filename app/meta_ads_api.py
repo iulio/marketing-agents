@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 try:
     from facebook_business.api import FacebookAdsApi
     from facebook_business.adobjects.adaccount import AdAccount
+    from facebook_business.exceptions import FacebookRequestError
     from facebook_business.adobjects.campaign import Campaign
     META_AVAILABLE = True
 except ImportError:
@@ -17,21 +18,23 @@ except ImportError:
 class MetaAdsAPI:
     """Meta Ads API integration with fallback to simulation"""
     
-    def __init__(self):
+    def __init__(self, credentials: Optional[Dict[str, Any]] = None):
         self.api = None
-        self.ad_account_id = os.getenv("META_AD_ACCOUNT_ID", "")
-        self._init_client()
+        self.credentials = credentials or {}
+        self.ad_account_id = self.credentials.get("meta_ad_account_id") or os.getenv("META_AD_ACCOUNT_ID", "")
+        self._init_client(self.credentials)
     
-    def _init_client(self):
+    def _init_client(self, credentials: Optional[Dict[str, Any]] = None):
         """Initialize Meta Ads client from environment."""
         if not META_AVAILABLE:
             print("[MetaAds] ⚠️  facebook-business library not installed")
             return
         
         try:
-            app_id = os.getenv("META_APP_ID")
-            app_secret = os.getenv("META_APP_SECRET")
-            access_token = os.getenv("META_ACCESS_TOKEN")
+            creds_to_use = credentials or {}
+            app_id = creds_to_use.get("meta_app_id") or os.getenv("META_APP_ID")
+            app_secret = creds_to_use.get("meta_app_secret") or os.getenv("META_APP_SECRET")
+            access_token = creds_to_use.get("meta_access_token") or os.getenv("META_ACCESS_TOKEN")
             
             if all([app_id, app_secret, access_token]):
                 FacebookAdsApi.init(app_id, app_secret, access_token)
@@ -54,6 +57,24 @@ class MetaAdsAPI:
     def is_available(self) -> bool:
         """Check if real API is available."""
         return self.api is not None and META_AVAILABLE and bool(self.ad_account_id)
+
+    def test_credentials(self) -> Dict[str, Any]:
+        """Test credentials by fetching the ad account details."""
+        if not self.is_available():
+            return {"status": "error", "message": "Meta Ads library not installed, client not initialized, or Ad Account ID is missing."}
+        
+        try:
+            account_id = self.ad_account_id if self.ad_account_id.startswith('act_') else f"act_{self.ad_account_id}"
+            account = AdAccount(account_id)
+            # Fetch a simple field to test the connection
+            account.api_get(fields=[AdAccount.Field.name])
+            return {"status": "success", "message": f"Successfully connected to Meta Ad Account."}
+        except FacebookRequestError as e:
+            error_body = e.body() or {}
+            error_message = error_body.get("error", {}).get("message", "Unknown API error.")
+            return {"status": "error", "message": f"Meta Ads API Error: {error_message}"}
+        except Exception as e:
+            return {"status": "error", "message": f"An unexpected error occurred: {str(e)}"}
     
     def create_campaign(self, campaign_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a campaign (real or simulated)."""

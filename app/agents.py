@@ -314,9 +314,20 @@ def human_review_node(state: AgencyState) -> AgencyState:
 def launch_node(state: AgencyState) -> AgencyState:
     """Simulates campaign launch (or integrates with real APIs)."""
     client = state.get("client_profile", {})
+    client_id = state.get("client_id")
     creatives = state.get("creative_assets", {})
-    creds = state.get("global_credentials") or state.get("client_credentials", {})
+
+    # Load global credentials first, then override with client-specific ones.
+    from .storage import get_client_credentials_sync, load_global_ad_credentials
     
+    # Start with global credentials as a base
+    creds = load_global_ad_credentials(mask_secrets=False)
+    
+    # Layer client-specific credentials on top
+    if client_id:
+        client_creds = get_client_credentials_sync(client_id) or {}
+        creds.update({k: v for k, v in client_creds.items() if v})
+
     print(f"[Launch] Deploying campaign for {client.get('client_name', 'Unknown')}")
     print(f"[Launch] Google Ads: {len(creatives.get('google_ads', []))} variations")
     print(f"[Launch] Meta Ads: {len(creatives.get('meta_ads', []))} variations")

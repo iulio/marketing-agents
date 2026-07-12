@@ -901,6 +901,24 @@ async def get_client_credentials(client_id: str) -> Optional[Dict]:
     }
 
 
+def get_client_credentials_sync(client_id: str) -> Optional[Dict]:
+    """Synchronous version of get_client_credentials."""
+    client = get_client(client_id)
+    if not client:
+        return None
+    return {
+        "google_ads_developer_token": decrypt(client.get("google_ads_developer_token", "")),
+        "google_ads_client_id": decrypt(client.get("google_ads_client_id", "")),
+        "google_ads_client_secret": decrypt(client.get("google_ads_client_secret", "")),
+        "google_ads_refresh_token": decrypt(client.get("google_ads_refresh_token", "")),
+        "google_ads_customer_id": decrypt(client.get("google_ads_customer_id", "")),
+        "meta_app_id": decrypt(client.get("meta_app_id", "")),
+        "meta_app_secret": decrypt(client.get("meta_app_secret", "")),
+        "meta_access_token": decrypt(client.get("meta_access_token", "")),
+        "meta_ad_account_id": decrypt(client.get("meta_ad_account_id", "")),
+    }
+
+
 async def get_credential_status(client_id: str) -> dict:
     with engine.begin() as conn:
         row = conn.execute(
@@ -1430,4 +1448,3 @@ def delete_report_schedule(schedule_id: int) -> bool:
 
 
 init_db()
-

@@ -33,6 +33,8 @@ from .notifications import notify_campaign_created, notify_campaign_approved, no
 from .storage import create_report_template, get_report_template, get_report_templates
 
 from .analytics import generate_daily_metrics, aggregate_metrics, get_performance_trend
+from .google_ads_api import GoogleAdsAPI
+from .meta_ads_api import MetaAdsAPI
 from .storage import create_client, get_all_clients, get_client, get_users_by_client, create_user, update_client, get_total_clients_sync, get_active_campaigns_sync, get_new_signups_sync, save_global_ad_credentials, load_global_ad_credentials, update_client_credentials, get_client_credentials, get_credential_status, create_lead, get_all_leads, update_lead, save_audit_report, get_audit_report, save_proposal_record, get_proposal_record, log_publish_event, get_publish_events, get_global_llm_config, set_global_llm_config
 from .ab_testing import ABTestingEngine
 from .storage import create_onboarding_session, save_onboarding_session, get_latest_onboarding_session, get_onboarding_session, update_onboarding_status, delete_onboarding_session
@@ -507,6 +509,30 @@ async def save_client_credentials_endpoint(request: Request, client_id: str, cre
     await update_client_credentials(client_id, credentials)
     return {"message": "Client credentials saved successfully", "client_id": client_id}
 
+@app.post("/api/clients/{client_id}/test-credentials")
+@require_role(["admin", "client_manager"])
+async def test_client_credentials_endpoint(request: Request, client_id: str):
+    user = request.state.user
+    if user["role"] != "admin" and user.get("client_id") != client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    creds = await get_client_credentials(client_id)
+    if not creds:
+        raise HTTPException(status_code=404, detail="Client not found or has no credentials.")
+
+    # Test Google Ads
+    google_api = GoogleAdsAPI(credentials=creds)
+    google_result = google_api.test_credentials()
+
+    # Test Meta Ads
+    meta_api = MetaAdsAPI(credentials=creds)
+    meta_result = meta_api.test_credentials()
+
+    return {
+        "google_ads": google_result,
+        "meta_ads": meta_result
+    }
+
 
 @app.patch("/api/clients/{client_id}")
 @require_role(["admin"])
@@ -797,10 +823,15 @@ async def onboard_campaign(
             )
         campaign_id = str(uuid.uuid4())[:8]
         creds = load_global_ad_credentials(mask_secrets=False)
+        global_creds = load_global_ad_credentials(mask_secrets=False)
+        client_creds = await get_client_credentials(client_id) or {}
         initial_state = {
             "client_profile": campaign_data.model_dump(mode="json"),
             "client_credentials": creds,
             "global_credentials": creds,
+            "client_id": client_id, # Pass client_id into the state
+            "client_credentials": client_creds,
+            "global_credentials": global_creds,
             "market_intelligence": {},
             "creative_assets": {},
             "deployment_status": {},
@@ -932,9 +963,21 @@ def retry_publish_campaign(campaign_id: str):
     data = campaigns[campaign_id]
     state = data.get("state", {})
     creatives = state.get("creative_assets", {})
-    creds = state.get("global_credentials") or state.get("client_credentials", {}) or {}
     deployment = state.get("deployment_status", {})
+    client_id = data.get("client_id")
 
+    # Correctly load and merge credentials, same as in launch_node
+    from .storage import get_client_credentials_sync, load_global_ad_credentials
+    
+    # Start with global credentials as a base
+    creds = load_global_ad_credentials(mask_secrets=False)
+    
+    # Layer client-specific credentials on top
+    if client_id:
+        client_creds = get_client_credentials_sync(client_id) or {}
+        creds.update({k: v for k, v in client_creds.items() if v})
+
+    # The rest of the logic remains the same, using the correctly merged 'creds'
     google_attempted = len(creatives.get("google_ads", [])) > 0
     meta_attempted = len(creatives.get("meta_ads", [])) > 0
     google_succeeded = bool(creds.get("google_ads_developer_token")) and google_attempted
@@ -1338,6 +1381,27 @@ async def get_budget_status(campaign_id: str):
     if alert_data.get("status") == "critical":
         data["status"] = "paused"
     return {"campaign_id": campaign_id, "campaign_name": campaign_name, "daily_budget": daily_budget, "spent_today": spend, **alert_data}
+
+@app.post("/api/campaigns/budget-statuses")
+async def get_bulk_budget_statuses(request: Request, payload: dict):
+    """Get budget status for multiple campaigns in a single call."""
+    campaign_ids = payload.get("campaign_ids", [])
+    results = {}
+    for campaign_id in campaign_ids:
+        if campaign_id not in campaigns:
+            continue
+        data = campaigns[campaign_id]
+        state = data.get("state", {})
+        client = state.get("client_profile", {})
+        daily_budget = float(client.get("daily_budget", 0) or 0)
+        campaign_name = client.get("client_name", "Unknown")
+        kpis = kpi_store.get(campaign_id, {})
+        spend = float(kpis.get("cost", 0) or 0)
+        
+        alert_data = check_budget_alerts(campaign_id, spend, daily_budget, campaign_name, client.get("client_name", "Unknown"))
+        results[campaign_id] = {"daily_budget": daily_budget, "spent_today": spend, **alert_data}
+    return results
+
 
 # ================================================================
 # SCHEDULING ENDPOINTS
@@ -1766,3 +1830,4 @@ if os.path.exists(static_dir):
     if os.path.exists(tutorials_dir):
         app.mount("/tutorials", StaticFiles(directory=tutorials_dir), name="tutorials")
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+    app.mount("/", StaticFiles(directory=static_dir, html=True)
