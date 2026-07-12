@@ -408,6 +408,7 @@ async function deleteClientRecord(clientId) {
 function openCredentialModal(clientId) {
     document.getElementById('credClientId').value = clientId;
     document.getElementById('credentialModal').classList.remove('hidden');
+    document.getElementById('credentialTestResult').innerHTML = ''; // Clear previous results
     document.getElementById('credentialModal').classList.add('flex');
     loadCredentialStatus(clientId);
     loadExistingCredentials(clientId);
@@ -415,6 +416,7 @@ function openCredentialModal(clientId) {
 function closeCredentialModal() {
     document.getElementById('credentialModal').classList.add('hidden');
     document.getElementById('credentialModal').classList.remove('flex');
+    document.getElementById('credentialTestResult').innerHTML = '';
 }
 async function loadCredentialStatus(clientId) {
     try {
@@ -467,6 +469,36 @@ async function saveCredentials(event) {
         await loadClients();
     } catch (error) {
         alert(error.message);
+    }
+}
+
+async function testClientCredentials(event) {
+    event.preventDefault();
+    const clientId = document.getElementById('credClientId').value;
+    const resultEl = document.getElementById('credentialTestResult');
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+
+    resultEl.innerHTML = '<div class="text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Testing...</div>';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testing...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/clients/${clientId}/test-credentials`, {
+            method: 'POST',
+            headers: getHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Test failed');
+
+        const googleStatus = data.google_ads.status === 'success' ? `<span class="badge-active">Google: ${data.google_ads.message}</span>` : `<span class="badge-inactive">Google: ${data.google_ads.message}</span>`;
+        const metaStatus = data.meta_ads.status === 'success' ? `<span class="badge-active">Meta: ${data.meta_ads.message}</span>` : `<span class="badge-inactive">Meta: ${data.meta_ads.message}</span>`;
+        resultEl.innerHTML = `<div class="flex flex-col gap-2">${googleStatus}${metaStatus}</div>`;
+    } catch (error) {
+        resultEl.innerHTML = `<div class="text-red-400">Error: ${error.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
 }
 function openGoogleTutorial() { window.open('/tutorials/google-ads-credentials.html', '_blank'); }

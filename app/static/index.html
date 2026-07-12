@@ -1263,14 +1263,18 @@
                     <button type="button" onclick="openImageTutorial()"
                         class="text-blue-400 hover:text-blue-300 text-sm">Image Tutorial</button>
                 </div>
-                <div class="flex justify-end gap-3 pt-2">
+                <div class="flex justify-end items-center gap-3 mt-6 pt-4 border-t border-slate-700">
                     <button type="button" onclick="closeCredentialModal()"
-                        class="px-4 py-2 text-sm text-slate-400 hover:text-white">Cancel</button>
+                        class="btn-secondary">Cancel</button>
                     <button type="submit"
-                        class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-md text-sm font-medium text-white">Save
-                        Credentials</button>
+                        class="btn-primary">Save Credentials</button>
+                    <button type="button" onclick="testClientCredentials(event)" class="btn-secondary bg-blue-600 hover:bg-blue-500 text-white"><i class="fa-solid fa-plug-circle-check mr-2"></i>Test Credentials</button>
                 </div>
             </form>
+            <!-- Credential Test Result -->
+            <div id="credentialTestResult" class="mt-4 p-3 rounded-lg bg-slate-900/50 border border-slate-700 text-xs">
+                <!-- Test results will be displayed here -->
+            </div>
         </div>
     </div>
 

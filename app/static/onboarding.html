@@ -4,612 +4,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Onboarding Wizard</title>
+    <title>Onboarding Wizard - Marketing Agency</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="stylesheet" href="/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        :root {
-            --prussian: #1d3557;
-            --honeydew: #f1faee;
-            --nonphoto: #a8dadc;
-            --celadon: #457b9d;
-            --imperial: #e63946;
-        }
-
-        body {
-            background-color: var(--prussian) !important;
-            color: var(--honeydew) !important;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .glass-card, [class*="glass-card"] {
-            background: #15263f !important;
-            border-color: var(--celadon) !important;
-        }
-
-        .step-indicator {
-            width: 100%;
-            height: 4px;
-            border-radius: 2px;
-            background: var(--prussian) !important;
-            transition: background 0.3s;
-        }
-
-        .step-indicator.active {
-            background: var(--nonphoto) !important;
-        }
-
-        .step-indicator.completed {
-            background: var(--celadon) !important;
-        }
-
-        input,
-        select,
-        textarea,
-        [class*="bg-[#0d1117]"] {
-            background-color: #101c2e !important;
-            border-color: var(--celadon) !important;
-            color: var(--honeydew) !important;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            border-color: var(--nonphoto) !important;
-            outline: none !important;
-        }
-
-        .text-slate-400, .text-gray-400, .text-slate-300, .text-gray-300 {
-            color: var(--nonphoto) !important;
-        }
-
-        /* Buttons styling */
-        button, .bg-emerald-600, [class*="bg-emerald-600"], [class*="bg-[#238636]"] {
-            background-color: var(--celadon) !important;
-            color: var(--honeydew) !important;
-        }
-        button:hover, [class*="hover:bg-[#2ea043]"]:hover, .hover\:bg-emerald-500:hover {
-            background-color: var(--nonphoto) !important;
-            color: var(--prussian) !important;
-        }
-
-        button[onclick*="prevStep"], button.bg-slate-700 {
-            background-color: var(--prussian) !important;
-            border: 1px solid var(--celadon) !important;
-            color: var(--honeydew) !important;
-        }
-        button[onclick*="prevStep"]:hover, button.bg-slate-700:hover {
-            background-color: var(--celadon) !important;
-        }
-
-        .hidden-step {
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 </head>
 
 <body class="min-h-screen flex items-center justify-center p-4">
-    <div class="glass-card rounded-xl w-full max-w-2xl p-6 border border-[#30363d] shadow-2xl">
-        <!-- Logo and Header -->
-        <div class="flex items-center gap-3 mb-6 border-b border-[#30363d] pb-4">
-            <img src="/logo.png" alt="Logo" class="w-10 h-10 object-contain">
+    <div class="panel rounded-2xl w-full max-w-4xl p-8 shadow-2xl">
+        <div class="flex justify-between items-start mb-6">
             <div>
-                <h1 class="text-xl font-bold text-white">Client Onboarding Wizard</h1>
-                <p class="text-xs text-slate-400">Campaign orchestration workspace</p>
+                <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+                    New Client Onboarding
+                </h1>
+                <p class="text-slate-400 mt-1">A guided setup to get your client's campaigns running in minutes.</p>
+            </div>
+            <a href="/" class="btn-secondary text-sm"><i class="fa-solid fa-xmark mr-2"></i>Exit Wizard</a>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+            <div id="step-1-indicator" class="step-indicator active">
+                <span class="step-circle">1</span>
+                <span class="step-label">Client Profile</span>
+            </div>
+            <div class="step-connector"></div>
+            <div id="step-2-indicator" class="step-indicator">
+                <span class="step-circle">2</span>
+                <span class="step-label">Ad Credentials</span>
+            </div>
+            <div class="step-connector"></div>
+            <div id="step-3-indicator" class="step-indicator">
+                <span class="step-circle">3</span>
+                <span class="step-label">Launch Campaign</span>
+            </div>
+            <div class="step-connector"></div>
+            <div id="step-4-indicator" class="step-indicator">
+                <span class="step-circle"><i class="fa-solid fa-check"></i></span>
+                <span class="step-label">Complete</span>
             </div>
         </div>
 
-        <!-- Progress Bar -->
-        <div class="flex gap-1 mb-6" id="progressBar">
-            <div class="step-indicator active" id="step1-indicator"></div>
-            <div class="step-indicator" id="step2-indicator"></div>
-            <div class="step-indicator" id="step3-indicator"></div>
-            <div class="step-indicator" id="step4-indicator"></div>
-        </div>
+        <!-- Step Content -->
+        <div id="wizard-content">
+            <!-- Step 1: Client Profile -->
+            <div id="step-1" class="wizard-step active">
+                <h3 class="text-lg font-semibold text-white mb-4">First, let's set up the client's profile.</h3>
+                <form id="clientProfileForm" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="form-label">Client Name</label><input type="text" id="clientName" class="input w-full" required value="New Tech Corp"></div>
+                        <div><label class="form-label">Website URL</label><input type="url" id="websiteUrl" class="input w-full" required value="https://newtechcorp.com"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="form-label">Industry</label><input type="text" id="industry" class="input w-full" value="SaaS"></div>
+                        <div><label class="form-label">Default Daily Budget (€)</label><input type="number" id="defaultBudget" class="input w-full" value="100"></div>
+                    </div>
+                    <div class="flex justify-end mt-6">
+                        <button type="submit" class="btn-primary">Next: Ad Credentials <i class="fa-solid fa-arrow-right ml-2"></i></button>
+                    </div>
+                </form>
+            </div>
 
-        <div id="step-1" class="step-content">
-            <h2 class="text-xl font-bold mb-2">Step 1: Client Selection & Profile</h2>
-            <p class="text-gray-400 text-sm mb-4">Select an existing client profile or create a new one.</p>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Client Profile</label>
-                    <select id="clientSelect" onchange="onClientSelectChange()" class="w-full rounded-md px-3 py-2 text-sm">
-                        <option value="new" selected>+ Add New Client...</option>
-                    </select>
-                </div>
-                
-                <div id="newClientFields" class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Client Name *</label>
-                        <input type="text" id="clientName" placeholder="e.g., Acme Tech Solutions"
-                            class="w-full rounded-md px-3 py-2 text-sm">
+            <!-- Step 2: Ad Credentials -->
+            <div id="step-2" class="wizard-step">
+                <h3 class="text-lg font-semibold text-white mb-4">Connect the client's ad accounts.</h3>
+                <p class="text-sm text-slate-400 mb-6">This uses a secure OAuth flow. We never see or store your client's password.</p>
+                <div class="space-y-5">
+                    <!-- Google Ads Connection -->
+                    <div class="flex items-center justify-between p-4 rounded-lg bg-slate-900/70 border border-slate-700">
+                        <div class="flex items-center gap-4">
+                            <i class="fa-brands fa-google text-2xl text-blue-400"></i>
+                            <div>
+                                <h4 class="font-semibold text-white">Google Ads</h4>
+                                <p id="google-status" class="text-xs text-slate-400">Not Connected</p>
+                            </div>
+                        </div>
+                        <button id="google-connect-btn" onclick="connectGoogle()" class="btn-secondary bg-blue-600 hover:bg-blue-500 text-white">
+                            <i class="fa-solid fa-plug mr-2"></i>Connect
+                        </button>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Industry</label>
-                        <select id="clientIndustry" onchange="handleDropdownChange('clientIndustry', 'clientIndustryCustom')" class="w-full rounded-md px-3 py-2 text-sm">
-                            <option value="Tech & SaaS">Tech & SaaS</option>
-                            <option value="Retail & E-commerce">Retail & E-commerce</option>
-                            <option value="Health & Wellness">Health & Wellness</option>
-                            <option value="Real Estate">Real Estate</option>
-                            <option value="Finance & Consulting">Finance & Consulting</option>
-                            <option value="custom">Other / Custom...</option>
-                        </select>
-                        <input type="text" id="clientIndustryCustom" placeholder="Type custom industry..."
-                            class="w-full rounded-md px-3 py-2 text-sm mt-1.5 hidden">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Website URL</label>
-                        <input type="url" id="clientWebsite" placeholder="https://example.com"
-                            class="w-full rounded-md px-3 py-2 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Daily Budget (€)</label>
-                        <input type="number" id="dailyBudget" placeholder="e.g., 50"
-                            class="w-full rounded-md px-3 py-2 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Target Locations</label>
-                        <select id="targetGeo" onchange="handleDropdownChange('targetGeo', 'targetGeoCustom')" class="w-full rounded-md px-3 py-2 text-sm">
-                            <option value="Bucharest, Cluj-Napoca, Timisoara">Romania (Bucharest, Cluj, Timisoara)</option>
-                            <option value="Constanta">Constanta</option>
-                            <option value="Germany">Germany</option>
-                            <option value="United Kingdom">United Kingdom</option>
-                            <option value="United States">United States</option>
-                            <option value="Worldwide">Worldwide</option>
-                            <option value="custom">Other / Custom...</option>
-                        </select>
-                        <input type="text" id="targetGeoCustom" placeholder="Type custom locations (comma-separated)..."
-                            class="w-full rounded-md px-3 py-2 text-sm mt-1.5 hidden">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Tone of Voice</label>
-                        <select id="toneOfVoice" onchange="handleDropdownChange('toneOfVoice', 'toneOfVoiceCustom')" class="w-full rounded-md px-3 py-2 text-sm">
-                            <option value="professional">Professional</option>
-                            <option value="friendly">Friendly</option>
-                            <option value="urgent">Urgent</option>
-                            <option value="luxury">Luxury</option>
-                            <option value="custom">Other / Custom...</option>
-                        </select>
-                        <input type="text" id="toneOfVoiceCustom" placeholder="Type custom tone of voice..."
-                            class="w-full rounded-md px-3 py-2 text-sm mt-1.5 hidden">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Cultural Triggers</label>
-                        <input type="text" id="culturalTriggers" placeholder="e.g., Black Friday, Christmas"
-                            class="w-full rounded-md px-3 py-2 text-sm">
+                    <!-- Meta Ads Connection -->
+                    <div class="flex items-center justify-between p-4 rounded-lg bg-slate-900/70 border border-slate-700">
+                        <div class="flex items-center gap-4">
+                            <i class="fa-brands fa-meta text-2xl text-indigo-400"></i>
+                            <div>
+                                <h4 class="font-semibold text-white">Meta Ads (Facebook & Instagram)</h4>
+                                <p id="meta-status" class="text-xs text-slate-400">Not Connected</p>
+                            </div>
+                        </div>
+                        <button id="meta-connect-btn" onclick="connectMeta()" class="btn-secondary bg-indigo-600 hover:bg-indigo-500 text-white">
+                            <i class="fa-solid fa-plug mr-2"></i>Connect
+                        </button>
                     </div>
                 </div>
+                 <div class="flex justify-between mt-8">
+                    <button onclick="goToStep(1)" class="btn-secondary"><i class="fa-solid fa-arrow-left mr-2"></i> Back</button>
+                    <button onclick="goToStep(3)" class="btn-primary">Next: Launch Campaign <i class="fa-solid fa-arrow-right ml-2"></i></button>
+                </div>
             </div>
-            <div class="flex justify-end mt-4">
-                <button onclick="nextStep(2)"
-                    class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">Next →</button>
-            </div>
-        </div>
 
-        <div id="step-2" class="step-content hidden-step">
-            <h2 class="text-xl font-bold mb-2">Step 2: Ad Credentials</h2>
-            <p class="text-gray-400 text-sm mb-4">Add Google Ads and Meta Ads credentials (optional – can be added
-                later).</p>
-            <div class="space-y-3">
-                <h3 class="text-sm font-semibold text-gray-300">Google Ads</h3>
-                <input type="password" id="google_ads_developer_token" placeholder="Developer Token"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-                <input type="text" id="google_ads_client_id" placeholder="Client ID"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-                <input type="password" id="google_ads_client_secret" placeholder="Client Secret"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-                <input type="password" id="google_ads_refresh_token" placeholder="Refresh Token"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-                <input type="text" id="google_ads_customer_id" placeholder="Customer ID"
-                    class="w-full rounded-md px-3 py-2 text-sm">
+            <!-- Step 3: Launch First Campaign -->
+            <div id="step-3" class="wizard-step">
+                <h3 class="text-lg font-semibold text-white mb-4">Launch the first campaign for this client.</h3>
+                <form id="campaignLaunchForm" class="space-y-4">
+                     <div class="grid grid-cols-2 gap-4">
+                        <div><label class="form-label">Campaign Objective</label>
+                            <select id="objective" class="input w-full">
+                                <option value="sales">Sales & Leads</option>
+                                <option value="traffic" selected>Website Traffic</option>
+                                <option value="awareness">Brand Awareness</option>
+                            </select>
+                        </div>
+                        <div><label class="form-label">Campaign Language</label><input type="text" id="language" class="input w-full" value="en-US"></div>
+                    </div>
+                    <div>
+                        <label class="form-label">Product/Service Keywords</label>
+                        <input type="text" id="productKeywords" class="input w-full" placeholder="e.g., AI software, data analytics, cloud solutions" value="AI-powered automation">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Target Locations</label>
+                            <input type="text" id="targetGeo" class="input w-full" placeholder="e.g., Germany, London, New York" value="United States, United Kingdom">
+                        </div>
+                        <div>
+                            <label class="form-label">Tone of Voice</label>
+                            <select id="toneOfVoice" class="input w-full">
+                                <option value="Professional" selected>Professional</option>
+                                <option value="Friendly">Friendly</option>
+                                <option value="Urgent">Urgent</option>
+                                <option value="Luxury">Luxury</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button type="button" onclick="goToStep(2)" class="btn-secondary"><i class="fa-solid fa-arrow-left mr-2"></i> Back</button>
+                        <button type="submit" class="btn-primary bg-emerald-600 hover:bg-emerald-500">
+                            <i class="fa-solid fa-rocket mr-2"></i> Launch Orchestration
+                        </button>
+                    </div>
+                </form>
+            </div>
 
-                <h3 class="text-sm font-semibold text-gray-300 mt-2">Meta Ads</h3>
-                <input type="text" id="meta_ad_account_id" placeholder="Ad Account ID (act_...)"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-                <input type="text" id="meta_app_id" placeholder="App ID" class="w-full rounded-md px-3 py-2 text-sm">
-                <input type="password" id="meta_app_secret" placeholder="App Secret"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-                <input type="password" id="meta_access_token" placeholder="Access Token"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-            </div>
-            <div class="flex justify-between mt-4">
-                <button onclick="prevStep(1)" class="text-gray-400 hover:text-white text-sm">← Back</button>
-                <button onclick="nextStep(3)"
-                    class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">Next →</button>
-            </div>
-        </div>
-
-        <div id="step-3" class="step-content hidden-step">
-            <h2 class="text-xl font-bold mb-2">Step 3: Campaign Preferences</h2>
-            <p class="text-gray-400 text-sm mb-4">Set up the first campaign for this client.</p>
-            <div class="space-y-3">
-                <input type="text" id="campaignName" placeholder="Campaign Name"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-                <select id="campaignObjective" class="w-full rounded-md px-3 py-2 text-sm">
-                    <option value="sales">Sales</option>
-                    <option value="awareness">Awareness</option>
-                    <option value="traffic">Traffic</option>
-                    <option value="engagement">Engagement</option>
-                </select>
-                <div>
-                    <select id="campaignLanguage" onchange="handleDropdownChange('campaignLanguage', 'campaignLanguageCustom')" class="w-full rounded-md px-3 py-2 text-sm">
-                        <option value="en-US">English (US)</option>
-                        <option value="ro-RO">Romanian</option>
-                        <option value="de-DE">German</option>
-                        <option value="fr-FR">French</option>
-                        <option value="custom">Other / Custom...</option>
-                    </select>
-                    <input type="text" id="campaignLanguageCustom" placeholder="Type custom language locale (e.g. es-ES)..."
-                        class="w-full rounded-md px-3 py-2 text-sm mt-1.5 hidden">
-                </div>
-                <input type="text" id="productKeywords" placeholder="Product Keywords (comma separated)"
-                    class="w-full rounded-md px-3 py-2 text-sm">
-            </div>
-            <div class="flex justify-between mt-4">
-                <button onclick="prevStep(2)" class="text-gray-400 hover:text-white text-sm">← Back</button>
-                <button onclick="nextStep(4)"
-                    class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">Next →</button>
-            </div>
-        </div>
-
-        <div id="step-4" class="step-content hidden-step">
-            <div id="reviewContent">
-                <h2 class="text-xl font-bold mb-2">Step 4: Review & Launch</h2>
-                <p class="text-gray-400 text-sm mb-4">Review all information and create the client.</p>
-                <div id="reviewSummary" class="bg-[#0d1117] p-3 rounded-lg text-sm space-y-1">
-                    <!-- Dynamically filled -->
-                </div>
-                <div class="flex justify-between mt-4">
-                    <button onclick="prevStep(3)" class="text-gray-400 hover:text-white text-sm">← Back</button>
-                    <button onclick="submitOnboarding()"
-                        class="bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-2 rounded-md text-sm">🚀 Launch
-                        Campaign</button>
+            <!-- Step 4: Complete -->
+            <div id="step-4" class="wizard-step text-center">
+                <div class="text-5xl text-emerald-400 mb-4"><i class="fa-solid fa-circle-check"></i></div>
+                <h3 class="text-2xl font-bold text-white">Onboarding Complete!</h3>
+                <p class="text-slate-400 mt-2">The AI agents are now orchestrating the new campaign. You can monitor its progress on the main dashboard.</p>
+                <div class="mt-8">
+                    <a href="/" class="btn-primary">Go to Dashboard <i class="fa-solid fa-arrow-right ml-2"></i></a>
                 </div>
             </div>
-            <!-- Premium Loading State -->
-            <div id="submitLoading" class="hidden flex flex-col items-center justify-center py-12 space-y-4">
-                <div class="relative w-16 h-16">
-                    <div class="absolute inset-0 rounded-full border-4 border-slate-700"></div>
-                    <div class="absolute inset-0 rounded-full border-4 border-t-emerald-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                </div>
-                <p class="text-lg font-semibold text-white animate-pulse" id="loadingText">Creating client profile...</p>
-                <p class="text-xs text-slate-400 text-center max-w-sm">Please wait while our marketing agents research keywords, write copy, and orchestrate the campaign assets.</p>
-            </div>
-            <div id="submitStatus" class="mt-2 text-sm"></div>
         </div>
     </div>
 
-    <script>
-        const API_BASE = window.location.origin;
-        let collectedData = {};
-        let clientsList = [];
-
-        function updateProgress(step) {
-            for (let i = 1; i <= 4; i++) {
-                const el = document.getElementById(`step${i}-indicator`);
-                if (i < step) el.className = 'step-indicator completed';
-                else if (i === step) el.className = 'step-indicator active';
-                else el.className = 'step-indicator';
-            }
-        }
-
-        function showStep(step) {
-            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden-step'));
-            document.getElementById(`step-${step}`).classList.remove('hidden-step');
-            updateProgress(step);
-            if (step === 4) buildReview();
-        }
-
-        function handleDropdownChange(selectId, customId) {
-            const select = document.getElementById(selectId);
-            const custom = document.getElementById(customId);
-            if (select.value === 'custom') {
-                custom.classList.remove('hidden');
-                custom.required = true;
-            } else {
-                custom.classList.add('hidden');
-                custom.required = false;
-            }
-        }
-
-        function getSelectOrCustomValue(selectId, customId) {
-            const select = document.getElementById(selectId);
-            if (select.value === 'custom') {
-                return document.getElementById(customId).value.trim();
-            }
-            return select.value;
-        }
-
-        async function loadClients() {
-            try {
-                const res = await fetch(`${API_BASE}/api/clients`, { headers: getHeaders() });
-                if (!res.ok) throw new Error('Failed to load clients');
-                const data = await res.json();
-                clientsList = data.clients || [];
-                populateClientDropdown();
-            } catch (e) {
-                console.error('Failed to load clients:', e);
-            }
-        }
-
-        function populateClientDropdown() {
-            const select = document.getElementById('clientSelect');
-            select.innerHTML = '<option value="new" selected>+ Add New Client...</option>';
-            clientsList.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.name;
-                select.appendChild(opt);
-            });
-        }
-
-        function onClientSelectChange() {
-            const val = document.getElementById('clientSelect').value;
-            const newClientFields = document.getElementById('newClientFields');
-            if (val === 'new') {
-                newClientFields.classList.remove('hidden');
-                // Reset fields
-                document.getElementById('clientName').value = '';
-                document.getElementById('clientIndustry').value = 'Tech & SaaS';
-                document.getElementById('clientIndustryCustom').classList.add('hidden');
-                document.getElementById('clientWebsite').value = '';
-                document.getElementById('dailyBudget').value = '';
-                document.getElementById('targetGeo').value = 'Bucharest, Cluj-Napoca, Timisoara';
-                document.getElementById('targetGeoCustom').classList.add('hidden');
-                document.getElementById('toneOfVoice').value = 'professional';
-                document.getElementById('toneOfVoiceCustom').classList.add('hidden');
-                document.getElementById('culturalTriggers').value = '';
-            } else {
-                newClientFields.classList.add('hidden');
-                const client = clientsList.find(c => c.id === val);
-                if (client) {
-                    // Populate credentials if available
-                    if (client.credentials) {
-                        document.getElementById('google_ads_developer_token').value = client.credentials.google_ads_developer_token || '';
-                        document.getElementById('google_ads_client_id').value = client.credentials.google_ads_client_id || '';
-                        document.getElementById('google_ads_client_secret').value = client.credentials.google_ads_client_secret || '';
-                        document.getElementById('google_ads_refresh_token').value = client.credentials.google_ads_refresh_token || '';
-                        document.getElementById('google_ads_customer_id').value = client.credentials.google_ads_customer_id || '';
-                        document.getElementById('meta_ad_account_id').value = client.credentials.meta_ad_account_id || '';
-                        document.getElementById('meta_app_id').value = client.credentials.meta_app_id || '';
-                        document.getElementById('meta_app_secret').value = client.credentials.meta_app_secret || '';
-                        document.getElementById('meta_access_token').value = client.credentials.meta_access_token || '';
-                    }
-                }
-            }
-        }
-
-        function nextStep(step) {
-            // Basic validation for Step 1
-            if (step === 2) {
-                const clientSelectVal = document.getElementById('clientSelect').value;
-                if (clientSelectVal === 'new') {
-                    const name = document.getElementById('clientName').value.trim();
-                    if (!name) {
-                        alert('Client Name is required.');
-                        return;
-                    }
-                    collectedData.client = {
-                        is_new: true,
-                        name: name,
-                        industry: getSelectOrCustomValue('clientIndustry', 'clientIndustryCustom'),
-                        website: document.getElementById('clientWebsite').value.trim(),
-                        daily_budget: parseFloat(document.getElementById('dailyBudget').value) || 50,
-                        target_geo: getSelectOrCustomValue('targetGeo', 'targetGeoCustom').split(',').map(s => s.trim()).filter(Boolean),
-                        tone_of_voice: getSelectOrCustomValue('toneOfVoice', 'toneOfVoiceCustom'),
-                        cultural_triggers: document.getElementById('culturalTriggers').value.split(',').map(s => s.trim()).filter(Boolean)
-                    };
-                } else {
-                    const client = clientsList.find(c => c.id === clientSelectVal);
-                    collectedData.client = {
-                        is_new: false,
-                        id: client.id,
-                        name: client.name,
-                        industry: client.industry || 'General',
-                        website: client.website || '',
-                        daily_budget: client.default_budget || 50,
-                        target_geo: client.settings?.target_geo || ['Worldwide'],
-                        tone_of_voice: client.settings?.tone_of_voice || 'professional',
-                        cultural_triggers: client.settings?.cultural_triggers || []
-                    };
-                }
-            }
-            if (step === 3) {
-                // Save step 2 data
-                collectedData.credentials = {
-                    google_ads_developer_token: document.getElementById('google_ads_developer_token').value.trim(),
-                    google_ads_client_id: document.getElementById('google_ads_client_id').value.trim(),
-                    google_ads_client_secret: document.getElementById('google_ads_client_secret').value.trim(),
-                    google_ads_refresh_token: document.getElementById('google_ads_refresh_token').value.trim(),
-                    google_ads_customer_id: document.getElementById('google_ads_customer_id').value.trim(),
-                    meta_ad_account_id: document.getElementById('meta_ad_account_id').value.trim(),
-                    meta_app_id: document.getElementById('meta_app_id').value.trim(),
-                    meta_app_secret: document.getElementById('meta_app_secret').value.trim(),
-                    meta_access_token: document.getElementById('meta_access_token').value.trim()
-                };
-            }
-            if (step === 4) {
-                // Save step 3 data
-                collectedData.campaign = {
-                    name: document.getElementById('campaignName').value.trim() || 'First Campaign',
-                    objective: document.getElementById('campaignObjective').value,
-                    language: getSelectOrCustomValue('campaignLanguage', 'campaignLanguageCustom') || 'en-US',
-                    product_keywords: document.getElementById('productKeywords').value.split(',').map(s => s.trim()).filter(Boolean)
-                };
-            }
-            showStep(step);
-        }
-
-        function prevStep(step) {
-            showStep(step);
-        }
-
-        function buildReview() {
-            const summary = document.getElementById('reviewSummary');
-            const c = collectedData.client || {};
-            const creds = collectedData.credentials || {};
-            const camp = collectedData.campaign || {};
-            summary.innerHTML = `
-                <p><strong>Client Profile:</strong> ${c.is_new ? '(New) ' : '(Existing) '}${c.name || 'N/A'}</p>
-                <p><strong>Industry:</strong> ${c.industry || 'N/A'}</p>
-                <p><strong>Website:</strong> ${c.website || 'N/A'}</p>
-                <p><strong>Budget:</strong> €${c.daily_budget || 0}/day</p>
-                <p><strong>Location:</strong> ${c.target_geo ? c.target_geo.join(', ') : 'N/A'}</p>
-                <p><strong>Tone:</strong> ${c.tone_of_voice || 'N/A'}</p>
-                <p><strong>Cultural Triggers:</strong> ${c.cultural_triggers ? c.cultural_triggers.join(', ') : 'None'}</p>
-                <hr class="border-[#30363d] my-2">
-                <p><strong>Campaign Name:</strong> ${camp.name || 'N/A'}</p>
-                <p><strong>Objective:</strong> ${camp.objective || 'N/A'}</p>
-                <p><strong>Language:</strong> ${camp.language || 'N/A'}</p>
-                <p><strong>Product Keywords:</strong> ${camp.product_keywords ? camp.product_keywords.join(', ') : 'None'}</p>
-                <hr class="border-[#30363d] my-2">
-                <p class="text-gray-400 text-xs">Credentials: ${creds.google_ads_developer_token ? 'Google Ads ✅' : 'Google Ads ❌'} | ${creds.meta_app_id ? 'Meta Ads ✅' : 'Meta Ads ❌'}</p>
-            `;
-        }
-
-        function getToken() {
-            return sessionStorage.getItem('token');
-        }
-
-        function getHeaders() {
-            return {
-                'Authorization': `Bearer ${getToken()}`,
-                'Content-Type': 'application/json'
-            };
-        }
-
-        async function submitOnboarding() {
-            const reviewContent = document.getElementById('reviewContent');
-            const submitLoading = document.getElementById('submitLoading');
-            const loadingText = document.getElementById('loadingText');
-            const status = document.getElementById('submitStatus');
-
-            reviewContent.classList.add('hidden');
-            submitLoading.classList.remove('hidden');
-            status.innerHTML = '';
-            loadingText.textContent = 'Orchestrating onboarding session...';
-
-            try {
-                let clientId = collectedData.client.id;
-                
-                if (collectedData.client.is_new) {
-                    loadingText.textContent = 'Creating client profile...';
-                    // 1. Create client
-                    const clientPayload = {
-                        name: collectedData.client.name,
-                        industry: collectedData.client.industry,
-                        website: collectedData.client.website,
-                        platform_status: 'active'
-                    };
-                    const clientRes = await fetch(`${API_BASE}/api/clients`, {
-                        method: 'POST',
-                        headers: getHeaders(),
-                        body: JSON.stringify(clientPayload)
-                    });
-                    if (!clientRes.ok) throw new Error('Failed to create client');
-                    const clientData = await clientRes.json();
-                    clientId = clientData.client_id;
-                }
-
-                // 2. Save credentials (if any)
-                const creds = collectedData.credentials || {};
-                const hasCreds = Object.values(creds).some(v => v);
-                if (hasCreds) {
-                    loadingText.textContent = 'Configuring ad credentials...';
-                    const credRes = await fetch(`${API_BASE}/api/clients/${clientId}/credentials`, {
-                        method: 'POST',
-                        headers: getHeaders(),
-                        body: JSON.stringify(creds)
-                    });
-                    if (!credRes.ok) console.warn('Credentials not saved');
-                }
-
-                // 3. Create campaign
-                loadingText.textContent = 'Orchestrating agents & drafting creatives...';
-                let budget = collectedData.client.daily_budget || 50;
-                if (budget < 5) budget = 5;
-
-                const campaignPayload = {
-                    client_name: collectedData.client.name,
-                    website_url: collectedData.client.website || 'https://example.com',
-                    language: collectedData.campaign.language || 'en-US',
-                    industry: collectedData.client.industry || 'General',
-                    daily_budget: budget,
-                    target_geo: collectedData.client.target_geo || ['Worldwide'],
-                    tone_of_voice: collectedData.client.tone_of_voice || 'professional',
-                    cultural_triggers: collectedData.client.cultural_triggers || [],
-                    llm_backend: 'cloud',   // <-- FIXED: always "cloud"
-                    objective: collectedData.campaign.objective || 'sales',
-                    special_events: [],
-                    product_keywords: collectedData.campaign.product_keywords || []
-                };
-
-                const campRes = await fetch(`${API_BASE}/api/campaigns/onboard?client_id=${clientId}`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify(campaignPayload)
-                });
-
-                if (!campRes.ok) {
-                    const err = await campRes.json();
-                    throw new Error(`Campaign creation failed: ${JSON.stringify(err)}`);
-                }
-                const campData = await campRes.json();
-
-                loadingText.innerHTML = '🎉 Success! Campaign created.';
-                status.innerHTML = `<span class="text-green-400 block text-center mt-2 font-medium">✅ Client initialized! Campaign ID: ${campData.campaign_id}</span>`;
-
-                setTimeout(() => {
-                    window.location.href = `/?campaign_id=${campData.campaign_id}`;
-                }, 2000);
-
-            } catch (e) {
-                status.innerHTML = `<span class="text-red-400">❌ Error: ${e.message}</span>`;
-                reviewContent.classList.remove('hidden');
-                submitLoading.classList.add('hidden');
-            }
-        }
-
-        // Token expiry watcher — redirect 20s before expiry
-        function tokenExpirySeconds() {
-            const stored = sessionStorage.getItem('expires_at');
-            if (stored) {
-                const exp = parseInt(stored, 10);
-                if (isNaN(exp)) return -1;
-                return exp - Math.floor(Date.now() / 1000);
-            }
-            const token = sessionStorage.getItem('token');
-            if (!token) return -1;
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                if (payload.exp) {
-                    sessionStorage.setItem('expires_at', String(payload.exp));
-                    return payload.exp - Math.floor(Date.now() / 1000);
-                }
-            } catch (_) {}
-            return -1;
-        }
-        function checkTokenExpiry() {
-            const remaining = tokenExpirySeconds();
-            if (remaining <= 20) {
-                sessionStorage.removeItem('token');
-                sessionStorage.removeItem('expires_at');
-                sessionStorage.removeItem('user');
-                window.location.href = '/login.html';
-            }
-        }
-        (function initExpiryWatcher() { tokenExpirySeconds(); setInterval(checkTokenExpiry, 10000); })();
-
-        // Auto-login check & dynamic client loading
-        document.addEventListener('DOMContentLoaded', function () {
-            if (!getToken()) {
-                window.location.href = '/login.html';
-                return;
-            }
-            loadClients();
-            showStep(1);
-        });
-    </script>
+    <script src="/onboarding.js"></script>
 </body>
 
 </html>
