@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
+from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from .models import OnboardRequest, CampaignResponse, ClientCreate, ClientStatus, ClientUpdate, ClientStatusUpdate, ReportScheduleIn
 from .agents import graph, AgencyState
@@ -475,6 +476,28 @@ async def save_llm_config_endpoint(request: Request, config: dict):
     set_global_llm_config(config)
     return {"message": "LLM config saved", "config": get_global_llm_config()}
 
+@app.post("/api/settings/test-credentials")
+@require_role(["admin"])
+async def test_global_credentials_endpoint(request: Request):
+    """
+    Tests the globally configured ad platform credentials.
+    """
+    creds = load_global_ad_credentials(mask_secrets=False)
+    if not creds:
+        raise HTTPException(status_code=404, detail="Global credentials are not configured.")
+
+    # Test Google Ads
+    google_api = GoogleAdsAPI(credentials=creds)
+    google_result = google_api.test_credentials()
+
+    # Test Meta Ads
+    meta_api = MetaAdsAPI(credentials=creds)
+    meta_result = meta_api.test_credentials()
+
+    return {
+        "google_ads": google_result,
+        "meta_ads": meta_result
+    }
 
 @app.get("/api/clients/{client_id}/credentials/status")
 @require_role(["admin", "client_manager", "client_viewer"])
@@ -815,6 +838,51 @@ async def auth_google_start(request: Request, session_id: str = Query(...)):
     )
     authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', state=session_id)
     return RedirectResponse(authorization_url)
+
+@app.get("/api/auth/google/callback")
+async def auth_google_callback(request: Request, code: str = Query(...), state: str = Query(...)):
+    """
+    Handles the OAuth 2.0 callback from Google. Exchanges the code for a refresh token.
+    """
+    session_id = state
+    creds = load_global_ad_credentials(mask_secrets=False)
+    google_client_id = creds.get("google_ads_client_id")
+    google_client_secret = creds.get("google_ads_client_secret")
+    developer_token = creds.get("google_ads_developer_token")
+
+    if not google_client_id or not google_client_secret:
+        return RedirectResponse(f"/onboarding.html?google_auth=error&message=Server-side+OAuth+config+missing")
+
+    redirect_uri = f"{request.base_url}api/auth/google/callback"
+
+    flow = Flow.from_client_config(
+        client_config={
+            "web": {
+                "client_id": google_client_id,
+                "client_secret": google_client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        },
+        scopes=["https://www.googleapis.com/auth/adwords"],
+        redirect_uri=redirect_uri
+    )
+
+    try:
+        flow.fetch_token(code=code)
+        google_creds = flow.credentials
+        
+        # Save the refresh token and other necessary details to the onboarding session
+        save_onboarding_session(session_id, 2, {
+            "google_ads_refresh_token": google_creds.refresh_token,
+            "google_ads_client_id": google_client_id,
+            "google_ads_client_secret": google_client_secret,
+            "google_ads_developer_token": developer_token,
+        })
+        return RedirectResponse(f"/onboarding.html?google_auth=success&session_id={session_id}")
+    except Exception as e:
+        print(f"Error during Google OAuth callback: {e}")
+        return RedirectResponse(f"/onboarding.html?google_auth=error&message=Failed+to+fetch+token")
 
 # ================================================================
 # CAMPAIGN ENDPOINTS

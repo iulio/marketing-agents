@@ -1,11 +1,11 @@
 import re
 import subprocess
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NODE = r"C:\Users\Iulian\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"
 
 
 def read(path: str) -> str:
@@ -45,8 +45,8 @@ class EuroLocalizationTests(unittest.TestCase):
             self.assertIn(needle, index)
 
     def test_inline_scripts_validate_with_node(self) -> None:
-        if not Path(NODE).exists():
-            self.skipTest('Bundled node runtime not available')
+        if not shutil.which("node"):
+            self.skipTest('node executable not found in PATH')
 
         for html_path in [ROOT / 'app/static/index.html', ROOT / 'app/static/client.html']:
             text = html_path.read_text(encoding='utf-8')
@@ -57,7 +57,7 @@ class EuroLocalizationTests(unittest.TestCase):
                     tmp.write(script)
                     tmp_path = Path(tmp.name)
                 try:
-                    result = subprocess.run([NODE, '--check', str(tmp_path)], capture_output=True, text=True)
+                    result = subprocess.run(["node", '--check', str(tmp_path)], capture_output=True, text=True, check=False)
                     self.assertEqual(
                         result.returncode,
                         0,

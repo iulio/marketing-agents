@@ -138,6 +138,21 @@ async function handleCampaignLaunchSubmit(event) {
     }
 }
 
+function checkUrlForAuthStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const googleAuthStatus = urlParams.get('google_auth');
+
+    if (googleAuthStatus === 'success') {
+        document.getElementById('google-status').textContent = 'Connected Successfully!';
+        document.getElementById('google-connect-btn').innerHTML = '<i class="fa-solid fa-check mr-2"></i>Connected';
+        document.getElementById('google-connect-btn').disabled = true;
+        clientData.google_connected = true;
+    } else if (googleAuthStatus === 'error') {
+        const message = urlParams.get('message') || 'An unknown error occurred.';
+        document.getElementById('google-status').innerHTML = `<span class="text-red-400">Connection Failed: ${message}</span>`;
+    }
+}
+
 async function initializeWizard() {
     try {
         const res = await fetch('/api/onboarding/resume', { headers: getHeaders() });
@@ -149,12 +164,19 @@ async function initializeWizard() {
         if (session && session.session_id) {
             onboardingSessionId = session.session_id;
             clientData = session.data || {};
-            // Restore form fields from clientData if needed
-            // goToStep(session.step || 1);
         } else {
             const startRes = await fetch('/api/onboarding/start', { method: 'POST', headers: getHeaders() });
             const startData = await startRes.json();
             onboardingSessionId = startData.session_id;
+        }
+
+        // Check for auth redirects *after* session is initialized
+        checkUrlForAuthStatus();
+
+        // Clean up URL params
+        if (window.history.replaceState) {
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: cleanUrl}, '', cleanUrl);
         }
     } catch (error) {
         console.error('Failed to initialize onboarding wizard:', error);
