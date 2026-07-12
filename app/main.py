@@ -1935,4 +1935,3 @@ if os.path.exists(static_dir):
     if os.path.exists(tutorials_dir):
         app.mount("/tutorials", StaticFiles(directory=tutorials_dir), name="tutorials")
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
-    app.mount("/", StaticFiles(directory=static_dir, html=True)
