@@ -286,6 +286,38 @@ def creative_node(state: AgencyState) -> AgencyState:
     except Exception as e:
         print(f"[Creative] Image selection failed: {e}")
         creatives["images"] = []
+
+    try:
+        from .video_gen import AIVideoGenerator
+        import time
+        
+        brand_name = client.get("brand_name", "the product")
+        target_audience = client.get("target_audience", "customers")
+        primary_offer = client.get("primary_offer", "our services")
+        
+        # Include campaign strategy for better conversion optimization
+        strategy = state.get("campaign_plan", {}).get("strategy", "")
+        
+        base_prompt = f"A professional cinematic video ad for {brand_name}, targeting {target_audience}, showcasing {primary_offer}. Strategy context: {strategy}"
+        
+        print("[Creative] Generating optimized video with Gemini...")
+        urls = AIVideoGenerator.generate(base_prompt, optimize=True)
+        videos = [
+            {
+                "id": f"gen-vid-{int(time.time())}-{i+1}",
+                "type": "generated_video",
+                "url": url,
+                "source": "gemini-veo",
+                "alt": base_prompt[:100]
+            }
+            for i, url in enumerate(urls)
+        ]
+        creatives["videos"] = videos
+    except Exception as e:
+        print(f"[Creative] Video generation failed: {e}")
+        if "videos" not in creatives:
+            creatives["videos"] = []
+
     state["creative_assets"] = creatives
     return state
 

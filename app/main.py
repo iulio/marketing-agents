@@ -24,7 +24,7 @@ from .scheduler import CampaignScheduler
 from .analyst import PerformanceMonitor, run_immediate_optimization, fetch_real_kpis, refresh_kpis
 from .auth import create_default_admin, generate_token, verify_user, get_user_by_email
 from .middleware import require_role, get_current_user
-from .email import send_welcome_email, send_audit_report_email, send_proposal_email, send_follow_up_email
+from .email import send_welcome_email, send_audit_report_email, send_proposal_email, send_follow_up_email, send_bug_report_email
 from .audit import perform_audit
 from .competitor import get_competitor_data
 from .keyword_optimizer import discover_keywords, analyze_search_terms
@@ -312,9 +312,31 @@ async def send_proposal_outreach_email(data: OutreachRequest):
 
 
 @app.post("/api/outreach/follow-up")
-async def send_follow_up_outreach_email(data: OutreachRequest):
-    send_follow_up_email(data.email, data.website)
-    return {"message": "Follow-up email queued"}
+async def send_follow_up(request: OutreachRequest, current_user: dict = Depends(get_current_user)):
+    success = send_follow_up_email(request.email, request.name)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send follow-up email")
+    return {"status": "success", "message": "Follow-up email sent"}
+
+@app.post("/api/bug-report")
+async def handle_bug_report(report: BugReport):
+    # Log the bug report. Sending to a dedicated alerts service or just logging to file.
+    bug_data = report.model_dump()
+    print(f"BUG REPORT RECEIVED: {bug_data}")
+    # Store it in a local JSONL file for now
+    try:
+        with open("bug_reports.jsonl", "a") as f:
+            f.write(json.dumps(bug_data) + "\n")
+    except Exception as e:
+        print(f"Failed to write bug report: {e}")
+        
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@marketingagents.local")
+    try:
+        send_bug_report_email(admin_email, bug_data)
+    except Exception as e:
+        print(f"Failed to send bug report email: {e}")
+        
+    return {"status": "success", "message": "Bug report received"}
 
 # ================================================================
 # AUTHENTICATION ENDPOINTS
@@ -1611,6 +1633,17 @@ class ImageGenerateRequest(BaseModel):
     num_images: int = 2
     provider: str = "pollinations"  # pollinations, replicate, huggingface
 
+class VideoGenerateRequest(BaseModel):
+    prompt: str
+    aspect_ratio: str = "16:9"
+
+class BugReport(BaseModel):
+    description: str
+    url: str
+    userAgent: str
+    timestamp: str
+    screenResolution: str
+
 @app.post("/api/images/search")
 async def search_images(req: ImageSearchRequest):
     """Search free stock images from Unsplash, Pexels, Pixabay."""
@@ -1650,6 +1683,27 @@ async def generate_image_endpoint(req: ImageGenerateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/videos/generate")
+async def generate_video_endpoint(req: VideoGenerateRequest):
+    """Generate AI videos using Gemini/Veo, optimized for conversions."""
+    from .video_gen import AIVideoGenerator
+    try:
+        urls = AIVideoGenerator.generate(req.prompt, optimize=req.optimize)
+        videos = [
+            {
+                "id": f"gen-vid-{int(time.time())}-{i+1}",
+                "type": "generated_video",
+                "url": url,
+                "source": "gemini-veo",
+                "alt": req.prompt[:100]
+            }
+            for i, url in enumerate(urls)
+        ]
+        
+        return {"videos": videos, "count": len(videos), "prompt": req.prompt}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/campaigns/{campaign_id}/images/regenerate")
 async def regenerate_campaign_images(campaign_id: str):
     """Regenerate images for a campaign using AI."""
@@ -1672,6 +1726,47 @@ async def regenerate_campaign_images(campaign_id: str):
         campaigns[campaign_id] = campaign
         save_campaign_state(campaign_id, state, campaign.get("status", "pending_review"), campaign.get("client_id"))
         return {"images": images, "count": len(images)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/campaigns/{campaign_id}/videos/regenerate")
+async def regenerate_campaign_videos(campaign_id: str):
+    """Regenerate videos for a campaign using Gemini/Veo."""
+    from .video_gen import AIVideoGenerator
+    campaign = campaigns.get(campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    try:
+        state = campaign.get("state", {})
+        client = state.get("client_profile", {})
+        creatives = state.get("creative_assets", {})
+        
+        # Get a prompt based on the brand
+        brand_name = client.get("brand_name", "the product")
+        target_audience = client.get("target_audience", "customers")
+        primary_offer = client.get("primary_offer", "our services")
+        strategy = state.get("campaign_plan", {}).get("strategy", "")
+        
+        base_prompt = f"A professional cinematic video ad for {brand_name}, targeting {target_audience}, showcasing {primary_offer}. Strategy context: {strategy}"
+        
+        urls = AIVideoGenerator.generate(base_prompt, optimize=True)
+        videos = [
+            {
+                "id": f"gen-vid-{int(time.time())}-{i+1}",
+                "type": "generated_video",
+                "url": url,
+                "source": "gemini-veo",
+                "alt": base_prompt[:100]
+            }
+            for i, url in enumerate(urls)
+        ]
+        
+        creatives["videos"] = videos
+        state["creative_assets"] = creatives
+        campaign["state"] = state
+        campaigns[campaign_id] = campaign
+        save_campaign_state(campaign_id, state, campaign.get("status", "pending_review"), campaign.get("client_id"))
+        return {"videos": videos, "count": len(videos)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

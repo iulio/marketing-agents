@@ -760,7 +760,8 @@ function renderMockupCreatives(containerId, creatives) {
     const googleAds = creatives.google_ads || [];
     const metaAds = creatives.meta_ads || [];
     const images = creatives.images || [];
-    if (!googleAds.length && !metaAds.length && !images.length) {
+    const videos = creatives.videos || [];
+    if (!googleAds.length && !metaAds.length && !images.length && !videos.length) {
         container.innerHTML = '<div class="text-slate-400 text-sm p-4">No creatives generated for this campaign yet.</div>';
         return;
     }
@@ -827,6 +828,24 @@ function renderMockupCreatives(containerId, creatives) {
                     </div>
                     <img src="${imageUrl}" alt="${escapeHtml(imageAlt)}" class="rounded-md h-24 w-full object-cover bg-slate-800" onerror="this.src='${fallbackUrl}'">
                     <p class="text-[9px] text-slate-400 mt-0.5">${escapeHtml(imageSource)}</p>
+                </div>`;
+        });
+    }
+    if (videos.length) {
+        container.innerHTML += `<div class="w-full text-sm text-slate-400 mt-4 mb-2 font-semibold border-t border-slate-700 pt-4">Campaign Videos</div>`;
+        videos.forEach((vid, idx) => {
+            const videoUrl = vid.url || vid;
+            const videoAlt = vid.alt || 'Campaign video';
+            const videoSource = vid.source || 'unknown source';
+            const videoId = vid.id || `video-${idx + 1}`;
+            container.innerHTML += `
+                <div class="panel rounded-lg p-2" style="max-width:300px">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] text-purple-400">AI Video (Veo)</span>
+                    </div>
+                    <video src="${videoUrl}" controls class="rounded-md w-full bg-black"></video>
+                    <p class="text-[9px] text-slate-400 mt-0.5">${escapeHtml(videoSource)}</p>
+                    <p class="text-[10px] text-slate-300 mt-1" title="${escapeHtml(videoAlt)}">${escapeHtml(videoAlt.substring(0, 50))}...</p>
                 </div>`;
         });
     }
@@ -911,7 +930,28 @@ async function regenerateImages() {
     } catch (e) {
         showToast(e.message, 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Regenerate'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Regenerate Images'; }
+    }
+}
+
+async function generateVideo() {
+    const campaignId = document.getElementById('creativeCampaignSelect').value || document.getElementById('creativeCampaignSelect2').value;
+    if (!campaignId) return alert('Select a campaign first.');
+    const btn = event?.target;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating Video...'; }
+    try {
+        showToast('Generating optimized AI Video. This may take a few seconds...', 'info');
+        const res = await fetch(`${API_BASE}/api/campaigns/${campaignId}/videos/regenerate`, {
+            method: 'POST', headers: getHeaders()
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || 'Video generation failed');
+        const data = await res.json();
+        await loadCreatives();
+        showToast(`Created ${data.count} video(s) successfully!`);
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-video"></i> Create Video'; }
     }
 }
 
@@ -1198,7 +1238,8 @@ async function loadABTestResults(campaignId) {
                         plugins: { legend: { labels: { color: '#a8dadc', font: { size: 10 } } } },
                         scales: {
                             x: { ticks: { color: '#a8dadc', font: { size: 10 } }, grid: { color: '#253e63' } },
-                            y: { ticks: { color: '#a8dadc', font: { size: 10 }, callback: v => v + '%' }, grid: { color: '#253e63' } }
+                            y: { ticks: { color: '#a8dadc', font: { size: 10 } }, grid: { color: '#253e63' }, beginAtZero: true },
+                            y1: { position: 'right', ticks: { color: '#457b9d', font: { size: 10 }, callback: v => v + '%' }, grid: { display: false } }
                         }
                     }
                 });

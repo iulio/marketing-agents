@@ -36,6 +36,19 @@ def send_follow_up_email(to_email: str, website: str):
     _send_email(to_email, subject, content)
 
 
+def send_bug_report_email(to_email: str, bug_data: dict):
+    subject = "New Bug Report Received"
+    content = f"""
+    <h2>New Bug Report</h2>
+    <p><strong>Description:</strong> {bug_data.get('description')}</p>
+    <p><strong>URL:</strong> {bug_data.get('url')}</p>
+    <p><strong>User Agent:</strong> {bug_data.get('userAgent')}</p>
+    <p><strong>Screen Resolution:</strong> {bug_data.get('screenResolution')}</p>
+    <p><strong>Timestamp:</strong> {bug_data.get('timestamp')}</p>
+    """
+    _send_email(to_email, subject, content)
+
+
 def _send_email(to: str, subject: str, html: str):
     if not SENDGRID_API_KEY:
         print("[Email] No API key, skipping send.")
